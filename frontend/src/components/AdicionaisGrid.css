@@ -1,0 +1,595 @@
+/* AdicionaisGrid.css */
+
+.adicionais-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+/* ===== SEÇÃO DE ADICIONAIS ===== */
+.adicionais-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.adicionais-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.adicionais-titulo i {
+    color: #3498db;
+    font-size: 20px;
+}
+
+
+/* Conteúdo do Card */
+/* ===== GRID DE ADICIONAIS - VERSÃO COMPACTA ===== */
+
+.adicionais-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    /* ✅ REDUZIDO de 200px */
+    gap: 8px;
+    /* ✅ REDUZIDO de 12px */
+    margin-top: 4px;
+}
+
+/* Card de Adicional */
+.adicional-card {
+    position: relative;
+    background: #ffffff;
+    border: 2px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 10px 8px;
+    /* ✅ REDUZIDO de 16px 12px */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    /* ✅ REDUZIDO de 8px */
+    min-height: 85px;
+    /* ✅ REDUZIDO de 120px */
+}
+
+.adicional-card:hover {
+    border-color: #3498db;
+    box-shadow: 0 3px 10px rgba(52, 152, 219, 0.15);
+    /* ✅ REDUZIDO */
+    transform: translateY(-1px);
+    /* ✅ REDUZIDO de -2px */
+}
+
+.adicional-card:not(.selecionado) .adicional-checkbox i {
+    color: #cbd5e0;
+}
+
+.adicional-card.selecionado .adicional-checkbox i {
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.adicional-card.selecionado {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    /* ✅ REDUZIDO */
+}
+
+/* Checkbox de Seleção */
+.adicional-checkbox {
+    position: absolute;
+    top: 6px;
+    /* ✅ REDUZIDO de 8px */
+    right: 6px;
+    /* ✅ REDUZIDO de 8px */
+    font-size: 16px;
+    /* ✅ REDUZIDO de 18px */
+    transition: all 0.3s ease;
+}
+
+/* Conteúdo do Card */
+.adicional-conteudo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    /* ✅ REDUZIDO de 6px */
+    text-align: center;
+    flex: 1;
+}
+
+.adicional-nome {
+    font-weight: 600;
+    font-size: 13px;
+    /* ✅ REDUZIDO de 14px */
+    line-height: 1.2;
+    color: #2c3e50;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    /* ✅ NOVO - máximo 2 linhas */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.adicional-card.selecionado .adicional-nome {
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.adicional-preco {
+    font-weight: 700;
+    font-size: 14px;
+    /* ✅ REDUZIDO de 15px */
+    color: #27ae60;
+    margin-top: auto;
+}
+
+.adicional-card.selecionado .adicional-preco {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 10px;
+    /* ✅ REDUZIDO de 4px 12px */
+    border-radius: 20px;
+    font-size: 13px;
+    /* ✅ REDUZIDO de 14px */
+}
+
+/* Controles de Quantidade */
+.adicional-quantidade {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* ✅ REDUZIDO de 8px */
+    margin-top: 6px;
+    /* ✅ REDUZIDO de 8px */
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 6px;
+    /* ✅ REDUZIDO de 4px 8px */
+    border-radius: 20px;
+}
+
+.btn-quantidade {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 22px;
+    /* ✅ REDUZIDO de 24px */
+    height: 22px;
+    /* ✅ REDUZIDO de 24px */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #667eea;
+    font-size: 9px;
+    /* ✅ REDUZIDO de 10px */
+}
+
+.btn-quantidade:hover {
+    background: white;
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.quantidade-valor {
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    /* ✅ REDUZIDO de 15px */
+    min-width: 20px;
+    /* ✅ REDUZIDO de 24px */
+    text-align: center;
+}
+
+/* Estado Vazio */
+.adicionais-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px 20px;
+    color: #95a5a6;
+    text-align: center;
+}
+
+.adicionais-vazio i {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.adicionais-vazio p {
+    margin: 0;
+    font-size: 15px;
+}
+
+/* ===== SEÇÃO DE OBSERVAÇÕES ===== */
+.observacoes-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.observacoes-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.observacoes-titulo i {
+    color: #f39c12;
+    font-size: 18px;
+}
+
+.observacoes-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e1e8ed;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.3s ease;
+}
+
+.observacoes-textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.observacoes-textarea::placeholder {
+    color: #a0aec0;
+}
+
+/* ===== RESUMO DOS ADICIONAIS ===== */
+.adicionais-resumo {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid #667eea;
+}
+
+.resumo-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.resumo-titulo i {
+    color: #667eea;
+}
+
+.resumo-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.resumo-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.resumo-item:hover {
+    background: #e9ecef;
+}
+
+.resumo-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.resumo-nome {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.resumo-preco {
+    color: #27ae60;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.btn-remover {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+}
+
+.btn-remover:hover {
+    background: #c0392b;
+    transform: scale(1.1);
+}
+
+.btn-remover:active {
+    transform: scale(0.95);
+}
+
+.resumo-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.total-valor {
+    font-size: 20px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== RESPONSIVIDADE ===== */
+
+/* Tablets */
+@media (max-width: 768px) {
+    .adicionais-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+    }
+
+    .adicional-card {
+        padding: 12px 8px;
+        min-height: 100px;
+    }
+
+    .adicional-nome {
+        font-size: 13px;
+    }
+
+    .adicional-preco {
+        font-size: 14px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .adicionais-container {
+        padding: 12px;
+        gap: 16px;
+    }
+
+    .adicionais-section,
+    .observacoes-section,
+    .adicionais-resumo {
+        padding: 16px;
+    }
+
+    .adicionais-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+    }
+
+    .adicional-card {
+        padding: 10px 6px;
+        min-height: 90px;
+    }
+
+    .adicional-nome {
+        font-size: 12px;
+    }
+
+    .adicional-preco {
+        font-size: 13px;
+    }
+
+    .adicionais-titulo,
+    .observacoes-titulo,
+    .resumo-titulo {
+        font-size: 15px;
+        color: #ffffff;
+    }
+
+    .resumo-total {
+        font-size: 14px;
+    }
+
+    .total-valor {
+        font-size: 18px;
+    }
+}
+
+/* ===== ANIMAÇÕES ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.adicional-card {
+    animation: fadeIn 0.3s ease;
+}
+
+.resumo-item {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Dark Mode Support (Opcional) */
+@media (prefers-color-scheme: dark) {
+    .adicionais-container {
+        background: #1a202c;
+        color: #ffffff;
+    }
+
+    .adicionais-section,
+    .observacoes-section,
+    .adicionais-resumo {
+        background: #2d3748;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .adicionais-titulo,
+    .observacoes-titulo,
+    .resumo-titulo,
+    .adicional-nome,
+    .resumo-nome {
+        color: #e2e8f0;
+    }
+
+    .adicional-card {
+        background: #2d3748;
+        border-color: #4a5568;
+    }
+
+    .adicional-card:hover {
+        border-color: #667eea;
+    }
+
+    .observacoes-textarea {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+
+    .resumo-item {
+        background: #1a202c;
+    }
+
+    .resumo-item:hover {
+        background: #374151;
+    }
+}
+
+        /* ===== RESPONSIVIDADE OTIMIZADA ===== */
+    
+        /* Desktop Grande (1920px+) */
+        @media (min-width: 1920px) {
+            .produtos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            }
+    
+            .adicionais-grid {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            }
+        }
+    
+        /* Desktop Médio (1366px-1920px) */
+        @media (min-width: 1366px) and (max-width: 1919px) {
+            .produtos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+    
+            .adicionais-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+        }
+    
+        /* Laptop/Desktop Pequeno (1024px-1365px) */
+        @media (min-width: 1024px) and (max-width: 1365px) {
+            .produtos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            }
+    
+            .adicionais-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    
+        /* Tablets */
+        @media (max-width: 768px) {
+            .produtos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            }
+    
+            .adicionais-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 8px;
+            }
+    
+            .adicional-card,
+            .produto-item {
+                padding: 10px 6px;
+                min-height: 80px;
+            }
+    
+            .adicional-nome,
+            .produto-nome {
+                font-size: 12px;
+            }
+    
+            .adicional-preco,
+            .produto-preco {
+                font-size: 13px;
+            }
+        }
+    
+        /* Mobile */
+        @media (max-width: 480px) {
+            .produtos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 6px;
+            }
+    
+            .adicionais-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 6px;
+            }
+    
+            .adicional-card,
+            .produto-item {
+                padding: 8px 5px;
+                min-height: 75px;
+            }
+    
+            .adicional-nome,
+            .produto-nome {
+                font-size: 11px;
+            }
+    
+            .adicional-preco,
+            .produto-preco {
+                font-size: 12px;
+            }
+        }
+

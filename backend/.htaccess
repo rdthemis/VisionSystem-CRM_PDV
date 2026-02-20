@@ -1,0 +1,19 @@
+# .htaccess
+
+# Habilitar rewrite
+RewriteEngine On
+
+# Redirecionar todas as requisições para index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Configurações de CORS
+Header always set Access-Control-Allow-Origin "http://localhost:3000"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept"
+Header always set Access-Control-Allow-Credentials "true"
+
+# Responder a requisições OPTIONS
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]

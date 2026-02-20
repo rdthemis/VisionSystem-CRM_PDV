@@ -1,0 +1,8 @@
+# frontend/.gitignore
+.env
+.env.local
+.env.production
+node_modules/
+build/
+.DS_Store
+npm-debug.log*

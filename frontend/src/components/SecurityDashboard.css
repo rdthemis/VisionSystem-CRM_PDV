@@ -1,0 +1,532 @@
+/* src/components/SecurityDashboard.css */
+
+.security-dashboard {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.security-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.security-header h2 {
+    color: #333;
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.security-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.refresh-btn,
+.cleanup-btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.refresh-btn {
+    background: #17a2b8;
+    color: white;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: #138496;
+}
+
+.cleanup-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.cleanup-btn:hover:not(:disabled) {
+    background: #5a6268;
+}
+
+.refresh-btn:disabled,
+.cleanup-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Mensagens */
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #c3e6cb;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    transition: transform 0.3s ease;
+    border-left: 4px solid;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+
+.stat-card.danger {
+    border-left-color: #dc3545;
+}
+
+.stat-card.info {
+    border-left-color: #17a2b8;
+}
+
+.stat-card.success {
+    border-left-color: #28a745;
+}
+
+.stat-card.warning {
+    border-left-color: #ffc107;
+}
+
+.stat-card.primary {
+    border-left-color: #007bff;
+}
+
+.stat-card h3 {
+    color: #666;
+    margin: 0 0 15px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.stat-number {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 10px 0;
+}
+
+.stat-card.danger .stat-number {
+    color: #dc3545;
+}
+
+.stat-card.info .stat-number {
+    color: #17a2b8;
+}
+
+.stat-card.success .stat-number {
+    color: #28a745;
+}
+
+.stat-card.warning .stat-number {
+    color: #ffc107;
+}
+
+.stat-card.primary .stat-number {
+    color: #007bff;
+}
+
+.stat-card small {
+    color: #999;
+    font-size: 0.85rem;
+}
+
+/* Security Sections */
+.security-section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+}
+
+.security-section h3 {
+    color: #333;
+    margin: 0 0 20px 0;
+    font-size: 1.3rem;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f8f9fa;
+}
+
+/* Failed IPs Table */
+.failed-ips-table {
+    overflow-x: auto;
+}
+
+.failed-ips-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.failed-ips-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.failed-ips-table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.failed-ips-table tr:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.failed-ips-table tr.high-risk {
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.ip-address {
+    font-family: monospace;
+    font-weight: 600;
+    color: #495057;
+}
+
+.attempts-count {
+    font-weight: 600;
+    text-align: center;
+}
+
+.risk-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.risk-badge.critical {
+    background: #dc3545;
+    color: white;
+}
+
+.risk-badge.high {
+    background: #fd7e14;
+    color: white;
+}
+
+.risk-badge.medium {
+    background: #ffc107;
+    color: #212529;
+}
+
+/* Recent Attempts */
+.recent-attempts {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.attempt-item {
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    transition: all 0.2s ease;
+}
+
+.attempt-item:hover {
+    transform: translateX(5px);
+}
+
+.attempt-item.status-success {
+    background: rgba(40, 167, 69, 0.05);
+    border-left-color: #28a745;
+}
+
+.attempt-item.status-failed {
+    background: rgba(220, 53, 69, 0.05);
+    border-left-color: #dc3545;
+}
+
+.attempt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.attempt-status {
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.attempt-status.success {
+    background: #28a745;
+    color: white;
+}
+
+.attempt-status.failed {
+    background: #dc3545;
+    color: white;
+}
+
+.attempt-time {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.attempt-details {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.attempt-user {
+    font-weight: 600;
+    color: #333;
+}
+
+.attempt-email {
+    color: #666;
+    font-weight: normal;
+}
+
+.attempt-ip {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.ip-highlight {
+    font-family: monospace;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #495057;
+    font-weight: 600;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+.modal-content h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.3rem;
+}
+
+.modal-content p {
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.modal-content ul {
+    color: #666;
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.modal-content li {
+    margin-bottom: 8px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+.cancel-btn,
+.confirm-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.cancel-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.cancel-btn:hover:not(:disabled) {
+    background: #5a6268;
+}
+
+.confirm-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.confirm-btn:hover:not(:disabled) {
+    background: #c82333;
+}
+
+.cancel-btn:disabled,
+.confirm-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Update Info */
+.update-info {
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 30px;
+}
+
+.update-info small {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/* Loading */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 1.1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .security-dashboard {
+        padding: 15px;
+    }
+
+    .security-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .security-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .failed-ips-table {
+        font-size: 0.9rem;
+    }
+
+    .attempt-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .attempt-details {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .security-section {
+        padding: 15px;
+    }
+
+    .stat-card {
+        padding: 20px 15px;
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+    }
+
+    .security-actions {
+        flex-direction: column;
+    }
+
+    .refresh-btn,
+    .cleanup-btn {
+        width: 100%;
+    }
+}

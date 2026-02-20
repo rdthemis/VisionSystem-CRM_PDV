@@ -1,0 +1,8 @@
+# backend/.gitignore
+.env
+.env.local
+.env.production
+vendor/
+logs/*.log
+backups/*.sql
+composer.lock
