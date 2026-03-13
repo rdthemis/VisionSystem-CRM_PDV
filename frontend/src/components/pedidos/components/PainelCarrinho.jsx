@@ -110,7 +110,7 @@ const PainelCarrinho = ({
         </div>
       </div>
 
-      {/* 🚚 SEÇÃO DE ENTREGA - ADICIONAR AQUI */}
+      {/* 🚚 SEÇÃO DE ENTREGA - ADICIONAR AQUI 
     <div className="carrinho-entrega-section">
       {dadosEntrega ? (
         // ENTREGA CONFIGURADA
@@ -171,7 +171,16 @@ const PainelCarrinho = ({
       {dadosEntrega && (
         <div className="total-linha taxa-entrega">
           <span>Taxa de Entrega:</span>
-          <span>R$ {dadosEntrega.taxa_entrega.toFixed(2)}</span>
+            <span>R$ {dadosEntrega.taxa_entrega.toFixed(2)}</span>
+            <div>
+              <button
+                className="btn-limpar-entrega"
+                onClick={onLimparEntrega}
+                title="Remover entrega"
+              >
+                <i className="fas fa-times"></i>
+              </button>  
+            </div>
         </div>
       )}
 
@@ -187,10 +196,11 @@ const PainelCarrinho = ({
           <span>Total dos itens</span>
           <span>{formatarPreco(totais.totalItens)}</span>
         </div>
+        {/*}}
         <div className="total-linha total-final">
           <span>Total a pagar</span>
           <span>{formatarPreco(totais.totalPagar)}</span>
-        </div>
+        </div>*/}
       </div>
 
       {/* ── BOTÕES DE AÇÃO ── */}
@@ -218,10 +228,15 @@ const PainelCarrinho = ({
             <i className="fas fa-exchange-alt"></i>
             <span>Transferência</span>
           </button>
-
+          {/*}
           <button className="btn-acao" onClick={onVincular}>
             <i className="fas fa-link"></i>
             <span>Vincular</span>
+          </button>
+            */}
+          <button className="btn-acao" onClick={onAbrirEntrega}>
+            <i className="fa fa-motorcycle" aria-hidden="true"></i>
+            <span>Entrega</span>
           </button>
 
           <button className="btn-acao" onClick={onImprimir}>

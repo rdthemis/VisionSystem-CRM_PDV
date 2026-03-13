@@ -9,7 +9,7 @@ use function Laravel\Prompts\error;
 
 require_once __DIR__.'/../src/Database.php';
 require_once __DIR__.'/cors.php';
-require_once __DIR__.'/../src/Auth.php';
+//require_once __DIR__.'/../src/Auth.php';
 require_once __DIR__.'/../src/Clientes.php';
 require_once __DIR__.'/../src/ContasReceber.php';
 require_once __DIR__.'/../src/Recibos.php';
@@ -19,10 +19,12 @@ require_once __DIR__.'/../src/EmailService.php';
 require_once __DIR__.'/../controllers/CategoriaController.php';
 require_once __DIR__.'/../controllers/ProdutoController.php';
 require_once __DIR__.'/../controllers/PedidoController.php';
+require_once __DIR__.'/../controllers/AuthController.php';
+require_once __DIR__.'/../middleware/AuthMiddleware.php';
+require_once __DIR__.'/../controllers/UsuarioController.php';
 
 $database = new Database();
 $database->conectar();
-$auth = new Auth($database);
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', 0);
@@ -139,208 +141,306 @@ try {
     // ==========================================
     // ROTAS DE AUTENTICAÇÃO
     // ==========================================
-
-    /*  if ($method === 'POST' && $uri === '/auth/login') {
-         error_log("Cheguei no index.php");
-         // Ler dados da requisição
-         $input = file_get_contents('php://input');
-         $data = json_decode($input, true);
-
-         // Validar dados
-         if (!$data || !isset($data['email']) || !isset($data['senha'])) {
-             http_response_code(400);
-             echo json_encode([
-                 'success' => false,
-                 'message' => 'Email e senha são obrigatórios',
-             ]);
-             exit;
-         }
-
-         // Usuários de teste
-         $usuarios = [
-             'admin@teste.com' => '123456',
-             'usuario@teste.com' => '123456',
-         ];
-
-         // Verificar credenciais
-         if (!isset($usuarios[$data['email']])) {
-             http_response_code(401);
-             echo json_encode([
-                 'success' => false,
-                 'message' => 'Email não encontrado',
-             ]);
-             exit;
-         }
-
-         if ($usuarios[$data['email']] !== $data['senha']) {
-             http_response_code(401);
-             echo json_encode([
-                 'success' => false,
-                 'message' => 'Senha incorreta',
-             ]);
-             exit;
-         }
-
-         // Gerar token
-         $token = base64_encode(json_encode([
-             'email' => $data['email'],
-             'time' => time(),
-         ]));
-
-         // Sucesso
-         echo json_encode([
-             'success' => true,
-             'message' => 'Login realizado com sucesso',
-             'data' => [
-                 'token' => $token,
-                 'usuario' => [
-                     'id' => 1,
-                     'nome' => 'Usuário Teste',
-                     'email' => $data['email'],
-                 ],
-             ],
-         ]);
-         exit;
-     } */
-
-    if ($method === 'POST' && $uri === '/auth/login') {
-        // 🔧 DEBUG: Log tudo que chega
-        error_log('🚀 === ROTA LOGIN CHAMADA ===');
-
-        $raw_input = file_get_contents('php://input');
-        error_log('📦 Raw input: '.$raw_input);
-
-        $input = json_decode($raw_input, true);
-        error_log('🔍 Input decodificado: '.json_encode($input));
-
-        // Verificar cada campo que chegou
-        if ($input) {
-            foreach ($input as $key => $value) {
-                error_log("📋 Campo '$key': ".(is_string($value) ? $value : json_encode($value)));
-            }
-        }
-
-        // 🔧 VALIDAÇÃO SIMPLES (sem validar 'nome')
-        if (!$input || !isset($input['email']) || !isset($input['senha'])) {
-            error_log('❌ Campos obrigatórios faltando');
-            error_log('❌ Email presente: '.(isset($input['email']) ? 'SIM' : 'NÃO'));
-            error_log('❌ Senha presente: '.(isset($input['senha']) ? 'SIM' : 'NÃO'));
-
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Email e senha são obrigatórios',
-                'debug' => [
-                    'received_fields' => array_keys($input ?: []),
-                    'email_present' => isset($input['email']),
-                    'senha_present' => isset($input['senha']),
-                ],
-            ]);
-            exit;
-        }
-
-        // 🔧 DEBUG: Tentar o login
-        error_log('🔐 Tentando login com Auth class...');
-        error_log('🔐 Email: '.$input['email']);
-
-        try {
-            // Verificar se a classe Auth existe e está funcionando
-            if (!isset($auth)) {
-                error_log('❌ Classe Auth não encontrada!');
-                http_response_code(500);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Erro interno: Auth não inicializada',
-                ]);
-                exit;
-            }
-
-            error_log('✅ Classe Auth encontrada, chamando método login...');
-            $resultado = $auth->login($input['email'], $input['senha']);
-
-            error_log('🔐 Resultado do login: '.json_encode($resultado));
-
-            if ($resultado && isset($resultado['success']) && $resultado['success']) {
-                http_response_code(200);
-            } else {
-                http_response_code(401);
-            }
-
-            echo json_encode($resultado);
-            exit;
-        } catch (Exception $e) {
-            error_log('❌ EXCEÇÃO no login: '.$e->getMessage());
-            error_log('❌ Arquivo: '.$e->getFile());
-            error_log('❌ Linha: '.$e->getLine());
-            error_log('❌ Stack trace: '.$e->getTraceAsString());
-
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Erro interno no servidor',
-                'debug' => [
-                    'error' => $e->getMessage(),
-                    'file' => basename($e->getFile()),
-                    'line' => $e->getLine(),
-                ],
-            ]);
-            exit;
-        }
+        
+    // 🔐 POST /auth/login - Login com bcrypt
+if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/login') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
     }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Dados inválidos'
+        ]);
+        exit;
+    }
+
+    $authController = new AuthController($database);
+    $authController->login($input);
+    exit;
+}
+
+// 🔄 POST /auth/refresh - Renovar access token
+if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/refresh') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Dados inválidos'
+        ]);
+        exit;
+    }
+
+    $authController = new AuthController($database);
+    $authController->refresh($input);
+    exit;
+}
+
+// 🚪 POST /auth/logout - Logout (revogar tokens)
+if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/logout') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Dados inválidos'
+        ]);
+        exit;
+    }
+
+    $authController = new AuthController($database);
+    $authController->logout($input);
+    exit;
+}
+
+// 🔐 PUT /auth/alterar-senha - Alterar senha
+if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/auth/alterar-senha') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    // Requer autenticação
+    $authResult = verificarAuth($database);
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Dados inválidos'
+        ]);
+        exit;
+    }
+
+    $authController = new AuthController($database);
+    $authController->alterarSenha($input, $authResult['user_id']);
+    exit;
+}
+
+// 👤 GET /auth/me - Obter dados do usuário autenticado
+if ($method === 'GET' && $uri === '/auth/me') {
+    
+    $authResult = verificarAuth($database);
+
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'data' => $authResult['user']
+    ]);
+    exit;
+}
+
+// 📊 GET /auth/sessoes - Listar sessões ativas do usuário
+if ($method === 'GET' && $uri === '/auth/sessoes') {
+    
+    $authResult = verificarAuth($database);
+
+    try {
+        $sql = "SELECT id, ip_address, user_agent, created_at, last_activity, expires_at
+                FROM sessoes_ativas 
+                WHERE usuario_id = ? 
+                ORDER BY last_activity DESC";
+
+        $stmt = $database->conectar()->prepare($sql);
+        $stmt->execute([$authResult['user_id']]);
+        $sessoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'data' => $sessoes
+        ]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Erro ao buscar sessões'
+        ]);
+    }
+    exit;
+}
+
+// 🗑️ DELETE /auth/sessoes - Revogar todas as sessões (exceto a atual)
+if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/auth/sessoes') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    $authResult = verificarAuth($database);
+    $security = new Security($database->conectar());
+
+    // Obter token atual
+    $headers = getallheaders();
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    $token = str_replace('Bearer ', '', $authHeader);
+    $payload = $security->decodeToken($token);
+
+    try {
+        // Deletar todas as sessões exceto a atual (se tiver refresh_token no payload)
+        $sql = "DELETE FROM sessoes_ativas 
+                WHERE usuario_id = ?";
+
+        $stmt = $database->conectar()->prepare($sql);
+        $stmt->execute([$authResult['user_id']]);
+
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Todas as outras sessões foram encerradas'
+        ]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Erro ao revogar sessões'
+        ]);
+    }
+    exit;
+}
+        
 
     // ==========================================
     // ROTAS DE USUÁRIOS
     // ==========================================
 
-    if ($method === 'GET' && $uri === '/usuarios') {
-        $authResult = verificarAuth($database);
+    // GET /usuarios - Buscar usuários
+if ($method === 'GET' && $uri === '/usuarios') {
+    // Requer autenticação de ADMIN
+    $authResult = verificarAdmin($database);
 
-        // Só admin pode listar usuários
-        if ($authResult['tipo'] !== 'admin') {
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Acesso negado',
-            ]);
-            exit;
-        }
+    $usuariosController = new UsuarioController($database);
 
-        $resultado = $auth->listarUsuarios();
-        echo json_encode($resultado);
+    // Buscar por ID específico
+    if (isset($_GET['id'])) {
+        $usuariosController->buscarPorId($_GET['id']);
+    } else {
+        // Buscar todos
+        $apenasAtivos = isset($_GET['ativos']) && $_GET['ativos'] === 'true';
+        $usuariosController->buscarTodos($apenasAtivos);
+    }
+    exit;
+}
+
+// POST /usuarios - Criar usuário
+if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/usuarios') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
         exit;
     }
 
-    if ($method === 'POST' && $uri === '/usuarios') {
-        $authResult = verificarAuth($database);
+    // Requer autenticação de ADMIN
+    $authResult = verificarAdmin($database);
 
-        // Só admin pode criar usuários
-        if ($authResult['tipo'] !== 'admin') {
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Acesso negado',
-            ]);
-            exit;
-        }
+    $input = json_decode(file_get_contents('php://input'), true);
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        $resultado = $auth->criarUsuario($input);
-
-        if ($resultado['success']) {
-            http_response_code(201);
-        } else {
-            http_response_code(400);
-        }
-
-        echo json_encode($resultado);
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Dados inválidos'
+        ]);
         exit;
     }
 
-    // Adicione estas rotas APÓS as rotas de usuários existentes no seu index.php
+    $usuariosController = new UsuarioController($database);
+    $usuariosController->criar($input);
+    exit;
+}
 
-    // ==========================================
-    // NOTA: Usando a função verificarAuth() já existente em Auth.php
-    // ==========================================
+// PUT /usuarios - Atualizar usuário
+if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/usuarios') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    // Requer autenticação de ADMIN
+    $authResult = verificarAdmin($database);
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input || !isset($input['id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'ID do usuário é obrigatório'
+        ]);
+        exit;
+    }
+
+    $usuariosController = new UsuarioController($database);
+    $usuariosController->atualizar($input);
+    exit;
+}
+
+// DELETE /usuarios - Deletar usuário
+if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/usuarios') {
+    
+    if ($method === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    // Requer autenticação de ADMIN
+    $authResult = verificarAdmin($database);
+
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input || !isset($input['id'])) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'ID do usuário é obrigatório'
+        ]);
+        exit;
+    }
+
+    $usuariosController = new UsuarioController($database);
+    $usuariosController->deletar($input['id']);
+    exit;
+}
+
+// GET /usuarios/estatisticas - Estatísticas
+if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
+    
+    // Requer autenticação de ADMIN
+    $authResult = verificarAdmin($database);
+
+    $usuariosController = new UsuarioController($database);
+    $usuariosController->obterEstatisticas();
+    exit;
+}
+
 
     // ==========================================
     // ROTAS DE CATEGORIAS
@@ -1256,7 +1356,7 @@ try {
 
         $dataInicio = $_GET['data_inicio'] ?? date('Y-m-01');
         $dataFim = $_GET['data_fim'] ?? date('Y-m-t');
-        $tipo = $_GET['tipo'] ?? 'vencimento';
+        $tipo = $_GET['user_tipo'] ?? 'vencimento';
 
         $contasReceber = new ContasReceber($database);
         $resultado = $contasReceber->relatorio($dataInicio, $dataFim, $tipo);
@@ -1304,8 +1404,8 @@ try {
                 $caixaId = $_GET['caixa_id'] ?? null;
                 $filtros = [];
 
-                if (isset($_GET['tipo'])) {
-                    $filtros['tipo'] = $_GET['tipo'];
+                if (isset($_GET['user_tipo'])) {
+                    $filtros['user_tipo'] = $_GET['user_tipo'];
                 }
                 if (isset($_GET['categoria'])) {
                     $filtros['categoria'] = $_GET['categoria'];
@@ -1381,22 +1481,22 @@ try {
             }
 
             // Verificar se tem usuario_id (pode estar direto no authResult ou em ['usuario'])
-            $usuarioId = null;
-            if (isset($authResult['usuario_id'])) {
+            $user_id = null;
+            if (isset($authResult['user_id'])) {
                 // Dados estão diretamente no authResult
-                $usuarioId = $authResult['usuario_id'];
-                error_log('✅ Usuario ID encontrado diretamente: '.$usuarioId);
-            } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['id'])) {
+                $user_id = $authResult['user_id'];
+                error_log('✅ Usuario ID encontrado diretamente: '.$user_id);
+            } elseif (isset($authResult['user']) && isset($authResult['user']['id'])) {
                 // Dados estão em $authResult['usuario']
-                $usuarioId = $authResult['usuario']['id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']: ".$usuarioId);
-            } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['usuario_id'])) {
+                $user_id = $authResult['user']['id'];
+                error_log("✅ Usuario ID encontrado em ['user']: ".$user_id);
+            } elseif (isset($authResult['user']) && isset($authResult['user']['user_id'])) {
                 // Dados estão em $authResult['usuario']['usuario_id']
-                $usuarioId = $authResult['usuario']['usuario_id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']['usuario_id']: ".$usuarioId);
+                $user_id = $authResult['user']['user_id'];
+                error_log("✅ Usuario ID encontrado em ['user']['user_id']: ".$user_id);
             }
 
-            if (!$usuarioId) {
+            if (!$user_id) {
                 error_log('❌ Usuario ID não encontrado na estrutura de auth');
                 error_log('Estrutura completa do authResult: '.print_r($authResult, true));
                 echo json_encode([
@@ -1407,7 +1507,7 @@ try {
                 exit;
             }
 
-            error_log('✅ Autenticação OK - Usuario ID: '.$usuarioId);
+            error_log('✅ Autenticação OK - Usuario ID: '.$user_id);
 
             // Ler input
             $inputRaw = file_get_contents('php://input');
@@ -1453,10 +1553,10 @@ try {
 
             $observacoes = $input['observacoes_abertura'] ?? 'Caixa aberto pelo sistema';
             error_log('Observações: '.$observacoes);
-            error_log('Usuario ID para abertura: '.$usuarioId);
+            error_log('Usuario ID para abertura: '.$user_id);
 
             // Tentar abrir o caixa
-            $resultado = $caixa->abrirCaixa($saldoInicial, $usuarioId, $observacoes);
+            $resultado = $caixa->abrirCaixa($saldoInicial, $user_id, $observacoes);
             error_log('Resultado abertura: '.json_encode($resultado));
 
             if ($resultado['success']) {
@@ -1503,7 +1603,7 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
 
             // Validar dados obrigatórios
-            $camposObrigatorios = ['tipo', 'valor', 'descricao', 'categoria'];
+            $camposObrigatorios = ['user_tipo', 'valor', 'descricao', 'categoria'];
             foreach ($camposObrigatorios as $campo) {
                 if (!isset($input[$campo]) || empty($input[$campo])) {
                     echo json_encode([
@@ -1515,7 +1615,7 @@ try {
                 }
             }
 
-            if (!in_array($input['tipo'], ['entrada', 'saida'])) {
+            if (!in_array($input['user_tipo'], ['entrada', 'saida'])) {
                 echo json_encode([
                     'success' => false,
                     'message' => 'Tipo deve ser "entrada" ou "saida"',
@@ -1545,22 +1645,22 @@ try {
             }
 
             // Verificar se tem usuario_id (pode estar direto no authResult ou em ['usuario'])
-            $usuarioId = null;
+            $user_id = null;
             if (isset($authResult['usuario_id'])) {
                 // Dados estão diretamente no authResult
-                $usuarioId = $authResult['usuario_id'];
-                error_log('✅ Usuario ID encontrado diretamente: '.$usuarioId);
+                $user_id = $authResult['usuario_id'];
+                error_log('✅ Usuario ID encontrado diretamente: '.$user_id);
             } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['id'])) {
                 // Dados estão em $authResult['usuario']
-                $usuarioId = $authResult['usuario']['id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']: ".$usuarioId);
+                $user_id = $authResult['usuario']['id'];
+                error_log("✅ Usuario ID encontrado em ['usuario']: ".$user_id);
             } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['usuario_id'])) {
                 // Dados estão em $authResult['usuario']['usuario_id']
-                $usuarioId = $authResult['usuario']['usuario_id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']['usuario_id']: ".$usuarioId);
+                $user_id = $authResult['usuario']['usuario_id'];
+                error_log("✅ Usuario ID encontrado em ['usuario']['usuario_id']: ".$user_id);
             }
 
-            if (!$usuarioId) {
+            if (!$user_id) {
                 error_log('❌ Usuario ID não encontrado na estrutura de auth');
                 error_log('Estrutura completa do authResult: '.print_r($authResult, true));
                 echo json_encode([
@@ -1571,14 +1671,14 @@ try {
                 exit;
             }
 
-            error_log('✅ Autenticação OK - Usuario ID: '.$usuarioId);
+            error_log('✅ Autenticação OK - Usuario ID: '.$user_id);
 
             $resultado = $caixa->adicionarMovimento(
-                $input['tipo'],
+                $input['user_tipo'],
                 floatval($input['valor']),
                 $input['descricao'],
                 $input['categoria'],
-                $usuarioId,
+                $user_id,
                 $input['pedido_id'] ?? null
             );
 
@@ -1624,9 +1724,9 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
 
             $observacoes = $input['observacoes_fechamento'] ?? '';
-            $usuarioId = $authResult['usuario_id'];
+            $user_id = $authResult['usuario_id'];
 
-            $resultado = $caixa->fecharCaixa($usuarioId, $observacoes);
+            $resultado = $caixa->fecharCaixa($user_id, $observacoes);
 
             if ($resultado['success']) {
                 echo json_encode($resultado);
@@ -1704,9 +1804,9 @@ try {
         $recibos = new Recibos($database);
 
         // Pegar usuario_id do authResult
-        $usuarioId = $authResult['usuario_id'];
+        $user_id = $authResult['usuario_id'];
 
-        $resultado = $recibos->criar($input, $usuarioId);
+        $resultado = $recibos->criar($input, $user_id);
 
         if ($resultado['success']) {
             http_response_code(201);
@@ -1752,8 +1852,8 @@ try {
         }
 
         try {
-            $auth = new Auth($database);
-            $authResult = $auth->verificarToken($token);
+            $usuarioController = new UsuarioController($database);
+            $authResult = $usuarioController->verificarToken($token);
 
             if (!$authResult) {
                 http_response_code(401);
@@ -1973,31 +2073,31 @@ try {
     if ($method === 'GET' && $uri === '/usuarios') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
         }
 
-        $auth = new Auth($database);
-        $resultado = $auth->listarUsuarios();
-        echo json_encode($resultado);
+        $usuarioController = new UsuarioController($database);
+        $usuarioController->listarUsuario();
+
         exit;
     }
 
     if ($method === 'POST' && $uri === '/usuarios') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        $auth = new Auth($database);
-        $resultado = $auth->criarUsuario($input);
-        echo json_encode($resultado);
+        
+        $usuarioController = new UsuarioController($database);
+        $usuarioController->criarUsuario($input);
         exit;
     }
 
@@ -2040,8 +2140,7 @@ try {
 
     if ($method === 'POST' && $uri === '/backup/gerar') {
         $authResult = verificarAuth($database);
-
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2066,7 +2165,7 @@ try {
     if ($method === 'GET' && $uri === '/backup/listar') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2091,7 +2190,7 @@ try {
     if ($method === 'POST' && $uri === '/backup/restaurar') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2100,7 +2199,7 @@ try {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $arquivo = $input['arquivo'] ?? '';
-            $tipoRestore = $input['tipo'] ?? 'normal'; // 'normal' ou 'completo'
+            $tipoRestore = $input['user_tipo'] ?? 'normal'; // 'normal' ou 'completo'
 
             if (empty($arquivo)) {
                 throw new Exception('Nome do arquivo não fornecido');
@@ -2169,7 +2268,7 @@ try {
     if ($method === 'POST' && $uri === '/backup/gerar') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2193,7 +2292,7 @@ try {
     if ($method === 'GET' && $uri === '/backup/listar') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2231,7 +2330,7 @@ try {
     if ($method === 'POST' && $uri === '/backup/deletar') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2290,7 +2389,7 @@ try {
     if ($method === 'POST' && $uri === '/integracoes/email/salvar') {
         $authResult = verificarAuth($database);
 
-        if ($authResult['tipo'] !== 'admin') {
+        if ($authResult['user_tipo'] !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Acesso negado']);
             exit;
@@ -2402,7 +2501,7 @@ try {
                 $possiveisUsuarioIds['id'] = $authResult['id'];
             }
 
-            error_log('Possíveis usuario IDs: '.json_encode($possiveisUsuarioIds));
+            error_log('Possíveis userIDs: '.json_encode($possiveisUsuarioIds));
 
             echo json_encode([
                 'success' => true,

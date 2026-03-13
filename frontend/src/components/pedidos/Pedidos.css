@@ -14,6 +14,7 @@
     --success-color: #10b981;
     --danger-color: #ef4444;
     --warning-color: #f59e0b;
+    --pedido-cliente: #595959
 
     /* Cores de fundo */
     --bg-primary: #ffffff;
@@ -135,8 +136,8 @@
 
 .ultimo-salvamento {
     position: fixed;
-    top: 60px;
-    right: 145px;
+    top: 30px;
+    right: 250px;
     background: #28a745;
     color: white;
     padding: 8px 16px;
@@ -343,13 +344,21 @@
 }
 
 .pedido-cliente,
-.pedido-itens-count,
+.pedido-itens-count {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 22px;
+    color: var(--pedido-cliente);
+}
+
 .pedido-data {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     font-size: 14px;
     color: var(--secondary-color);
+    font-weight: bold;
 }
 
 .pedido-card-footer {
@@ -626,7 +635,7 @@
     margin-bottom: 6px;
     /* ✅ REDUZIDO de 8px */
     color: #1e293b;
-    font-size: 13px;
+    font-size: 20px;
     /* ✅ REDUZIDO de 14px */
     line-height: 1.3;
     /* ✅ NOVO - melhor legibilidade */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import authService from './services/authService';
 import { useSessionTimeout } from './hooks/useSessionTimeout';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import Login from './components/Login';
@@ -17,6 +18,11 @@ function App() {
     const [logado, setLogado] = useState(false);
     const [carregando, setCarregando] = useState(true);
     const [telaAtual, setTelaAtual] = useState('login'); // 'login', 'dashboard', 'forgot-password', 'clientes', 'contas-receber', 'modulo-pdv'
+
+    useEffect(() => {
+        // Inicializar sistema de auth
+        authService.initialize();
+    }, []);
 
     // Verificar se já está logado ao carregar a página
     useEffect(() => {
