@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import categoriaService from '../services/categoriasService';
 import './Categorias.css';
+import Logger from '../utils/Logger';
 
 const Categorias = () => {
     // Estados do componente
@@ -31,7 +32,7 @@ const Categorias = () => {
             const response = await categoriaService.buscarTodas();
 
             // 🔧 CORREÇÃO: Verificar se a resposta tem a estrutura esperada
-            console.log('Resposta da API:', response); // Para debug
+            Logger.debug('Resposta da API:', {debug: response}); // Para debug
 
             if (response && response.success && Array.isArray(response.data)) {
                 // Se a API retorna { success: true, data: [...] }
@@ -41,7 +42,7 @@ const Categorias = () => {
                 setCategorias(response);
             } else {
                 // Se não é nem um nem outro, algo está errado
-                console.error('Formato de resposta inesperado:', response);
+                Logger.error('Formato de resposta inesperado:', {erro: response});
                 setCategorias([]);
                 setError('Formato de dados inválido recebido da API');
             }
@@ -49,7 +50,7 @@ const Categorias = () => {
             setError('');
         } catch (err) {
             setError('Erro ao carregar categorias');
-            console.error('Erro detalhado:', err);
+            Logger.error('Erro detalhado:', {erro: err});
             setCategorias([]); // 🔧 IMPORTANTE: Garantir que seja sempre um array
         } finally {
             setLoading(false);

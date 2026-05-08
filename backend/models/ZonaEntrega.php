@@ -22,17 +22,17 @@ class ZonaEntrega
     }
 
     /**
-     * Buscar todas as zonas
+     * Buscar todas as zonas.
      */
     public function buscarTodas($apenasAtivas = false)
     {
         $query = "SELECT * FROM {$this->table_name}";
-        
+
         if ($apenasAtivas) {
-            $query .= " WHERE ativo = 1";
+            $query .= ' WHERE ativo = 1';
         }
-        
-        $query .= " ORDER BY valor ASC";
+
+        $query .= ' ORDER BY valor ASC';
 
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -41,7 +41,7 @@ class ZonaEntrega
     }
 
     /**
-     * Buscar zona por ID
+     * Buscar zona por ID.
      */
     public function buscarPorId($id)
     {
@@ -55,38 +55,40 @@ class ZonaEntrega
     }
 
     /**
-     * Criar nova zona
+     * Criar nova zona.
      */
     public function criar()
     {
         $query = "INSERT INTO {$this->table_name} 
-                  (nome, valor, descricao, ativo) 
-                  VALUES (:nome, :valor, :descricao, :ativo)";
+              (nome, valor, descricao, ativo) 
+              VALUES (:nome, :valor, :descricao, :ativo)";
 
         $stmt = $this->conn->prepare($query);
 
-        // Sanitizar
-        $this->nome = htmlspecialchars(strip_tags($this->nome));
-        $this->descricao = htmlspecialchars(strip_tags($this->descricao));
+        // Validar e normalizar (não escapar)
+        $this->nome = trim($this->nome);
+        $this->descricao = trim($this->descricao);
         $this->valor = floatval($this->valor);
         $this->ativo = $this->ativo ? 1 : 0;
 
-        // Bind
+        // Validações reais
+        if (empty($this->nome) || mb_strlen($this->nome) > 100) {
+            return false; // ou lança exceção
+        }
+        if ($this->valor < 0) {
+            return false;
+        }
+
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':valor', $this->valor);
         $stmt->bindParam(':descricao', $this->descricao);
-        $stmt->bindParam(':ativo', $this->ativo);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
 
-        if ($stmt->execute()) {
-            $this->id = $this->conn->lastInsertId();
-            return true;
-        }
-
-        return false;
+        return $stmt->execute();
     }
 
     /**
-     * Atualizar zona
+     * Atualizar zona.
      */
     public function atualizar()
     {
@@ -100,8 +102,8 @@ class ZonaEntrega
         $stmt = $this->conn->prepare($query);
 
         // Sanitizar
-        $this->nome = htmlspecialchars(strip_tags($this->nome));
-        $this->descricao = htmlspecialchars(strip_tags($this->descricao));
+        $this->nome = trim($this->nome);
+        $this->descricao = trim($this->descricao);
         $this->valor = floatval($this->valor);
         $this->ativo = $this->ativo ? 1 : 0;
         $this->id = intval($this->id);
@@ -110,14 +112,14 @@ class ZonaEntrega
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':valor', $this->valor);
         $stmt->bindParam(':descricao', $this->descricao);
-        $stmt->bindParam(':ativo', $this->ativo);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }
 
     /**
-     * Deletar zona (soft delete)
+     * Deletar zona (soft delete).
      */
     public function deletar()
     {
@@ -125,13 +127,13 @@ class ZonaEntrega
 
         $stmt = $this->conn->prepare($query);
         $this->id = intval($this->id);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }
 
     /**
-     * Reativar zona
+     * Reativar zona.
      */
     public function reativar()
     {
@@ -139,7 +141,7 @@ class ZonaEntrega
 
         $stmt = $this->conn->prepare($query);
         $this->id = intval($this->id);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }

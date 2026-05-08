@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import produtoService from '../services/produtosService';
 import categoriaService from '../services/categoriasService';
 import './Produtos.css';
+import Logger from '../utils/Logger';
 
 const Produtos = () => {
     // Estados do componente
@@ -45,7 +46,7 @@ const Produtos = () => {
             setError('');
         } catch (err) {
             setError('Erro ao carregar dados');
-            console.error(err);
+            Logger.error('Erro ao carregar dados:', { erro: err });
         } finally {
             setLoading(false);
         }
@@ -67,7 +68,7 @@ const Produtos = () => {
             setError('');
         } catch (err) {
             setError('Erro ao filtrar produtos');
-            console.error(err);
+            Logger.error('Erro ao filtrar produtos:', { erro: err });
         } finally {
             setLoading(false);
         }
@@ -134,7 +135,7 @@ const Produtos = () => {
 
         } catch (err) {
             alert('Erro ao salvar produto: ' + err.message);
-            console.error('Erro detalhado:', err);
+            Logger.error('Erro ao salvar produto:', { erro: err });
         }
     };
 

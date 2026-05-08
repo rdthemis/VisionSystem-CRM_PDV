@@ -2,19 +2,20 @@
 
 // controllers/ProdutoController.php
 
+require_once __DIR__.'/../config/Security.php';
 require_once __DIR__.'/../models/Produto.php';
 
 class ProdutoController
 {
     public $database;
-    public $db;
+    private $security;
     public $produto;
 
     public function __construct($database)
     {
         $this->database = $database;
-        $this->db = $database->conectar();
-        $this->produto = new Produto($this->db);
+        $this->security = new Security($database->getConnection());
+        $this->produto = new Produto($this->database->getConnection());
     }
 
     public function processar()

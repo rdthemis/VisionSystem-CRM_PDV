@@ -8,7 +8,7 @@ class Clientes
 
     public function __construct($database)
     {
-        $this->db = $database->conectar();
+        $this->db = $database->getConnection();
     }
 
     // Listar clientes com paginação e filtros

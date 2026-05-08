@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 import { backupService } from '../services/backupService';
 import { emailService } from '../services/emailService';
-import SimplePrintButton from './impressao/SimplePrintButton';
+import Logger from '../utils/Logger';
 
 function Configuracoes({ onVoltar }) {
     const [abaAtiva, setAbaAtiva] = useState('usuarios');
@@ -43,8 +43,8 @@ function Configuracoes({ onVoltar }) {
             ativo: false,
             smtp_host: '',
             smtp_port: '',
-            smtp_user: '',
-            smtp_pass: '',
+            smtp_username: '',
+            smtp_password: '',
             ssl: true
         },
         whatsapp: {
@@ -182,7 +182,7 @@ function Configuracoes({ onVoltar }) {
                 setConfiguracoes(resultado.data);
             }
         } catch (error) {
-            console.log('Configurações não encontradas, usando padrões');
+            Logger.error('Configurações não encontradas', {erro: "Usando padrões"});
         } finally {
             setLoading(false);
         }
@@ -223,7 +223,7 @@ function Configuracoes({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao carregar backups:', error);
+            Logger.error('Erro ao carregar backups:',{erro: error});
             setErro('Erro ao carregar backups');
         } finally {
             setLoading(false);
@@ -244,7 +244,7 @@ function Configuracoes({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao gerar backup:', error);
+            Logger.error('Erro ao gerar backup:', {erro: error});
             setErro('Erro ao gerar backup');
         } finally {
             setLoading(false);
@@ -276,7 +276,7 @@ function Configuracoes({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao deletar backup:', error);
+            Logger.error('Erro ao deletar backup:', {erro: error});
             setErro('Erro ao deletar backup');
         } finally {
             setLoading(false);
@@ -300,7 +300,7 @@ function Configuracoes({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao restaurar backup:', error);
+            Logger.error('Erro ao restaurar backup:', {erro: error});
             setErro('Erro ao restaurar backup');
         } finally {
             setLoading(false);
@@ -328,16 +328,16 @@ function Configuracoes({ onVoltar }) {
                         ativo: false,
                         smtp_host: '',
                         smtp_port: 587,
-                        smtp_user: '',
-                        smtp_pass: '',
+                        smtp_username: '',
+                        smtp_password: '',
                         smtp_secure: 'tls',
-                        from_email: '',
-                        from_name: 'Sistema CRM'
+                        from_address: '',
+                        from_name: 'GelattoApp'
                     }
                 }));
             }
         } catch (error) {
-            console.log('Integrações não configuradas');
+            Logger.error('Integrações não configuradas', {erro: error});
         } finally {
             setLoading(false);
         }
@@ -349,6 +349,8 @@ function Configuracoes({ onVoltar }) {
         setErro('');
         setSucesso('');
 
+        Logger.debug('Salvando integração de e-mail', {debug: integracoes.email});
+
         try {
             const resultado = await emailService.salvarConfiguracoes(integracoes.email);
             if (resultado.success) {
@@ -357,7 +359,7 @@ function Configuracoes({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao salvar integrações:', error);
+            Logger.error('Erro ao salvar integrações:', {erro: error});
             setErro('Erro ao salvar integrações');
         } finally {
             setLoading(false);
@@ -379,7 +381,7 @@ function Configuracoes({ onVoltar }) {
                 }
             }
         } catch (error) {
-            console.error(`Erro ao testar ${tipo}:`, error);
+            Logger.error('Erro ao testar', {erro: error});
             setErro(`Erro ao testar ${tipo}`);
         } finally {
             setLoading(false);
@@ -632,10 +634,10 @@ function Configuracoes({ onVoltar }) {
                                     <label>Email/Usuário: *</label>
                                     <input
                                         type="email"
-                                        value={integracoes.email.smtp_user}
+                                        value={integracoes.email.smtp_username}
                                         onChange={(e) => setIntegracoes(prev => ({
                                             ...prev,
-                                            email: { ...prev.email, smtp_user: e.target.value }
+                                            email: { ...prev.email, smtp_username: e.target.value }
                                         }))}
                                         placeholder="seu@email.com"
                                         required
@@ -645,10 +647,10 @@ function Configuracoes({ onVoltar }) {
                                     <label>Senha: *</label>
                                     <input
                                         type="password"
-                                        value={integracoes.email.smtp_pass}
+                                        value={integracoes.email.smtp_password}
                                         onChange={(e) => setIntegracoes(prev => ({
                                             ...prev,
-                                            email: { ...prev.email, smtp_pass: e.target.value }
+                                            email: { ...prev.email, smtp_password: e.target.value }
                                         }))}
                                         placeholder="Senha do email"
                                         required
@@ -678,7 +680,7 @@ function Configuracoes({ onVoltar }) {
                                             ...prev,
                                             email: { ...prev.email, from_name: e.target.value }
                                         }))}
-                                        placeholder="Sistema CRM"
+                                        placeholder="GelattoApp"
                                     />
                                 </div>
                             </div>

@@ -38,7 +38,7 @@ class Backup
     public function gerarBackup()
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Nome do arquivo com timestamp
             $timestamp = date('Y-m-d_H-i-s');
@@ -284,7 +284,7 @@ class Backup
 
             error_log("🔄 Iniciando restore do backup: {$filename}");
 
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Ler arquivo SQL
             $sql = file_get_contents($filepath);
@@ -389,7 +389,7 @@ class Backup
     private function salvarRegistroBackup($filename, $filesize)
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Criar tabela de logs de backup se não existir
             $pdo->exec('

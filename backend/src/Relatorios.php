@@ -8,7 +8,7 @@ class Relatorios
 
     public function __construct($database)
     {
-        $this->db = $database->conectar();
+        $this->db = $database->getConnection();
     }
 
     // Relatório de clientes

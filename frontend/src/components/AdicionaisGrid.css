@@ -197,6 +197,45 @@
     text-align: center;
 }
 
+/* Input de quantidade editável */
+.quantidade-input {
+    width: 60px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    padding: 4px 8px;
+    background: white;
+    cursor: text;
+    transition: all 0.2s;
+}
+
+.quantidade-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: #f8fafc;
+}
+
+.quantidade-input:hover {
+    border-color: var(--primary-hover);
+}
+
+/* Label de unidade de medida */
+.unidade-medida {
+    font-size: 12px;
+    color: var(--secondary-color);
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+/* Ajuste no controle de quantidade para acomodar o label */
+.item-quantidade-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* Estado Vazio */
 .adicionais-vazio {
     display: flex;

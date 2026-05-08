@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import printService from '../../services/printService';
 import ThermalPrintConfig from './ThermalPrintConfig';
 import PrintAdjustmentPanel from './PrintAdjustmentPanel';
+import Logger from '../../utils/Logger';
 
 function PrintButton({
     tipo,
@@ -36,7 +37,7 @@ function PrintButton({
 
         try {
             setImprimindo(true);
-            console.log(`🖨️ Iniciando impressão de ${tipo}:`, dados);
+            Logger.debug('Iniciando impressão', {debug: "Iniciando..."});
 
             let resultado;
             switch (tipo) {
@@ -53,14 +54,14 @@ function PrintButton({
                     throw new Error(`Tipo de impressão não suportado: ${tipo}`);
             }
 
-            console.log('✅ Impressão realizada com sucesso');
+            Logger.info('Impressão realizada com sucesso', {info: "Sucess"});
 
             if (onSucesso) {
                 onSucesso(resultado);
             }
 
         } catch (error) {
-            console.error(`❌ Erro na impressão de ${tipo}:`, error);
+            Logger.error('Erro na impressão', {erro: error});
 
             if (onErro) {
                 onErro(error);
@@ -91,8 +92,7 @@ function PrintButton({
 
             printService.visualizarImpressao(htmlContent, tipo);
         } catch (error) {
-            console.error('❌ Erro no preview:', error);
-            alert(`Erro no preview: ${error.message}`);
+            Logger.error('Erro no preview:', {erro: error});
         }
     };
 
@@ -230,7 +230,7 @@ function PrintButton({
                 isOpen={showThermalConfig}
                 onClose={() => setShowThermalConfig(false)}
                 onConfigSalva={(config) => {
-                    console.log('✅ Configuração térmica salva:', config);
+                    Logger.debug('Configuração térmica salva:', {debug: config});
                     // Recarregar página para aplicar configurações se necessário
                     // window.location.reload();
                 }}

@@ -1,10 +1,14 @@
 <?php
 
 // controllers/CategoriaController.php
-require_once '../src/database.php';
+require_once '../config/Database.php';
 require_once '../models/Categoria.php';
 
-require_once './cors.php';
+require_once __DIR__.'/../config/environment.php';
+require_once __DIR__.'/../config/SecurityHeaders.php';
+
+SecurityHeaders::apply(IS_PRODUCTION);
+SecurityHeaders::applyForAPI();
 
 class CategoriaController
 {
@@ -15,7 +19,7 @@ class CategoriaController
     public function __construct()
     {
         $this->database = new Database();
-        $this->db = $this->database->conectar();
+        $this->db = $this->database->getConnection();
         $this->categoria = new Categoria($this->db);
     }
 
@@ -42,47 +46,47 @@ class CategoriaController
     }
 
     public function listar()
-{
-    try {
-        // Se tem ID na URL, busca específica
-        if (isset($_GET['id'])) {
-            $categoria = $this->categoria->buscarPorId($_GET['id']);
-            
-            if ($categoria) {
+    {
+        try {
+            // Se tem ID na URL, busca específica
+            if (isset($_GET['id'])) {
+                $categoria = $this->categoria->buscarPorId($_GET['id']);
+
+                if ($categoria) {
+                    http_response_code(200);
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $categoria,
+                    ]);
+                } else {
+                    http_response_code(404);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Categoria não encontrada',
+                    ]);
+                }
+            } else {
+                // Busca todas as categorias
+                $categorias = $this->categoria->buscarTodas();
+
                 http_response_code(200);
                 echo json_encode([
                     'success' => true,
-                    'data' => $categoria
-                ]);
-            } else {
-                http_response_code(404);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Categoria não encontrada'
+                    'data' => $categorias,
                 ]);
             }
-        } else {
-            // Busca todas as categorias
-            $categorias = $this->categoria->buscarTodas();
-            
-            http_response_code(200);
+
+            return; // ✅ IMPORTANTE: encerrar função
+        } catch (Exception $e) {
+            http_response_code(500);
             echo json_encode([
-                'success' => true,
-                'data' => $categorias
+                'success' => false,
+                'message' => 'Erro ao buscar categorias: '.$e->getMessage(),
             ]);
+
+            return;
         }
-        
-        return; // ✅ IMPORTANTE: encerrar função
-        
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Erro ao buscar categorias: ' . $e->getMessage()
-        ]);
-        return;
     }
-}
 
     public function criar()
     {
@@ -101,14 +105,7 @@ class CategoriaController
             $this->categoria->ativo = $dados['ativo'] ?? true;
 
             // Criar categoria
-            if ($this->categoria->criar()) {
-                sendJsonResponse([
-                    'message' => 'Categoria criada com sucesso',
-                    'id' => $this->categoria->id,
-                ], 201);
-            } else {
-                sendErrorResponse('Erro ao criar categoria', 500);
-            }
+            $this->categoria->criar();
         } catch (Exception $e) {
             sendErrorResponse('Erro ao criar categoria: '.$e->getMessage(), 500);
         }
@@ -129,14 +126,10 @@ class CategoriaController
             $this->categoria->id = $dados['id'];
             $this->categoria->nome = $dados['nome'];
             $this->categoria->descricao = $dados['descricao'] ?? '';
-            $this->categoria->ativo = $dados['ativo'] ?? true;
+            $this->categoria->ativo = $dados['ativo'] ?? 1;
 
             // Atualizar categoria
-            if ($this->categoria->atualizar()) {
-                sendJsonResponse(['message' => 'Categoria atualizada com sucesso']);
-            } else {
-                sendErrorResponse('Erro ao atualizar categoria', 500);
-            }
+            $this->categoria->atualizar();
         } catch (Exception $e) {
             sendErrorResponse('Erro ao atualizar categoria: '.$e->getMessage(), 500);
         }
@@ -156,11 +149,7 @@ class CategoriaController
             $this->categoria->id = $dados['id'];
 
             // Deletar categoria
-            if ($this->categoria->deletar()) {
-                sendJsonResponse(['message' => 'Categoria excluída com sucesso']);
-            } else {
-                sendErrorResponse('Erro ao excluir categoria', 500);
-            }
+            $this->categoria->deletar();
         } catch (Exception $e) {
             sendErrorResponse('Erro ao excluir categoria: '.$e->getMessage(), 500);
         }

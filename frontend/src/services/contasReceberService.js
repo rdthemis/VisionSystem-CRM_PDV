@@ -1,4 +1,5 @@
 // frontend/src/services/contasReceberService.js
+import Logger from '../utils/Logger';
 
 // Configuração da API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -31,7 +32,7 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        Logger.error('Erro na requisição:', { erro: error });
         throw error;
     }
 };

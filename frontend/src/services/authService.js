@@ -1,7 +1,8 @@
 // frontend/src/services/authService.js
-// 🔐 SERVICE DE AUTENTICAÇÃO COM TOKENS SEGUROS
+// SERVICE DE AUTENTICAÇÃO COM TOKENS SEGUROS
 
 import apiService from './apiService';
+import Logger from '../utils/Logger';
 
 const TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -9,7 +10,7 @@ const USER_KEY = 'user';
 
 const authService = {
   /**
-   * 🔐 LOGIN
+   * LOGIN
    */
   login: async (email, senha) => {
     try {
@@ -40,7 +41,7 @@ const authService = {
 
       throw new Error(data.message || 'Erro ao fazer login');
     } catch (error) {
-      console.error('❌ Erro no login:', error);
+      Logger.error('❌ Erro no login:', { erro: error });
       throw error;
     }
   },
@@ -63,7 +64,7 @@ const authService = {
         });
       }
     } catch (error) {
-      console.error('❌ Erro no logout:', error);
+      Logger.error('Erro no logout:', { erro: error });
     } finally {
       // Limpar dados locais
       localStorage.removeItem(TOKEN_KEY);
@@ -104,13 +105,13 @@ const authService = {
         localStorage.setItem(TOKEN_KEY, data.data.accessToken);
         apiService.setAuthToken(data.data.accessToken);
 
-        console.log('✅ Token renovado com sucesso');
+        Logger.info('Token renovado com sucesso', { info: "Token renovado com sucesso" });
         return data.data.accessToken;
       }
 
       throw new Error(data.message || 'Erro ao renovar token');
     } catch (error) {
-      console.error('❌ Erro ao renovar token:', error);
+      Logger.error('Erro ao renovar token:', { erro: error });
 
       // Se falhar, fazer logout
       authService.logout();
@@ -119,7 +120,7 @@ const authService = {
   },
 
   /**
-   * ⏰ INICIAR RENOVAÇÃO AUTOMÁTICA DE TOKEN
+   * INICIAR RENOVAÇÃO AUTOMÁTICA DE TOKEN
    */
   startTokenRefresh: () => {
     // Limpar intervalo anterior se existir
@@ -129,13 +130,13 @@ const authService = {
     const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutos
 
     authService.refreshInterval = setInterval(() => {
-      console.log('🔄 Renovando token automaticamente...');
+      Logger.info('Renovando token automaticamente...', { info: "Renovando token automaticamente..." });
       authService.refreshToken();
     }, REFRESH_INTERVAL);
   },
 
   /**
-   * ⏹️ PARAR RENOVAÇÃO AUTOMÁTICA
+   * PARAR RENOVAÇÃO AUTOMÁTICA
    */
   stopTokenRefresh: () => {
     if (authService.refreshInterval) {
@@ -145,7 +146,7 @@ const authService = {
   },
 
   /**
-   * 🔐 ALTERAR SENHA
+   * ALTERAR SENHA
    */
   alterarSenha: async (senhaAtual, senhaNova) => {
     try {
@@ -156,66 +157,66 @@ const authService = {
 
       return response;
     } catch (error) {
-      console.error('❌ Erro ao alterar senha:', error);
+      Logger.error('Erro ao alterar senha:', { erro: error });
       throw error;
     }
   },
 
   /**
-   * 👤 OBTER DADOS DO USUÁRIO AUTENTICADO
+   * OBTER DADOS DO USUÁRIO AUTENTICADO
    */
   getMe: async () => {
     try {
       const response = await apiService.get('/auth/me');
       return response.data;
     } catch (error) {
-      console.error('❌ Erro ao obter dados do usuário:', error);
+      Logger.error('Erro ao obter dados do usuário:', { erro: error });
       throw error;
     }
   },
 
   /**
-   * 📊 LISTAR SESSÕES ATIVAS
+   * LISTAR SESSÕES ATIVAS
    */
   getSessoes: async () => {
     try {
       const response = await apiService.get('/auth/sessoes');
       return response.data;
     } catch (error) {
-      console.error('❌ Erro ao listar sessões:', error);
+      Logger.error('Erro ao listar sessões:', { erro: error });
       throw error;
     }
   },
 
   /**
-   * 🗑️ REVOGAR TODAS AS SESSÕES (EXCETO ATUAL)
+   * REVOGAR TODAS AS SESSÕES (EXCETO ATUAL)
    */
   revogarSessoes: async () => {
     try {
       const response = await apiService.delete('/auth/sessoes');
       return response;
     } catch (error) {
-      console.error('❌ Erro ao revogar sessões:', error);
+      Logger.error('Erro ao revogar sessões:', { erro: error });
       throw error;
     }
   },
 
   /**
-   * 🎫 OBTER TOKEN ATUAL
+   * OBTER TOKEN ATUAL
    */
   getToken: () => {
     return localStorage.getItem(TOKEN_KEY);
   },
 
   /**
-   * 🔄 OBTER REFRESH TOKEN
+   * OBTER REFRESH TOKEN
    */
   getRefreshToken: () => {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
 
   /**
-   * 👤 OBTER USUÁRIO ATUAL
+   * OBTER USUÁRIO ATUAL
    */
   getUser: () => {
     const userJson = localStorage.getItem(USER_KEY);
@@ -223,7 +224,7 @@ const authService = {
   },
 
   /**
-   * ✅ VERIFICAR SE ESTÁ AUTENTICADO
+   * VERIFICAR SE ESTÁ AUTENTICADO
    */
   isAuthenticated: () => {
     const token = authService.getToken();
@@ -232,7 +233,7 @@ const authService = {
   },
 
   /**
-   * 🔍 VERIFICAR SE TOKEN ESTÁ EXPIRADO
+   * VERIFICAR SE TOKEN ESTÁ EXPIRADO
    */
   isTokenExpired: (token) => {
     try {
@@ -247,7 +248,7 @@ const authService = {
   },
 
   /**
-   * 🚀 INICIALIZAR (chamar ao carregar app)
+   * INICIALIZAR (chamar ao carregar app)
    */
   initialize: () => {
     const token = authService.getToken();
@@ -261,7 +262,7 @@ const authService = {
 
       // Verificar se token está expirado
       if (authService.isTokenExpired(token)) {
-        console.log('⚠️ Token expirado, tentando renovar...');
+        Logger.info('Token expirado, tentando renovar...', { info: "Token expirado, tentando renovar..." });
         authService.refreshToken();
       }
     }

@@ -1,6 +1,7 @@
 // frontend/src/services/produtosService.js
 
 import axios from 'axios';
+import Logger from '../utils/Logger';
 
 // Configuração da API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -17,7 +18,7 @@ const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Erro na API:', error);
+        Logger.error('Erro na API:', { erro: error });
         return Promise.reject(error);
     }
 );
@@ -50,7 +51,7 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        Logger.error('Erro na requisição:', { erro: error });
         throw error;
     }
 };
@@ -68,11 +69,11 @@ const produtosService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', { erro: response });
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error("Erro ao buscar todos os produtos:", error);
+            Logger.error("Erro ao buscar todos os produtos:", { erro: error });
             throw new Error("Erro ao buscar todos os produtos");
         }
     },
@@ -91,11 +92,11 @@ const produtosService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', { erro: response });
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error("Erro ao buscar produto por ID:", error);
+            Logger.error("Erro ao buscar produto por ID:", { erro: error });
             throw new Error("Erro ao buscar produto por ID");
         }
     },
@@ -105,17 +106,17 @@ const produtosService = {
         try {
             const data = await fetchWithAuth(`/produtos?categoria_id=${categoriaId}`);
             
-            // 🔧 CORREÇÃO: Extrair apenas o array de dados
+            // CORREÇÃO: Extrair apenas o array de dados
             if (data && data.success) {
                 return data.data; // Retorna apenas o array
             } else if (Array.isArray(data)) {
                 return data; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', data);
+                Logger.error('Resposta inesperada da API:', { erro: data });
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error("Erro ao buscar produtos por categoria:", error);
+            Logger.error("Erro ao buscar produtos por categoria:", { erro: error });
             throw new Error("Erro ao buscar produtos por categoria");
         }
     },
@@ -134,18 +135,18 @@ const produtosService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', { erro: response });
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error("Erro ao criar novo produto:", error);
+            Logger.error("Erro ao criar novo produto:", { erro: error });
             throw new Error("Erro ao criar novo produto");
         }
     },
 
     // Atualizar produto
     atualizar: async (produto) => {
-        console.log("Atualizando pedido:", produto);
+        Logger.info("Atualizando produto:", { info: 'produtosService.atualizar', produto });
         try {
             const response = await fetchWithAuth('/produtos', {
                 method: 'PUT',
@@ -158,12 +159,12 @@ const produtosService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', { erro: response });
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error('Erro ao atualizar categorias:', error);
-            throw new Error('Erro ao atualizar categorias');
+            Logger.error('Erro ao atualizar produto:', { erro: error });
+            throw new Error('Erro ao atualizar produto');
         }
     },
 
@@ -173,6 +174,7 @@ const produtosService = {
             const response = await api.delete('/produtos', { data: { id } });
             return response.data;
         } catch (error) {
+            Logger.error('Erro ao deletar produto:', { erro: error });
             throw new Error('Erro ao deletar produto');
         }
     },

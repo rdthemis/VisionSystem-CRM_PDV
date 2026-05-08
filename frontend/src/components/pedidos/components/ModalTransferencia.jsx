@@ -2,6 +2,7 @@
 // 🔄 MODAL: Transferência de itens entre comandas
 
 import React, { useState, useEffect } from 'react';
+import Logger from '../../../utils/Logger';
 
 /**
  * Modal para transferir itens de uma comanda para outra.
@@ -75,7 +76,7 @@ const ModalTransferencia = ({
       );
       setComandasDisponiveis(outras);
     } catch (err) {
-      console.error('Erro ao carregar comandas:', err);
+      Logger.error('Erro ao carregar comandas:', { erro: err });
     } finally {
       setLoadingComandas(false);
     }
@@ -181,13 +182,12 @@ const ModalTransferencia = ({
 
         <div className="modal-body">
 
-          {/* ── PASSO 1: SELECIONAR ITENS ── */}
+          {/* ── PASSO 1: SELECIONAR ITENS ── */} 
           <div className="transferencia-secao">
             <h3 className="transferencia-secao-titulo">
               <span className="passo-numero">1</span>
               Selecione os itens para transferir
             </h3>
-
             {carrinho.length === 0 ? (
               <p className="transferencia-vazio">Nenhum item no carrinho</p>
             ) : (
@@ -209,7 +209,7 @@ const ModalTransferencia = ({
 
                       {/* Info do item */}
                       <div className="item-info">
-                        <span className="item-nome">{item.nome}</span>
+                        <span className="item-nome">{item.produto_nome}</span>
                         <span className="item-preco">
                           {formatarPreco((item.preco_produto || item.preco) * item.quantidade)}
                         </span>

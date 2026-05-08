@@ -119,7 +119,7 @@ class Security
 
             $base64UrlSignature = $this->base64UrlEncode($validSignature);
 
-            if ($signature !== $base64UrlSignature) {
+            if (!hash_equals($base64UrlSignature, $signature)) {
                 return false;
             }
 
@@ -180,7 +180,9 @@ class Security
                     VALUES (?, ?, ?, ?, ?)';
 
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$userId, $refreshToken, $ipAddress, $userAgent, $expiresAt]);
+            // Ao salvar:
+            $tokenHash = hash('sha256', $refreshToken);
+            $stmt->execute([$userId, $tokenHash, $ipAddress, $userAgent, $expiresAt]);
 
             // Atualizar usuário
             $sqlUser = 'UPDATE usuarios 
@@ -189,7 +191,7 @@ class Security
                         WHERE id = ?';
 
             $stmtUser = $this->conn->prepare($sqlUser);
-            $stmtUser->execute([$refreshToken, $expiresAt, $userId]);
+            $stmtUser->execute([$tokenHash, $expiresAt, $userId]);
 
             return true;
         } catch (Exception $e) {
@@ -217,7 +219,9 @@ class Security
                     LIMIT 1';
 
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$refreshToken]);
+            // Ao validar:
+            $tokenHash = hash('sha256', $refreshToken);
+            $stmt->execute([$tokenHash]);
 
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -480,12 +484,15 @@ class Security
      */
     public function getClientIp()
     {
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-        } elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
+        // Lista de proxies confiáveis (configure no .env)
+        $trustedProxies = explode(',', $_ENV['TRUSTED_PROXIES'] ?? '');
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        // Só confia em X-Forwarded-For se a request veio de proxy confiável
+        if (in_array($remoteAddr, $trustedProxies) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
         } else {
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+            $ip = $remoteAddr;
         }
 
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
@@ -496,8 +503,14 @@ class Security
      */
     private function getJwtSecret()
     {
-        // 🔴 IMPORTANTE: Mover para variável de ambiente em produção!
-        return $_ENV['JWT_SECRET'] ?? '6880b9ca9c7988c4cd2f95ac5727c86dd3b848b8a8d352b90d56d5c219101c41';
+        $secret = $_ENV['JWT_SECRET'] ?? null;
+
+        if (empty($secret) || strlen($secret) < 32) {
+            error_log('🔴 CRÍTICO: JWT_SECRET não configurado ou muito curto!');
+            throw new Exception('Configuração de segurança inválida');
+        }
+
+        return $secret;
     }
 
     /**
@@ -527,7 +540,6 @@ class Security
 
         $data = trim($data);
         $data = stripslashes($data);
-        $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
 
         return $data;
     }

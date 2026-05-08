@@ -9,13 +9,14 @@ import { apiService } from '../services/apiService';
 import MenuToggleButton from '../components/pedidos/components/MenuToggleButton.jsx'
 import "./ModuloPdv.css";
 import Adicionais from './Adicionais';
-import ZonasEntrega from '../components/Configuracoes/ZonasEntrega';
+import ZonasEntrega from '../components/Configuracoes/ZonasEntrega';      
+import Logger from '../utils/Logger'; // Supondo que você tenha um logger para erros e informações
 
 function ModuloPdv({ onVoltar }) {
     const [activeSection, setActiveSection] = useState('pedidos');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    // 🆕 ESTADOS PARA CONTROLE DO CAIXA
+    // ESTADOS PARA CONTROLE DO CAIXA
     const [showModalCaixa, setShowModalCaixa] = useState(false);
     const [loadingCaixa, setLoadingCaixa] = useState(false);
     const [caixaVerificado, setCaixaVerificado] = useState(false);
@@ -24,35 +25,36 @@ function ModuloPdv({ onVoltar }) {
     //Menu está collapsed ou expandido
     const [isExpanded, setIsExpanded] = useState(true);
 
-    // 🆕 ESTADO PARA CONTROLAR O REFRESH DOS PEDIDOS
+    // ESTADO PARA CONTROLAR O REFRESH DOS PEDIDOS
     const [refreshPedidosIndicator, setRefreshPedidosIndicator] = useState(false);
     const [refreshPedidos, setRefreshPedidos] = useState(0);
     const [resetPedidosView, setResetPedidosView] = useState(0);
 
-    // 🆕 VERIFICAR CAIXA AO CARREGAR O COMPONENTE
+
+    // VERIFICAR CAIXA AO CARREGAR O COMPONENTE
     useEffect(() => {
         verificarCaixaAberto();
     }, []);
 
     const verificarCaixaAberto = async () => {
         try {
-            console.log('🔍 Verificando status do caixa...');
+            Logger.info('Verificando status do caixa...', { info: 'Verificação de caixa' });
             const response = await caixaService.verificarCaixaAberto();
 
             if (response.success && response.data && response.data.caixa_aberto) {
-                console.log('✅ Caixa está aberto');
+                Logger.info('Caixa está aberto', { info: 'Caixa aberto' });
                 setCaixaVerificado(true);
             } else {
-                console.log('⚠️ Nenhum caixa aberto');
+                Logger.info('Nenhum caixa aberto', { info: 'Nenhum caixa aberto' });
                 setShowModalCaixa(true);
             }
         } catch (error) {
-            console.error('Erro ao verificar caixa:', error);
+            Logger.error('Erro ao verificar caixa:', { erro: error });
             setMensagemCaixa('Erro ao verificar status do caixa');
         }
     };
 
-    // 🆕 FUNÇÃO PARA ABRIR CAIXA
+    // FUNÇÃO PARA ABRIR CAIXA
     const abrirCaixa = async (saldoInicial, observacoes) => {
         setLoadingCaixa(true);
         setMensagemCaixa('');
@@ -66,7 +68,7 @@ function ModuloPdv({ onVoltar }) {
             const response = await apiService.post('/caixa', dadosAbertura);
 
             if (response.success) {
-                console.log('✅ Caixa aberto com sucesso!');
+                Logger.info('Caixa aberto com sucesso!', { info: 'Caixa aberto' });
                 setShowModalCaixa(false);
                 setCaixaVerificado(true);
                 setMensagemCaixa('Caixa aberto com sucesso!');
@@ -79,21 +81,21 @@ function ModuloPdv({ onVoltar }) {
                 setMensagemCaixa(`Erro ao abrir caixa: ${response.message}`);
             }
         } catch (error) {
-            console.error('Erro ao abrir caixa:', error);
+            Logger.error('Erro ao abrir caixa:', { erro: error });
             setMensagemCaixa(`Erro ao abrir caixa: ${error.message}`);
         } finally {
             setLoadingCaixa(false);
         }
     };
 
-    // 🆕 FUNÇÃO PARA FAZER REFRESH DOS PEDIDOS
+    // FUNÇÃO PARA FAZER REFRESH DOS PEDIDOS
     const handleRefreshPedidos = async () => {
-        console.log('🔄 Fazendo refresh dos pedidos...');
+        Logger.info('Fazendo refresh dos pedidos...', { info: 'Refresh de pedidos' });
 
         // 🔧 INCREMENTA AMBOS OS CONTADORES
         setRefreshPedidos(prev => prev + 1);
         setRefreshPedidosIndicator(true);
-        setResetPedidosView(prev => prev + 1); // 🆕 ADICIONAR - Força reset da view
+        setResetPedidosView(prev => prev + 1); // ADICIONAR - Força reset da view
 
         // Salvar antes de sair completamente
         if (activeSection === 'pedidos') {
@@ -101,16 +103,16 @@ function ModuloPdv({ onVoltar }) {
         }
     };
 
-    // 🆕 CALLBACK QUANDO CAIXA FOR FECHADO
+    // CALLBACK QUANDO CAIXA FOR FECHADO
     const handleCaixaFechado = () => {
-        console.log('🔒 Caixa foi fechado, resetando estado...');
+        Logger.info('Caixa foi fechado, resetando estado...', { info: 'Caixa fechado' });
         setCaixaVerificado(false);
         setActiveSection('pedidos');
     };
 
-    // 🆕 CALLBACK PARA VOLTAR AO DASHBOARD
+    // CALLBACK PARA VOLTAR AO DASHBOARD
     const handleVoltarDashboard = () => {
-        console.log('🏠 Voltando para Dashboard após fechamento de caixa...');
+        Logger.info('Voltando para Dashboard após fechamento de caixa...', { info: 'Voltar para dashboard' });
         if (onVoltar) {
             onVoltar();
         }
@@ -135,20 +137,20 @@ function ModuloPdv({ onVoltar }) {
             return;
         }
 
-        // 🆕 SALVAR COMANDA ANTES DE SAIR DA SEÇÃO PEDIDOS
+        // SALVAR COMANDA ANTES DE SAIR DA SEÇÃO PEDIDOS
         if (activeSection === 'pedidos' && sectionId !== 'pedidos') {
-            console.log('💾 Salvando comanda antes de sair da seção pedidos...');
+            Logger.info(' Salvando comanda antes de sair da seção pedidos...', { info: 'Salvando comanda' });
             await salvarComandaAntesDeSair();
         }
 
-        // 🆕 SE CLICAR EM PEDIDOS E JÁ ESTIVER NA SEÇÃO PEDIDOS, FAZER REFRESH
+        // SE CLICAR EM PEDIDOS E JÁ ESTIVER NA SEÇÃO PEDIDOS, FAZER REFRESH
         if (sectionId === 'pedidos' && activeSection === 'pedidos') {
             handleRefreshPedidos();
             setActiveSection(sectionId);
             return;
         }
 
-        // 🆕 SE MUDAR PARA SEÇÃO PEDIDOS, FAZER REFRESH AUTOMÁTICO
+        // SE MUDAR PARA SEÇÃO PEDIDOS, FAZER REFRESH AUTOMÁTICO
         if (sectionId === 'pedidos') {
             handleRefreshPedidos();
         }
@@ -156,7 +158,7 @@ function ModuloPdv({ onVoltar }) {
         setActiveSection(sectionId);
     };
 
-    // 🆕 FUNÇÃO PARA SALVAR COMANDA ANTES DE SAIR
+    // FUNÇÃO PARA SALVAR COMANDA ANTES DE SAIR
     const salvarComandaAntesDeSair = async () => {
         try {
             // Verifica se há uma comanda em andamento no localStorage ou estado global
@@ -167,7 +169,7 @@ function ModuloPdv({ onVoltar }) {
 
                 // Só salva se tiver itens na comanda
                 if (dadosComanda.items && dadosComanda.items.length > 0) {
-                    console.log('📝 Salvando comanda automaticamente...', dadosComanda);
+                    Logger.info(' Salvando comanda automaticamente...', { info: 'Salvando comanda' });
 
                     // Chama sua API para salvar como rascunho
                     const response = await apiService.post('/comandas/rascunho', {
@@ -177,7 +179,7 @@ function ModuloPdv({ onVoltar }) {
                     });
 
                     if (response.success) {
-                        console.log('✅ Comanda salva como rascunho!');
+                        Logger.info(' Comanda salva como rascunho!', { info: 'Comanda salva' });
                         setMensagemCaixa('Comanda salva automaticamente');
 
                         // Remove do localStorage após salvar
@@ -188,7 +190,7 @@ function ModuloPdv({ onVoltar }) {
                 }
             }
         } catch (error) {
-            console.error('❌ Erro ao salvar comanda automaticamente:', error);
+            Logger.error('Erro ao salvar comanda automaticamente:', { error, info: 'Erro ao salvar comanda' });
             setMensagemCaixa('Erro ao salvar comanda automaticamente');
             setTimeout(() => setMensagemCaixa(''), 1000);
         }

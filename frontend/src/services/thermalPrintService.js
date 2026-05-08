@@ -1,6 +1,6 @@
 // src/services/thermalPrintService.js
 // Serviço específico para impressão térmica com comandos ESC/POS
-import printService from "./printService";
+import Logger from '../utils/Logger';
 
 class ThermalPrintService {
     constructor() {
@@ -77,7 +77,7 @@ class ThermalPrintService {
         this.connectionTimeout = 5000;
         this.connectionState = 'disconnected';
 
-        // 🆕 PROPRIEDADES PARA ESTABILIDADE
+        // PROPRIEDADES PARA ESTABILIDADE
         this.writer = null;
         this.reader = null;
         this.keepAliveInterval = null;
@@ -90,14 +90,14 @@ class ThermalPrintService {
     setupDisconnectionListener() {
         if ('serial' in navigator) {
             navigator.serial.addEventListener('disconnect', (event) => {
-                console.log('🔌 Impressora desconectada automaticamente:', event.port);
+                Logger.info('Impressora desconectada automaticamente:', { info: 'thermalPrintService.disconnect', port: event.port });
                 this.handleDisconnection();
             });
         }
     }
 
     handleDisconnection() {
-        console.log('🔌 Detectada desconexão da impressora');
+        Logger.info('Detectada desconexão da impressora', { info: 'thermalPrintService.handleDisconnection' });
         this.isConnected = false;
         this.device = null;
         this.port = null;
@@ -106,23 +106,21 @@ class ThermalPrintService {
         this.connectionState = 'disconnected';
         this.connectionAttempts = 0;
 
-        // 🆕 LIMPAR KEEP-ALIVE
+        // LIMPAR KEEP-ALIVE
         if (this.keepAliveInterval) {
             clearInterval(this.keepAliveInterval);
             this.keepAliveInterval = null;
         }
     }
 
-    // 🆕 MÉTODO DE DIAGNÓSTICO COMPLETO - CORRIGIDO PARA USER GESTURE
+    // MÉTODO DE DIAGNÓSTICO COMPLETO - CORRIGIDO PARA USER GESTURE
     async diagnosticarConexao(tentarConexao = false) {
-        console.log('🔍 ═══════════════════════════════════════');
-        console.log('🔍 INICIANDO DIAGNÓSTICO DE CONEXÃO...');
-        console.log('🔍 ═══════════════════════════════════════');
+        Logger.info('INICIANDO DIAGNÓSTICO DE CONEXÃO...', { info: 'thermalPrintService.diagnosticarConexao' });
 
         // 1. Verifica suporte do navegador
         if (!('serial' in navigator)) {
-            console.error('❌ Navegador não suporta Web Serial API');
-            console.log('💡 Use Chrome, Edge ou Opera versão 89+');
+            Logger.error('Navegador não suporta Web Serial API',{ erro: 'thermalPrintService.diagnosticarConexao' });
+            Logger.info('Use Chrome, Edge ou Opera versão 89+', { info: 'thermalPrintService.diagnosticarConexao' });
             return {
                 success: false,
                 message: 'Navegador não suporta Web Serial API. Use Chrome, Edge ou Opera.',
@@ -130,26 +128,26 @@ class ThermalPrintService {
                 needsUserGesture: false
             };
         }
-        console.log('✅ Navegador suporta Web Serial API');
+        Logger.info('Navegador suporta Web Serial API', { info: 'thermalPrintService.diagnosticarConexao' });
 
         const detalhes = [];
 
         // 2. Tenta listar portas já autorizadas
         try {
             const portas = await navigator.serial.getPorts();
-            console.log(`📊 Portas já autorizadas: ${portas.length}`);
+            Logger.debug(`Portas já autorizadas: ${portas.length}`, { debug: 'thermalPrintService.diagnosticarConexao' });
             detalhes.push(`Portas autorizadas: ${portas.length}`);
 
             if (portas.length > 0) {
                 for (let i = 0; i < portas.length; i++) {
                     const info = portas[i].getInfo();
-                    console.log(`Porta ${i + 1}:`, info);
+                    Logger.debug(`Porta ${i + 1}:`, { debug: 'thermalPrintService.diagnosticarConexao' }, info);
                     if (info.usbVendorId) {
                         const vendorHex = info.usbVendorId.toString(16).padStart(4, '0');
                         const productHex = info.usbProductId.toString(16).padStart(4, '0');
                         detalhes.push(`Porta ${i + 1}: VendorId=0x${vendorHex}, ProductId=0x${productHex}`);
 
-                        // 🆕 SALVAR OS IDs DA PRIMEIRA PORTA AUTORIZADA
+                        //  SALVAR OS IDs DA PRIMEIRA PORTA AUTORIZADA
                         if (i === 0) {
                             this.vendorId = info.usbVendorId;
                             this.productId = info.usbProductId;
@@ -171,23 +169,23 @@ class ThermalPrintService {
                 }
             }
         } catch (erro) {
-            console.error('Erro ao listar portas:', erro);
+            Logger.error('Erro ao listar portas:', { erro: erro });
             detalhes.push(`Erro ao listar portas: ${erro.message}`);
         }
 
         // 3. Se não há portas autorizadas, precisa de user gesture
-        console.log('⚠️ Nenhuma porta autorizada encontrada');
+        Logger.info('Nenhuma porta autorizada encontrada', { info: 'thermalPrintService.diagnosticarConexao' });
         detalhes.push('Nenhuma porta autorizada encontrada');
 
         if (tentarConexao) {
-            // 🔧 SÓ TENTA REQUESTPORT SE FOR CHAMADO COM USER GESTURE
+            // SÓ TENTA REQUESTPORT SE FOR CHAMADO COM USER GESTURE
             try {
-                console.log('🔄 Solicitando seleção de porta (requer interação do usuário)...');
+                Logger.info('Solicitando seleção de porta (requer interação do usuário)...', { info: 'thermalPrintService.diagnosticarConexao' });
                 const porta = await navigator.serial.requestPort();
                 return await this.testarPortaSelecionada(porta, detalhes);
 
             } catch (erro) {
-                console.error('❌ Erro ao solicitar porta:', erro);
+                Logger.error('Erro ao solicitar porta:', { erro: erro });
 
                 if (erro.name === 'SecurityError' && erro.message.includes('user gesture')) {
                     return {
@@ -223,11 +221,11 @@ class ThermalPrintService {
         }
     }
 
-    // 🆕 MÉTODO PARA TESTAR PORTA JÁ AUTORIZADA
+    // MÉTODO PARA TESTAR PORTA JÁ AUTORIZADA
     async testarPortaAutorizada(porta, detalhesExistentes = []) {
         try {
             const info = porta.getInfo();
-            console.log('✅ Testando porta autorizada:', info);
+            Logger.debug('Testando porta autorizada:', { debug: 'thermalPrintService.testarPortaAutorizada' }, info);
 
             const detalhes = [...detalhesExistentes];
             let resultado = {
@@ -240,9 +238,7 @@ class ThermalPrintService {
                 const vendorHex = info.usbVendorId.toString(16).padStart(4, '0');
                 const productHex = info.usbProductId.toString(16).padStart(4, '0');
 
-                console.log('📟 Informações do dispositivo:');
-                console.log(`VendorId: 0x${vendorHex}`);
-                console.log(`ProductId: 0x${productHex}`);
+                Logger.debug('Informações do dispositivo:', { debug: 'thermalPrintService.testarPortaAutorizada' }, { vendorId: vendorHex, productId: productHex });
 
                 this.vendorId = info.usbVendorId;
                 this.productId = info.usbProductId;
@@ -257,13 +253,13 @@ class ThermalPrintService {
             if (!porta.readable) {
                 resultado.baudRateRecomendado = await this.testarBaudRates(porta, resultado.details);
             } else {
-                resultado.details.push('⚠️ Porta já está aberta');
+                resultado.details.push('Porta já está aberta');
             }
 
             return resultado;
 
         } catch (erro) {
-            console.error('❌ Erro ao testar porta autorizada:', erro);
+            Logger.error('Erro ao testar porta autorizada:', { erro: erro });
             return {
                 success: false,
                 message: `Erro ao testar porta: ${erro.message}`,
@@ -272,12 +268,12 @@ class ThermalPrintService {
         }
     }
 
-    // 🆕 MÉTODO PARA TESTAR PORTA SELECIONADA PELO USUÁRIO
+    // MÉTODO PARA TESTAR PORTA SELECIONADA PELO USUÁRIO
     async testarPortaSelecionada(porta, detalhesExistentes = []) {
         try {
             const info = porta.getInfo();
-            console.log('✅ Dispositivo selecionado pelo usuário!');
-            console.log('📟 Informações completas:', info);
+            Logger.debug('Dispositivo selecionado pelo usuário!', { debug: 'thermalPrintService.testarPortaSelecionada' }, info);
+            Logger.debug('Informações completas:', { debug: 'thermalPrintService.testarPortaSelecionada' }, info);
 
             const detalhes = [...detalhesExistentes];
             let resultado = {
@@ -290,11 +286,7 @@ class ThermalPrintService {
                 const vendorHex = info.usbVendorId.toString(16).padStart(4, '0');
                 const productHex = info.usbProductId.toString(16).padStart(4, '0');
 
-                console.log('═══════════════════════════════════════');
-                console.log('🎯 INFORMAÇÕES IMPORTANTES:');
-                console.log(`VendorId: 0x${vendorHex}`);
-                console.log(`ProductId: 0x${productHex}`);
-                console.log('═══════════════════════════════════════');
+                Logger.debug('INFORMAÇÕES IMPORTANTES:', { debug: 'thermalPrintService.testarPortaSelecionada' }, { vendorId: vendorHex, productId: productHex });
 
                 this.vendorId = info.usbVendorId;
                 this.productId = info.usbProductId;
@@ -311,7 +303,7 @@ class ThermalPrintService {
             return resultado;
 
         } catch (erro) {
-            console.error('❌ Erro ao testar porta selecionada:', erro);
+            Logger.error(' Erro ao testar porta selecionada:', { erro: erro });
             return {
                 success: false,
                 message: `Erro ao testar dispositivo: ${erro.message}`,
@@ -320,14 +312,14 @@ class ThermalPrintService {
         }
     }
 
-    // 🆕 MÉTODO PARA TESTAR DIFERENTES BAUDRATES
+    // MÉTODO PARA TESTAR DIFERENTES BAUDRATES
     async testarBaudRates(porta, detalhes) {
-        console.log('🔧 Testando configurações de baudrate...');
+        Logger.debug('Testando configurações de baudrate...', { debug: 'thermalPrintService.testarBaudRates' });
         const configuracoes = [9600, 19200, 38400, 57600, 115200];
 
         for (const baudRate of configuracoes) {
             try {
-                console.log(`⏳ Testando ${baudRate} baud...`);
+                Logger.debug(`Testando ${baudRate} baud...`, { debug: 'thermalPrintService.testarBaudRates' });
                 await porta.open({
                     baudRate,
                     dataBits: 8,
@@ -336,44 +328,44 @@ class ThermalPrintService {
                     flowControl: 'none'
                 });
 
-                console.log(`✅ Sucesso em ${baudRate} baud`);
-                detalhes.push(`✅ Conexão OK em ${baudRate} baud`);
+                Logger.debug(`Sucesso em ${baudRate} baud`, { debug: 'thermalPrintService.testarBaudRates' });
+                detalhes.push(`Conexão OK em ${baudRate} baud`);
                 await porta.close();
 
                 return baudRate;
 
             } catch (e) {
-                console.log(`❌ Falha em ${baudRate} baud:`, e.message);
-                detalhes.push(`❌ Falha em ${baudRate} baud: ${e.message}`);
+                Logger.debug(`Falha em ${baudRate} baud:`, { debug: 'thermalPrintService.testarBaudRates' }, { message: e.message });
+                detalhes.push(`Falha em ${baudRate} baud: ${e.message}`);
 
                 // Se der erro de porta já aberta, tentar fechar primeiro
                 if (e.message.includes('already open')) {
                     try {
                         await porta.close();
-                        console.log('🔄 Porta fechada, continuando testes...');
+                        Logger.debug('Porta fechada, continuando testes...', { debug: 'thermalPrintService.testarBaudRates' });
                     } catch (closeError) {
-                        console.warn('⚠️ Erro ao fechar porta:', closeError);
+                        Logger.warn('Erro ao fechar porta:', { debug: 'thermalPrintService.testarBaudRates' }, { message: closeError.message });
                     }
                 }
             }
         }
 
-        detalhes.push('⚠️ Nenhum baudrate funcionou perfeitamente');
+        detalhes.push('Nenhum baudrate funcionou perfeitamente');
         return 9600; // Padrão
     }
 
-    // 🔧 MÉTODO CONECTAR MELHORADO COM AS CORREÇÕES
+    // MÉTODO CONECTAR MELHORADO COM AS CORREÇÕES
     async conectarSerialMelhorado() {
         try {
             if (!('serial' in navigator)) {
                 throw new Error('API Serial não suportada neste navegador. Use Chrome, Edge ou Opera.');
             }
 
-            // 🆕 PRIMEIRO: VERIFICAR SE JÁ TEMOS PORTAS AUTORIZADAS
+            //  PRIMEIRO: VERIFICAR SE JÁ TEMOS PORTAS AUTORIZADAS
             const portasAutorizadas = await navigator.serial.getPorts();
 
             if (portasAutorizadas.length > 0 && !this.port) {
-                console.log(`📡 Encontradas ${portasAutorizadas.length} porta(s) já autorizada(s), usando a primeira...`);
+                Logger.debug(`Encontradas ${portasAutorizadas.length} porta(s) já autorizada(s), usando a primeira...`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
                 this.port = portasAutorizadas[0];
 
                 // Obter informações da porta
@@ -381,18 +373,18 @@ class ThermalPrintService {
                 if (info.usbVendorId) {
                     this.vendorId = info.usbVendorId;
                     this.productId = info.usbProductId;
-                    console.log(`📟 Usando dispositivo: VendorId=0x${info.usbVendorId.toString(16).padStart(4, '0')}`);
+                    Logger.debug(`Usando dispositivo: VendorId=0x${info.usbVendorId.toString(16).padStart(4, '0')}`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
                 }
             }
 
             // Se ainda não temos porta, solicitar ao usuário
             if (!this.port) {
-                console.log('📡 Solicitando seleção de porta (requer clique do usuário)...');
+                Logger.debug('Solicitando seleção de porta (requer clique do usuário)...', { debug: 'thermalPrintService.conectarSerialMelhorado' });
 
                 try {
                     if (this.vendorId) {
                         // Se já temos o vendor ID, usar filtro
-                        console.log(`🔄 Tentando com filtro VendorId: 0x${this.vendorId.toString(16).padStart(4, '0')}`);
+                        Logger.debug(`Tentando com filtro VendorId: 0x${this.vendorId.toString(16).padStart(4, '0')}`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
                         this.port = await navigator.serial.requestPort({
                             filters: [{ usbVendorId: this.vendorId }]
                         });
@@ -410,19 +402,19 @@ class ThermalPrintService {
 
             // Obter informações do dispositivo conectado
             const info = this.port.getInfo();
-            console.log('📟 Informações do dispositivo:', info);
+            Logger.debug('Informações do dispositivo:', { debug: 'thermalPrintService.conectarSerialMelhorado' }, { info: info });
 
             if (info.usbVendorId && info.usbProductId) {
                 this.vendorId = info.usbVendorId;
                 this.productId = info.usbProductId;
-                console.log(`🔌 USB VendorId: 0x${info.usbVendorId.toString(16).padStart(4, '0')}`);
-                console.log(`🔌 USB ProductId: 0x${info.usbProductId.toString(16).padStart(4, '0')}`);
-                console.log('💾 IDs salvos para próximas conexões');
+                Logger.debug(`USB VendorId: 0x${info.usbVendorId.toString(16).padStart(4, '0')}`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
+                Logger.debug(`USB ProductId: 0x${info.usbProductId.toString(16).padStart(4, '0')}`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
+                Logger.debug('IDs salvos para próximas conexões', { debug: 'thermalPrintService.conectarSerialMelhorado' });
             }
 
             // Verificar se a porta já está aberta
             if (this.port.readable && this.port.writable) {
-                console.log('✅ Porta já estava aberta, reutilizando conexão');
+                Logger.debug('Porta já estava aberta, reutilizando conexão', { debug: 'thermalPrintService.conectarSerialMelhorado' });
                 this.device = this.port;
                 this.isConnected = true;
                 this.connectionState = 'connected';
@@ -432,7 +424,7 @@ class ThermalPrintService {
                 return true;
             }
 
-            // 🆕 CONFIGURAÇÕES MELHORADAS PARA IMPRESSORAS TÉRMICAS
+            // CONFIGURAÇÕES MELHORADAS PARA IMPRESSORAS TÉRMICAS
             const configuracoesParaTestar = [
                 { baudRate: 9600, flowControl: 'none' },
                 { baudRate: 19200, flowControl: 'none' },
@@ -445,7 +437,7 @@ class ThermalPrintService {
 
             for (const config of configuracoesParaTestar) {
                 try {
-                    console.log(`🔓 Tentando abrir porta com ${config.baudRate} baud, flow: ${config.flowControl}...`);
+                    Logger.debug(`Tentando abrir porta com ${config.baudRate} baud, flow: ${config.flowControl}...`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
 
                     await this.port.open({
                         baudRate: config.baudRate,
@@ -456,12 +448,12 @@ class ThermalPrintService {
                         flowControl: config.flowControl
                     });
 
-                    console.log(`✅ Porta aberta com sucesso! (${config.baudRate} baud)`);
+                    Logger.debug(`Porta aberta com sucesso! (${config.baudRate} baud)`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
                     conexaoSucesso = true;
                     break;
 
                 } catch (configError) {
-                    console.log(`❌ Falha com ${config.baudRate} baud: ${configError.message}`);
+                    Logger.debug(`Falha com ${config.baudRate} baud: ${configError.message}`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
                     if (configError.message.includes('already open')) {
                         conexaoSucesso = true;
                         break;
@@ -478,22 +470,22 @@ class ThermalPrintService {
             this.connectionState = 'connected';
             this.connectionAttempts = 0;
 
-            // 🆕 CONFIGURAR WRITER E READER SEPARADOS
+            // CONFIGURAR WRITER E READER SEPARADOS
             this.setupWriterReader();
 
-            // 🆕 INICIAR KEEP-ALIVE PARA MANTER CONEXÃO
+            // INICIAR KEEP-ALIVE PARA MANTER CONEXÃO
             this.iniciarKeepAlive();
 
-            console.log('✅ Conexão serial estabelecida com sucesso');
+            Logger.debug('Conexão serial estabelecida com sucesso', { debug: 'thermalPrintService.conectarSerialMelhorado' });
             return true;
 
         } catch (error) {
             this.connectionAttempts++;
-            console.error(`❌ Erro na conexão serial (tentativa ${this.connectionAttempts}):`, error);
+            Logger.error(`Erro na conexão serial (tentativa ${this.connectionAttempts}):`, { debug: 'thermalPrintService.conectarSerialMelhorado' }, { error: error });
 
             // Tratar erro específico de porta já aberta
             if (error.message.includes('already open') || error.message.includes('port is already open')) {
-                console.log('🔄 Porta já aberta, tentando reutilizar...');
+                Logger.debug('Porta já estava aberta, reutilizando conexão', { debug: 'thermalPrintService.conectarSerialMelhorado' });
 
                 try {
                     this.device = this.port;
@@ -503,7 +495,7 @@ class ThermalPrintService {
                     this.iniciarKeepAlive();
                     return true;
                 } catch (reuseError) {
-                    console.error('❌ Não foi possível reutilizar conexão:', reuseError);
+                    Logger.error('Não foi possível reutilizar conexão:', { debug: 'thermalPrintService.conectarSerialMelhorado' }, { error: reuseError });
                     await this.forcarResetConexao();
                 }
             }
@@ -515,7 +507,7 @@ class ThermalPrintService {
 
             // Se ainda temos tentativas, tentar novamente
             if (this.connectionAttempts < this.maxConnectionAttempts) {
-                console.log(`🔄 Tentando novamente em 2 segundos... (${this.connectionAttempts}/${this.maxConnectionAttempts})`);
+                Logger.debug(`Tentando novamente em 2 segundos... (${this.connectionAttempts}/${this.maxConnectionAttempts})`, { debug: 'thermalPrintService.conectarSerialMelhorado' });
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 return await this.conectarSerialMelhorado();
             }
@@ -524,19 +516,19 @@ class ThermalPrintService {
         }
     }
 
-    // 🆕 CONFIGURAR WRITER E READER SEPARADOS
+    // CONFIGURAR WRITER E READER SEPARADOS
     setupWriterReader() {
         try {
             if (this.port && this.port.writable && this.port.readable) {
                 // Não obter writer/reader aqui, obter apenas quando necessário
-                console.log('📝 Writer e Reader configurados para uso sob demanda');
+                Logger.debug('Writer e Reader configurados para uso sob demanda', { debug: 'thermalPrintService.setupWriterReader' });
             }
         } catch (error) {
-            console.warn('⚠️ Erro ao configurar writer/reader:', error);
+            Logger.warn('Erro ao configurar writer/reader:', { debug: 'thermalPrintService.setupWriterReader' }, { error: error });
         }
     }
 
-    // 🆕 KEEP-ALIVE PARA MANTER A CONEXÃO ESTÁVEL
+    //  KEEP-ALIVE PARA MANTER A CONEXÃO ESTÁVEL
     iniciarKeepAlive() {
         // Limpar keep-alive anterior se existir
         if (this.keepAliveInterval) {
@@ -551,47 +543,47 @@ class ThermalPrintService {
                     const statusCommand = '\x10\x04\x01'; // Comando DLE EOT para status
                     await this.enviarDados(statusCommand, false); // false = não fazer log
                 } catch (error) {
-                    console.warn('⚠️ Keep-alive falhou, conexão pode ter sido perdida');
+                    Logger.warn('Keep-alive falhou, conexão pode ter sido perdida', { debug: 'thermalPrintService.iniciarKeepAlive' }, { error: error });
                     this.handleDisconnection();
                 }
             }
         }, 30000); // 30 segundos
 
-        console.log('💓 Keep-alive iniciado (verifica a cada 30s)');
+        Logger.debug('Keep-alive iniciado (verifica a cada 30s)', { debug: 'thermalPrintService.iniciarKeepAlive' });
     }
 
     // Método conectar principal
     async conectar() {
         if (this.connectionState === 'connecting') {
-            console.log('⏳ Conexão já em andamento...');
+            Logger.debug('Conexão já em andamento...', { debug: 'thermalPrintService.conectar' });
             return await this.waitForConnection();
         }
 
         if (this.isConnected && this.connectionState === 'connected') {
-            console.log('✅ Impressora já conectada');
+            Logger.debug('Impressora já conectada', { debug: 'thermalPrintService.conectar' });
             return true;
         }
 
         try {
             this.connectionState = 'connecting';
-            console.log('🔌 Iniciando conexão com impressora térmica...');
+            Logger.debug('Iniciando conexão com impressora térmica...', { debug: 'thermalPrintService.conectar' });
 
             if ('serial' in navigator) {
                 return await this.conectarSerialMelhorado();
             } else if ('usb' in navigator) {
                 return await this.conectarUSBMelhorado();
             } else {
-                console.warn('⚠️ APIs não suportadas, usando fallback');
+                Logger.warn('APIs não suportadas, usando fallback', { debug: 'thermalPrintService.conectar' });
                 return this.conectarFallback();
             }
         } catch (error) {
             this.connectionState = 'error';
-            console.error('❌ Erro ao conectar:', error);
+            Logger.error('Erro ao conectar:', { debug: 'thermalPrintService.conectar' }, { error: error });
             throw new Error(`Falha na conexão: ${error.message}`);
         }
     }
 
-    // 🔧 MÉTODO ENVIAR DADOS MELHORADO
+    // MÉTODO ENVIAR DADOS MELHORADO
     async enviarDados(dados, makeLog = true) {
         if (!this.port || !this.port.writable) {
             throw new Error('Porta não está disponível para escrita');
@@ -604,13 +596,13 @@ class ThermalPrintService {
             const bytes = encoder.encode(dados);
 
             if (makeLog) {
-                console.log(`📤 Enviando ${bytes.length} bytes...`);
+                Logger.debug(`Enviando ${bytes.length} bytes...`, { debug: 'thermalPrintService.enviarDados' });
             }
 
             await writer.write(bytes);
 
             if (makeLog) {
-                console.log('✅ Dados enviados com sucesso');
+                Logger.debug('Dados enviados com sucesso', { debug: 'thermalPrintService.enviarDados' });
             }
 
         } finally {
@@ -620,16 +612,16 @@ class ThermalPrintService {
     }
 
     // ========================================
-    // 🔧 FUNÇÃO CORRIGIDA: enviarParaImpressora
+    // FUNÇÃO CORRIGIDA: enviarParaImpressora
     // Substitua a função existente (linha ~615) por esta versão
     // ========================================
 
     async enviarParaImpressora(comandosESCPOS, tipo) {
-        console.log('🖨️ Enviando comanda para impressora...');
+        Logger.debug('Enviando comanda para impressora...', { debug: 'thermalPrintService.enviarParaImpressora' });
 
-        // 🆕 TENTAR CONECTAR AUTOMATICAMENTE SE NÃO ESTIVER CONECTADO
+        // TENTAR CONECTAR AUTOMATICAMENTE SE NÃO ESTIVER CONECTADO
         if (!this.device && !this.port) {
-            console.log('⚠️ Impressora não conectada, tentando conectar automaticamente...');
+            Logger.debug('Impressora não conectada, tentando conectar automaticamente...', { debug: 'thermalPrintService.enviarParaImpressora' });
 
             try {
                 // Verificar se há portas já autorizadas
@@ -637,43 +629,43 @@ class ThermalPrintService {
                     const portas = await navigator.serial.getPorts();
 
                     if (portas.length > 0) {
-                        console.log('🔄 Encontrada porta autorizada, conectando...');
+                        Logger.debug('Encontrada porta autorizada, conectando...', { debug: 'thermalPrintService.enviarParaImpressora' });
                         const conectado = await this.conectar();
 
                         if (!conectado) {
-                            console.log('❌ Falha na conexão automática, usando fallback...');
+                            Logger.debug('Falha na conexão automática, usando fallback...', { debug: 'thermalPrintService.enviarParaImpressora' });
                             return await this.imprimirFallback(comandosESCPOS, tipo);
                         }
 
-                        console.log('✅ Conexão automática bem-sucedida!');
+                        Logger.debug(' Conexão automática bem-sucedida!', { debug: 'thermalPrintService.enviarParaImpressora' });
                     } else {
-                        console.log('⚠️ Nenhuma porta autorizada encontrada, usando fallback...');
-                        console.log('💡 Dica: Clique em "Conectar Impressora" primeiro');
+                        Logger.debug('Nenhuma porta autorizada encontrada, usando fallback...', { debug: 'thermalPrintService.enviarParaImpressora' });
+                        Logger.debug('Dica: Clique em "Conectar Impressora" primeiro', { debug: 'thermalPrintService.enviarParaImpressora' });
                         return await this.imprimirFallback(comandosESCPOS, tipo);
                     }
                 } else {
-                    console.log('⚠️ Web Serial API não disponível, usando fallback...');
+                    Logger.debug('Web Serial API não disponível, usando fallback...', { debug: 'thermalPrintService.enviarParaImpressora' });
                     return await this.imprimirFallback(comandosESCPOS, tipo);
                 }
             } catch (error) {
-                console.error('❌ Erro ao tentar conexão automática:', error);
+                Logger.error('Erro ao tentar conexão automática:', error, { debug: 'thermalPrintService.enviarParaImpressora' });
                 return await this.imprimirFallback(comandosESCPOS, tipo);
             }
         }
 
-        // 🆕 VERIFICAR SE A CONEXÃO AINDA ESTÁ VÁLIDA
+        // VERIFICAR SE A CONEXÃO AINDA ESTÁ VÁLIDA
         if (this.port && !this.port.readable) {
-            console.log('⚠️ Porta não está legível, reconectando...');
+            Logger.debug('⚠️ Porta não está legível, reconectando...', { debug: 'thermalPrintService.enviarParaImpressora' });
             try {
                 await this.conectar();
             } catch (error) {
-                console.error('❌ Falha ao reconectar:', error);
+                Logger.error('Falha ao reconectar:', error, { erro: 'thermalPrintService.enviarParaImpressora' });
                 return await this.imprimirFallback(comandosESCPOS, tipo);
             }
         }
 
         try {
-            console.log('📤 Enviando comandos ESC/POS para a impressora...');
+            Logger.debug('Enviando comandos ESC/POS para a impressora...', { debug: 'thermalPrintService.enviarParaImpressora' });
 
             // CONVERSÃO PARA BYTES
             const encoder = new TextEncoder();
@@ -686,7 +678,7 @@ class ThermalPrintService {
                 }
 
                 await this.writer.write(data);
-                console.log('✅ Dados enviados com sucesso via Serial!');
+                Logger.debug('Dados enviados com sucesso via Serial!', { debug: 'thermalPrintService.enviarParaImpressora' });
 
                 // Aguardar processamento
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -701,41 +693,41 @@ class ThermalPrintService {
 
                 if (endpoint) {
                     await this.device.transferOut(endpoint.endpointNumber, data);
-                    console.log('✅ Dados enviados com sucesso via USB!');
+                    Logger.debug('Dados enviados com sucesso via USB!', { debug: 'thermalPrintService.enviarParaImpressora' });
                     return { success: true };
                 }
             }
 
-            console.log('⚠️ Nenhum método de envio válido, usando fallback...');
+            Logger.debug('Nenhum método de envio válido, usando fallback...', { debug: 'thermalPrintService.enviarParaImpressora' });
             return await this.imprimirFallback(comandosESCPOS, tipo);
 
         } catch (error) {
-            console.error('❌ Erro ao enviar para impressora:', error);
+            Logger.error('Erro ao enviar para impressora:', error, { erro: 'thermalPrintService.enviarParaImpressora' });
 
-            // 🆕 TRATAMENTO DE ERROS ESPECÍFICOS
+            // TRATAMENTO DE ERROS ESPECÍFICOS
             if (error.name === 'NetworkError' || error.message.includes('device unavailable')) {
-                console.log('🔄 Dispositivo indisponível, tentando reconectar...');
+                Logger.debug('Dispositivo indisponível, tentando reconectar...', { debug: 'thermalPrintService.enviarParaImpressora' });
                 this.handleDisconnection();
 
                 try {
                     const reconectado = await this.conectar();
                     if (reconectado) {
-                        console.log('✅ Reconectado! Tentando imprimir novamente...');
+                        Logger.debug('Reconectado! Tentando imprimir novamente...', { debug: 'thermalPrintService.enviarParaImpressora' });
                         return await this.enviarParaImpressora(comandosESCPOS, tipo);
                     }
                 } catch (reconectError) {
-                    console.error('❌ Falha na reconexão:', reconectError);
+                    Logger.error('Falha na reconexão:', reconectError, { erro: 'thermalPrintService.enviarParaImpressora' });
                 }
             }
 
-            console.log('🔄 Usando fallback devido ao erro...');
+            Logger.debug('Usando fallback devido ao erro...', { debug: 'thermalPrintService.enviarParaImpressora' });
             return await this.imprimirFallback(comandosESCPOS, tipo);
         }
     }
 
     // Resto dos métodos permanecem iguais...
     async forcarResetConexao() {
-        console.log('🔄 Forçando reset da conexão...');
+        Logger.debug('Forçando reset da conexão...', { debug: 'thermalPrintService.forcarResetConexao' });
 
         try {
             if (this.writer) {
@@ -750,7 +742,7 @@ class ThermalPrintService {
                 await this.port.close();
             }
         } catch (closeError) {
-            console.warn('⚠️ Erro ao fechar porta:', closeError);
+            Logger.warn('Erro ao fechar porta:', closeError, { aviso: 'thermalPrintService.forcarResetConexao' });
         }
 
         this.port = null;
@@ -809,16 +801,16 @@ class ThermalPrintService {
             this.device = device;
             this.isConnected = true;
             this.connectionState = 'connected';
-            console.log('✅ Conectado via USB:', device.productName);
+            Logger.debug('Conectado via USB:', { debug: 'thermalPrintService.conectarUSBMelhorado', device: device.productName });
             return true;
         } catch (error) {
-            console.error('❌ Erro conexão USB:', error);
+            Logger.error('Erro conexão USB:', error, { erro: 'thermalPrintService.conectarUSBMelhorado' });
             throw error;
         }
     }
 
     conectarFallback() {
-        console.log('⚠️ Usando modo fallback - impressão via browser');
+        Logger.info('Usando modo fallback - impressão via browser', { info: 'thermalPrintService.conectarFallback' });
         this.isConnected = true;
         this.device = 'fallback';
         this.connectionState = 'connected';
@@ -989,13 +981,13 @@ class ThermalPrintService {
     }
 
     async desconectar() {
-        console.log('🔌 Iniciando desconexão...');
+        Logger.info('Iniciando desconexão...', { info: 'thermalPrintService.desconectar' });
 
         try {
             if (this.keepAliveInterval) {
                 clearInterval(this.keepAliveInterval);
                 this.keepAliveInterval = null;
-                console.log('💓 Keep-alive parado');
+                Logger.debug('Keep-alive parado', { debug: 'thermalPrintService.desconectar' });
             }
 
             if (this.writer) {
@@ -1009,25 +1001,25 @@ class ThermalPrintService {
             }
 
             if (this.port && this.port.readable) {
-                console.log('🔓 Fechando porta serial...');
+                Logger.debug('Fechando porta serial...', { debug: 'thermalPrintService.desconectar' });
                 await this.port.close();
             } else if (this.device && this.device.close) {
-                console.log('🔓 Fechando dispositivo USB...');
+                Logger.debug('Fechando dispositivo USB...', { debug: 'thermalPrintService.desconectar' });
                 await this.device.close();
             }
         } catch (error) {
-            console.warn('⚠️ Erro ao desconectar (não crítico):', error);
+            Logger.warn('Erro ao desconectar (não crítico):', error, { warn: 'thermalPrintService.desconectar' });
         } finally {
             this.handleDisconnection();
-            console.log('✅ Desconexão concluída');
+            Logger.info('Desconexão concluída', { info: 'thermalPrintService.desconectar' });
         }
     }
 
-    // 🆕 MÉTODO PARA TESTAR TUDO
+    // MÉTODO PARA TESTAR TUDO
     async testarConexaoCompleta() {
-        console.log('🧪 ═══════════════════════════════════════');
-        console.log('🧪 TESTE COMPLETO DE CONEXÃO E IMPRESSÃO');
-        console.log('🧪 ═══════════════════════════════════════');
+        Logger.info('═══════════════════════════════════════', { info: 'thermalPrintService.testarConexaoCompleta' });
+        Logger.info('TESTE COMPLETO DE CONEXÃO E IMPRESSÃO', { info: 'thermalPrintService.testarConexaoCompleta' });
+        Logger.info('═══════════════════════════════════════', { info: 'thermalPrintService.testarConexaoCompleta' });
 
         const resultado = {
             success: false,
@@ -1041,11 +1033,11 @@ class ThermalPrintService {
             const diagnostico = await this.diagnosticarConexao();
 
             if (!diagnostico.success) {
-                resultado.detalhes.push(`❌ Diagnóstico falhou: ${diagnostico.message}`);
+                resultado.detalhes.push(`Diagnóstico falhou: ${diagnostico.message}`);
                 return resultado;
             }
 
-            resultado.detalhes.push('✅ Diagnóstico passou');
+            resultado.detalhes.push('Diagnóstico passou');
             resultado.detalhes.push(...diagnostico.details);
 
             // Etapa 2: Conectar
@@ -1053,11 +1045,11 @@ class ThermalPrintService {
             const conectado = await this.conectar();
 
             if (!conectado) {
-                resultado.detalhes.push('❌ Falha na conexão');
+                resultado.detalhes.push('Falha na conexão');
                 return resultado;
             }
 
-            resultado.detalhes.push('✅ Conexão estabelecida');
+            resultado.detalhes.push('Conexão estabelecida');
 
             // Etapa 3: Teste de impressão
             resultado.etapas.push('Testando impressão...');
@@ -1079,21 +1071,21 @@ class ThermalPrintService {
             const impressao = await this.enviarParaImpressora(escpos, 'teste-completo');
 
             if (impressao.success) {
-                resultado.detalhes.push('✅ Teste de impressão enviado com sucesso');
+                resultado.detalhes.push('Teste de impressão enviado com sucesso');
                 resultado.success = true;
             } else {
-                resultado.detalhes.push('❌ Falha no teste de impressão');
+                resultado.detalhes.push('Falha no teste de impressão');
             }
 
             return resultado;
 
         } catch (error) {
-            resultado.detalhes.push(`❌ Erro durante teste: ${error.message}`);
+            resultado.detalhes.push(`Erro durante teste: ${error.message}`);
             return resultado;
         }
     }
 
-    // 🆕 OBTER STATUS DETALHADO
+    // OBTER STATUS DETALHADO
     obterStatusDetalhado() {
         return {
             conectada: this.isConnected,

@@ -41,6 +41,11 @@ const ModalConta = ({
     });
   };
 
+  const somaAdicionais = (item) => {
+    const soma = item.adicionais.reduce((total, adicional) => total + (adicional.preco || 0), 0);
+    return soma * item.quantidade;
+  }
+
   // ----------------------------------------
   // 🖨️ IMPRESSÃO
   // ----------------------------------------
@@ -131,27 +136,38 @@ const ModalConta = ({
               </div>
 
               {carrinho.map((item, index) => (
+                <div>
                 <div key={item._id || index}>
                   <div className="print-item">
-                    <span className="item-nome">{item.nome}</span>
+                    <span className="item-nome">{item.produto_nome}</span>
                     <span className="item-qtd">{item.quantidade}</span>
                     <span className="item-preco">
                       {formatarPreco((item.preco_produto || item.preco) * item.quantidade)}
                     </span>
                   </div>
+                     
                   {item.observacao && (
                     <div className="print-obs">
                       Obs: {item.observacao}
                     </div>
                   )}
                   {item.adicionais && item.adicionais.length > 0 && (
-                    <div className="print-obs">
-                      + {item.adicionais.map(a => a.nome).join(', ')}
+                    <div>
+                      <div className="print-obs">
+                        + {item.adicionais.map(a => a.nome).join(', ')}
+                      </div>
+                      <div className="print-item">
+                        <span className="item-preco">
+                          {formatarPreco(somaAdicionais(item))}
+                    </span>
+                    </div>
                     </div>
                   )}
                 </div>
+                  
+                  </div>
               ))}
-            </div>
+                </div>
 
             {/* TOTAIS */}
             <div className="print-totais">

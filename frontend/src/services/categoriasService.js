@@ -1,6 +1,7 @@
 // frontend/src / services / categoriesService.js
 
 import axios from 'axios';
+import Logger from '../utils/Logger';
 
 // Configuração da API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -17,7 +18,7 @@ const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Erro na API:', error);
+        Logger.error('Erro na API:', {erro: error});
         return Promise.reject(error);
     }
 );
@@ -48,7 +49,7 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        Logger.error('Erro na requisição:', {erro: error});
         throw error;
     }
 };
@@ -66,11 +67,11 @@ const categoriasService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', {erro: response});
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error('Erro ao buscar categorias:', error);
+            Logger.error('Erro ao buscar categorias:', {erro: error});
             throw new Error('Erro ao buscar categorias');
         }
     },
@@ -86,7 +87,7 @@ const categoriasService = {
             }
             return response.data;
         } catch (error) {
-            console.error('Erro ao buscar categoria:', error);
+            Logger.error('Erro ao buscar categoria:', {erro: error});
             throw new Error("Erro ao buscar categoria");
         }
     },
@@ -105,11 +106,11 @@ const categoriasService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', {erro: response});
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error('Erro ao criar categorias:', error);
+            Logger.error('Erro ao criar categorias:', {erro: error});
             throw new Error('Erro ao criar categorias');
         }
     },
@@ -128,11 +129,11 @@ const categoriasService = {
             } else if (Array.isArray(response)) {
                 return response; // Se já é um array, retorna direto
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('Resposta inesperada da API:', {erro: response});
                 return []; // Retorna array vazio em caso de erro
             }
         } catch (error) {
-            console.error('Erro ao atualizar categorias:', error);
+            Logger.error('Erro ao atualizar categorias:', {erro: error});
             throw new Error('Erro ao atualizar categorias');
         }
     },
@@ -143,6 +144,7 @@ const categoriasService = {
             const response = await api.delete('/categorias', { data: { id } });
             return response.data;
         } catch (error) {
+            Logger.error('Erro ao deletar categoria:', {erro: error});
             throw new Error('Erro ao deletar categoria');
         }
     },

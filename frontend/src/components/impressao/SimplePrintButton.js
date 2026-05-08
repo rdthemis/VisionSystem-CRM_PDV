@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import printService from '../../services/printService';
+import Logger from '../../utils/Logger';
 
 function SimplePrintButton({
     tipo,
@@ -64,7 +65,7 @@ function SimplePrintButton({
 
         try {
             setImprimindo(true);
-            console.log(`🖨️ Iniciando impressão de ${tipo}:`, dados);
+            Logger.debug('Iniciando impressão', {debug: "Iniciando..."});
 
             let resultado;
             
@@ -82,14 +83,14 @@ function SimplePrintButton({
                     throw new Error(`Tipo de impressão não suportado: ${tipo}`);
             }
 
-            console.log('✅ Impressão realizada com sucesso');
+            Logger.info('Impressão realizada com sucesso', {info: "Sucess"});
 
             if (onSucesso) {
                 onSucesso(resultado);
             }
 
         } catch (error) {
-            console.error(`❌ Erro na impressão de ${tipo}:`, error);
+            Logger.error('Erro na impressão', {erro: error});
 
             if (onErro) {
                 onErro(error);
@@ -125,7 +126,7 @@ function SimplePrintButton({
 
             printService.visualizarImpressao(htmlContent, tipo);
         } catch (error) {
-            console.error('❌ Erro no preview:', error);
+            Logger.error('Erro no preview:', {erro: error});
             alert(`Erro no preview: ${error.message}`);
         }
     };
@@ -144,7 +145,7 @@ function SimplePrintButton({
                 alert('Não foi possível conectar. Verifique se a impressora está ligada.');
             }
         } catch (erro) {
-            console.error('Erro ao conectar:', erro);
+            Logger.error('Erro ao conectar:', {erro: erro});
             alert('Erro ao conectar impressora');
         }
     };

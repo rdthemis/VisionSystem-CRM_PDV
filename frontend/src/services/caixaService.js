@@ -1,6 +1,7 @@
 // caixaService.js - Versão usando fetchWithAuth igual ao pedidoService
 
 import axios from 'axios';
+import Logger from '../utils/Logger';
 
 // Configuração da API (igual ao seu pedidoService)
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -17,7 +18,7 @@ const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Erro na API:', error);
+        Logger.error('CaixaService: Erro na API:', {erro: error});
         return Promise.reject(error);
     }
 );
@@ -50,7 +51,7 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        Logger.error('CaixaService: Erro na requisição:', {erro: error});
         throw error;
     }
 };
@@ -59,23 +60,20 @@ const caixaService = {
     // 🆕 Verificar se existe caixa aberto
     verificarCaixaAberto: async () => {
         try {
-            console.log('🔍 Debug - Verificando status do caixa...');
+            Logger.info('CaixaService: Verificando status do caixa...', {info: 'Iniciando requisição para verificar status do caixa'});
             const response = await fetchWithAuth('/caixa?status=1');
-            console.log('✅ Debug - Status do caixa:', response);
+            Logger.debug('CaixaService: Status do caixa:', {debug: response});
             return response;
         } catch (error) {
-            console.error('❌ Erro ao verificar status do caixa:', error);
+            Logger.error('CaixaService: Erro ao verificar status do caixa:', {erro: error});
             return { success: false, data: { caixa_aberto: false } };
         }
     },
 
-    // 🆕 Abrir caixa
+    // Abrir caixa
     abrirCaixa: async (saldoInicial = 0, observacoes = '') => {
         try {
-            console.log('🔍 Debug - Iniciando abertura de caixa:', {
-                saldoInicial,
-                observacoes
-            });
+            Logger.debug('Debug - Iniciando abertura de caixa:', {debug: { saldoInicial, observacoes }});
 
             // Validar dados antes de enviar
             const saldoNumerico = typeof saldoInicial === 'string' ?
@@ -87,17 +85,17 @@ const caixaService = {
                 observacoes_abertura: observacoes || 'Caixa aberto pelo sistema'
             };
 
-            console.log('🔍 Debug - Dados que serão enviados:', dadosAbertura);
+            Logger.debug('Debug - Dados que serão enviados:', {debug: dadosAbertura});
 
             const response = await fetchWithAuth('/caixa', {
                 method: 'POST',
                 body: JSON.stringify(dadosAbertura)
             });
 
-            console.log('✅ Debug - Resposta da abertura de caixa:', response);
+            Logger.debug('Debug - Resposta da abertura de caixa:', {debug: response});
             return response;
         } catch (error) {
-            console.error('❌ Erro ao abrir caixa:', error);
+            Logger.error('❌ Erro ao abrir caixa:', {erro: error});
             return {
                 success: false,
                 message: `Erro ao abrir caixa: ${error.message}`,
@@ -109,17 +107,17 @@ const caixaService = {
     // Adicionar movimento ao caixa
     adicionarMovimento: async (movimento) => {
         try {
-            console.log('🔍 Debug - Adicionando movimento:', movimento);
+            Logger.debug('Debug - Adicionando movimento:', {debug: movimento});
 
             const response = await fetchWithAuth('/caixa/movimento', {
                 method: 'POST',
                 body: JSON.stringify(movimento)
             });
 
-            console.log('✅ Debug - Movimento adicionado:', response);
+            Logger.debug('Debug - Movimento adicionado:', {debug: response});
             return response;
         } catch (error) {
-            console.error('❌ Erro ao adicionar movimento:', error);
+            Logger.error('❌ Erro ao adicionar movimento:', {erro: error});
             return { success: false, message: error.message };
         }
     },
@@ -147,11 +145,11 @@ const caixaService = {
             } else if (data && data.success && Array.isArray(data.data)) {
                 return data.data;
             } else {
-                console.warn('Resposta inesperada da API de movimentos:', data);
+                Logger.warn('Resposta inesperada da API de movimentos:', {warn: data});
                 return [];
             }
         } catch (error) {
-            console.error('Erro ao buscar movimentos:', error);
+            Logger.error('Erro ao buscar movimentos:', {erro: error});
             return []; // 🔧 Retornar array vazio em caso de erro
         }
     },
@@ -169,30 +167,30 @@ const caixaService = {
 
             return await caixaService.adicionarMovimento(movimento);
         } catch (error) {
-            console.error('Erro ao registrar venda no caixa:', error);
+            Logger.error('Erro ao registrar venda no caixa:', {erro: error});
             // Não quebrar o fluxo de pagamento se falhar
             return { success: false, message: error.message };
         }
     },
 
-    // 🆕 VERSÃO MELHORADA: Registrar venda com verificação e abertura automática
+    // VERSÃO MELHORADA: Registrar venda com verificação e abertura automática
     registrarVendaComCaixa: async (dadosVenda) => {
         try {
             // Primeiro, verificar se existe caixa aberto
             const statusCaixa = await caixaService.verificarCaixaAberto();
 
             if (!statusCaixa.success || !statusCaixa.data.caixa_aberto) {
-                console.log("📦 Nenhum caixa aberto, abrindo automaticamente...");
+                Logger.info('Nenhum caixa aberto, abrindo automaticamente...', {info: 'Iniciando processo de abertura automática de caixa para registrar venda'});
 
                 // Tentar abrir caixa automaticamente
                 const resultadoAbertura = await caixaService.abrirCaixa(0, 'Caixa aberto automaticamente para processar venda');
 
                 if (!resultadoAbertura.success) {
-                    console.warn("⚠️ Falha ao abrir caixa automaticamente");
+                    Logger.warn("Falha ao abrir caixa automaticamente", {warn: "Não foi possível abrir caixa para registrar a venda"});
                     return { success: false, message: "Não foi possível abrir caixa para registrar a venda" };
                 }
 
-                console.log("✅ Caixa aberto automaticamente");
+                Logger.info("✅ Caixa aberto automaticamente", {info: "Caixa aberto automaticamente para processar venda"});
             }
 
             // Agora registrar a venda
@@ -206,7 +204,7 @@ const caixaService = {
 
             return await caixaService.adicionarMovimento(movimento);
         } catch (error) {
-            console.error('Erro ao registrar venda no caixa:', error);
+            Logger.error('Erro ao registrar venda no caixa:', {erro: error});
             return { success: false, message: error.message };
         }
     },
@@ -218,15 +216,15 @@ const caixaService = {
             if (caixaId) params.append('caixa_id', caixaId);
 
             const response = await fetchWithAuth(`/caixa?${params.toString()}`);
-            console.log("Resposta do resumo do caixa: " + JSON.stringify(response.data));
+            Logger.debug("Resposta do resumo do caixa: " + JSON.stringify(response.data), {debug: response.data});
             return response;
         } catch (error) {
-            console.error('Erro ao obter resumo do caixa:', error);
+            Logger.error('Erro ao obter resumo do caixa:', {erro: error});
             return { success: false, message: error.message };
         }
     },
 
-    // 🆕 Fechar caixa
+    // Fechar caixa
     fecharCaixa: async (observacoes = '') => {
         try {
             const dadosFechamento = {
@@ -240,12 +238,12 @@ const caixaService = {
 
             return response;
         } catch (error) {
-            console.error('Erro ao fechar caixa:', error);
+            Logger.error('Erro ao fechar caixa:', {erro: error});
             return { success: false, message: error.message };
         }
     },
 
-    // 🆕 Buscar histórico de caixas
+    // Buscar histórico de caixas
     buscarHistoricoCaixas: async (filtros = {}) => {
         try {
             const params = new URLSearchParams({ historico: '1' });
@@ -258,7 +256,7 @@ const caixaService = {
             const response = await fetchWithAuth(`/caixa?${params.toString()}`);
             return response;
         } catch (error) {
-            console.error('Erro ao buscar histórico de caixas:', error);
+            Logger.error('Erro ao buscar histórico de caixas:', {erro: error});
             return { success: false, data: [], message: error.message };
         }
     },
@@ -295,7 +293,7 @@ const caixaService = {
         return dataObj.toLocaleString('pt-BR');
     },
 
-    // 🆕 CATEGORIAS DETALHADAS PARA OS MOVIMENTOS
+    // CATEGORIAS DETALHADAS PARA OS MOVIMENTOS
     categorias: {
         entrada: [
             'Vendas - Dinheiro',

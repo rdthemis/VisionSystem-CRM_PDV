@@ -1,5 +1,6 @@
 // src/services/whatsappService.js
 import { apiService } from './apiService';
+import Logger from '../utils/Logger';
 
 export const whatsappService = {
     enviarRecibo: async (reciboId, telefone, nome) => {
@@ -11,7 +12,7 @@ export const whatsappService = {
             });
             return response;
         } catch (error) {
-            console.error('Erro no whatsappService:', error);
+            Logger.error('Erro no whatsappService:', { erro: error });
             return {
                 success: false,
                 message: 'Erro ao enviar recibo por WhatsApp'

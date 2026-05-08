@@ -104,18 +104,18 @@ class Adicional
         $stmt = $this->conn->prepare($query);
 
         // Limpar os dados
-        $this->nome = htmlspecialchars(strip_tags($this->nome));
-        $this->descricao = htmlspecialchars(strip_tags($this->descricao));
-        $this->preco = htmlspecialchars(strip_tags($this->preco));
-        $this->categoria_id = htmlspecialchars(strip_tags($this->categoria_id));
+        $this->nome = trim($this->nome);
+        $this->descricao = trim($this->descricao);
+        $this->preco = floatval($this->preco);
+        $this->categoria_id = trim($this->categoria_id);
         $this->ativo = $this->ativo ? 1 : 0;
 
         // Fazer o bind dos parâmetros
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
-        $stmt->bindParam(':categoria_id', $this->categoria_id);
-        $stmt->bindParam(':ativo', $this->ativo);
+        $stmt->bindParam(':categoria_id', $this->categoria_id, PDO:PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo, PDO:: PARAM_INT);
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
@@ -139,20 +139,20 @@ class Adicional
         $stmt = $this->conn->prepare($query);
 
         // Limpar os dados
-        $this->nome = htmlspecialchars(strip_tags($this->nome));
-        $this->descricao = htmlspecialchars(strip_tags($this->descricao));
-        $this->preco = htmlspecialchars(strip_tags($this->preco));
-        $this->categoria_id = htmlspecialchars(strip_tags($this->categoria_id));
+        $this->nome = trim($this->nome);
+        $this->descricao = trim($this->descricao);
+        $this->preco = floatval($this->preco);
+        $this->categoria_id = trim($this->categoria_id);
         $this->ativo = $this->ativo ? 1 : 0;
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $this->id = trim($this->id);
 
         // Fazer o bind dos parâmetros
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
-        $stmt->bindParam(':categoria_id', $this->categoria_id);
-        $stmt->bindParam(':ativo', $this->ativo);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':categoria_id', $this->categoria_id, PDO::PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $this->id, PDO:: PARAM_INT);
 
         return $stmt->execute();
     }
@@ -165,7 +165,7 @@ class Adicional
                   WHERE id = :id';
 
         $stmt = $this->conn->prepare($query);
-        $this->id = htmlspecialchars(strip_tags($this->id));
+        $this->id = trim($this->id);
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();

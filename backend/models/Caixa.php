@@ -29,23 +29,26 @@ class Caixa
     public function verificarCaixaAberto()
     {
         try {
-            error_log('=== DEBUG VERIFICAR CAIXA ABERTO ===');
-            error_log('Table name: '.$this->table_caixa);
+            Logger::debug('Verificando caixa aberto', [
+                'tabela' => $this->table_caixa,
+            ]);
 
             $query = "SELECT * FROM {$this->table_caixa} WHERE status = 'aberto' ORDER BY data_abertura DESC LIMIT 1";
-            error_log('Query: '.$query);
 
             $stmt = $this->conn->prepare($query);
             $stmt->execute();
             $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            error_log('Resultado da verificação: '.json_encode($resultado));
+            Logger::debug('Resultado da verificação', ['resultado' => $resultado]);
 
             return $resultado ?: false;
         } catch (Exception $e) {
-            error_log('❌ Erro ao verificar caixa aberto: '.$e->getMessage());
+            Logger::error('Falha ao verificar caixa', [
+                'erro' => $e->getMessage(),
+            ]);
 
-            return false;
+            // Mensagem genérica para o usuário (não vaza detalhes técnicos)
+            return ['success' => false, 'message' => 'Não foi possível abrir o caixa'];
         }
     }
 
@@ -53,18 +56,23 @@ class Caixa
     public function abrirCaixa($saldoInicial, $usuarioId, $observacoes = '')
     {
         try {
-            error_log('=== DEBUG MÉTODO ABRIR CAIXA ===');
-            error_log('Saldo inicial: '.$saldoInicial);
-            error_log('Usuario ID: '.$usuarioId);
-            error_log('Observações: '.$observacoes);
-            error_log('Table name: '.$this->table_caixa);
+            Logger::debug('Abrir caixa', [
+                'Saldo Inicial: ' => $saldoInicial,
+                'Usuario ID: ' => $usuarioId,
+                'Observações: ' => $observacoes,
+                'Tabela nome: ' => $this->table_caixa,
+            ]);
 
             // Verificar se já existe caixa aberto
             $caixaAberto = $this->verificarCaixaAberto();
-            error_log('Verificação caixa aberto: '.json_encode($caixaAberto));
+            Logger::info('Verificação caixa aberto: ', [
+                'Caixa: ' => $caixaAberto,
+            ]);
 
             if ($caixaAberto) {
-                error_log('❌ Já existe um caixa aberto: '.json_encode($caixaAberto));
+                Logger::warn('Verificação caixa aberto: ', [
+                    'Caixa: ' => $caixaAberto,
+                ]);
 
                 return ['success' => false, 'message' => 'Já existe um caixa aberto'];
             }
@@ -74,15 +82,14 @@ class Caixa
                   (saldo_inicial, usuario_abertura, observacoes_abertura, status) 
                   VALUES (?, ?, ?, 'aberto')";
 
-            error_log('Query: '.$query);
-            error_log('Parâmetros: ['.$saldoInicial.', '.$usuarioId.", '".$observacoes."']");
-
             $stmt = $this->conn->prepare($query);
 
             if (!$stmt) {
-                error_log('❌ Erro ao preparar statement: '.json_encode($this->conn->errorInfo()));
+                Logger::error('Erro ao registrar abertura do caixa: ', [
+                    'Erro: ' => $this->conn->errorInfo(),
+                ]);
 
-                return ['success' => false, 'message' => 'Erro ao preparar consulta SQL'];
+                return ['success' => false, 'message' => 'Erro ao registrar abertura do caixa'];
             }
 
             $resultado = $stmt->execute([
@@ -91,20 +98,25 @@ class Caixa
                 $observacoes,
             ]);
 
-            error_log('Resultado execute: '.($resultado ? 'true' : 'false'));
-
             if (!$resultado) {
                 $errorInfo = $stmt->errorInfo();
-                error_log('❌ Erro SQL: '.json_encode($errorInfo));
+                Logger::error('Erro SQL: ', [
+                    'Erro: ' => $errorInfo,
+                ]);
 
                 return ['success' => false, 'message' => 'Erro SQL: '.$errorInfo[2]];
             }
 
             $caixaId = $this->conn->lastInsertId();
-            error_log('✅ Caixa criado com ID: '.$caixaId);
+            Logger::debug('Caixa aberto com sucesso: ', [
+                'Caixa ID: ' => $caixaId,
+            ]);
 
             if ($caixaId) {
-                error_log("✅ Caixa aberto: ID {$caixaId} - Saldo inicial: R$ {$saldoInicial}");
+                Logger::info('Caixa aberto com sucesso: ', [
+                    'Caixa ID ' => $caixaId,
+                    'Saldo inicial: R$' => $saldoInicial,
+                ]);
 
                 return [
                     'success' => true,
@@ -116,60 +128,17 @@ class Caixa
                     ],
                 ];
             } else {
-                error_log('❌ lastInsertId retornou 0');
+                Logger::warn('lastInsertId retornou 0');
 
                 return ['success' => false, 'message' => 'Erro: não foi possível obter ID do caixa criado'];
             }
         } catch (Exception $e) {
-            error_log('❌ Exception ao abrir caixa: '.$e->getMessage());
-            error_log('Stack trace: '.$e->getTraceAsString());
+            Logger::error('Exception', [
+                'Exception ao abrir caixa: ' => $e->getMessage(),
+                'Stack trace: ' => $e->getTraceAsString(),
+            ]);
 
-            return ['success' => false, 'message' => 'Erro interno: '.$e->getMessage()];
-        }
-    }
-
-    // Fechar caixa
-    public function fechar($usuario_id, $observacoes = null)
-    {
-        try {
-            $caixaAberto = $this->verificarCaixaAberto();
-            if (!$caixaAberto) {
-                return ['success' => false, 'message' => 'Nenhum caixa aberto encontrado'];
-            }
-
-            // Calcular saldo final
-            $saldoFinal = $this->calcularSaldoAtual($caixaAberto['id']);
-
-            // Fechar caixa
-            $query = "UPDATE {$this->table_caixa} 
-                      SET data_fechamento = NOW(), 
-                          saldo_final = ?, 
-                          status = 'fechado', 
-                          usuario_fechamento = ?, 
-                          observacoes_fechamento = ?
-                      WHERE id = ?";
-
-            $stmt = $this->conn->prepare($query);
-            $resultado = $stmt->execute([$saldoFinal, $usuario_id, $observacoes, $caixaAberto['id']]);
-
-            if ($resultado) {
-                error_log("✅ Caixa fechado: ID {$caixaAberto['id']}, Saldo final: {$saldoFinal}");
-
-                return [
-                    'success' => true,
-                    'message' => 'Caixa fechado com sucesso',
-                    'data' => [
-                        'id' => $caixaAberto['id'],
-                        'saldo_final' => $saldoFinal,
-                    ],
-                ];
-            }
-
-            return ['success' => false, 'message' => 'Erro ao fechar caixa'];
-        } catch (Exception $e) {
-            error_log('Erro ao fechar caixa: '.$e->getMessage());
-
-            return ['success' => false, 'message' => 'Erro ao fechar caixa: '.$e->getMessage()];
+            return ['success' => false, 'message' => 'Erro interno:'];
         }
     }
 
@@ -207,7 +176,11 @@ class Caixa
 
             if ($resultado) {
                 $movimento_id = $this->conn->lastInsertId();
-                error_log("✅ Movimento adicionado: {$tipo} R$ {$valor} - {$descricao}");
+                Logger::info('Movimento no caixa', [
+                    'tipo' => $tipo,
+                    'valor' => $valor,
+                    'descricao' => $descricao,
+                ]);
 
                 return [
                     'success' => true,
@@ -218,9 +191,11 @@ class Caixa
 
             return ['success' => false, 'message' => 'Erro ao registrar movimento'];
         } catch (Exception $e) {
-            error_log('Erro ao adicionar movimento: '.$e->getMessage());
+            Logger::error('Erro ao adicionar movimento', [
+                'Erro: ' => $e->getMessage(),
+            ]);
 
-            return ['success' => false, 'message' => 'Erro ao registrar movimento: '.$e->getMessage()];
+            return ['success' => false, 'message' => 'Erro ao registrar movimento: '];
         }
     }
 
@@ -280,7 +255,9 @@ class Caixa
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            error_log('Erro ao buscar movimentos: '.$e->getMessage());
+            Logger::error('Erro ao buscar movimentos', [
+                'Erro: ' => $e->getMessage(),
+            ]);
 
             return [];
         }
@@ -317,7 +294,10 @@ class Caixa
             ]);
 
             if ($resultado) {
-                error_log("✅ Caixa fechado: ID {$caixaAberto['id']} - Saldo final: R$ {$saldoFinal}");
+                Logger::info('Caixa fechado', [
+                    'Caixa ID' => $caixaAberto['id'],
+                    'Saldo final: R$' => $saldoFinal,
+                ]);
 
                 return [
                     'success' => true,
@@ -333,9 +313,11 @@ class Caixa
 
             return ['success' => false, 'message' => 'Erro ao fechar caixa'];
         } catch (Exception $e) {
-            error_log('Erro ao fechar caixa: '.$e->getMessage());
+            Logger::error('Erro ao fechar caixa: ', [
+                'Erro: ' => $e->getMessage(),
+            ]);
 
-            return ['success' => false, 'message' => 'Erro ao fechar caixa: '.$e->getMessage()];
+            return ['success' => false, 'message' => 'Erro ao fechar caixa: '];
         }
     }
 
@@ -362,48 +344,13 @@ class Caixa
 
             return 0;
         } catch (Exception $e) {
-            error_log('Erro ao calcular saldo atual: '.$e->getMessage());
+            Logger::error('Erro Calcular saldo', [
+                'Erro: ' => $e->getMessage(),
+            ]);
 
             return 0;
         }
     }
-
-    // Calcular saldo atual do caixa
-    /* public function calcularSaldoAtual($caixa_id = null)
-    {
-        try {
-            if (!$caixa_id) {
-                $caixaAberto = $this->verificarCaixaAberto();
-                if (!$caixaAberto) {
-                    return 0;
-                }
-                $caixa_id = $caixaAberto['id'];
-            }
-
-            $query = "SELECT
-                        c.saldo_inicial,
-                        COALESCE(SUM(CASE WHEN cm.tipo = 'entrada' THEN cm.valor ELSE 0 END), 0) as total_entradas,
-                        COALESCE(SUM(CASE WHEN cm.tipo = 'saida' THEN cm.valor ELSE 0 END), 0) as total_saidas
-                      FROM {$this->table_caixa} c
-                      LEFT JOIN {$this->table_movimentos} cm ON c.id = cm.caixa_id
-                      WHERE c.id = ?
-                      GROUP BY c.id, c.saldo_inicial";
-
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute([$caixa_id]);
-            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($resultado) {
-                return $resultado['saldo_inicial'] + $resultado['total_entradas'] - $resultado['total_saidas'];
-            }
-
-            return 0;
-        } catch (Exception $e) {
-            error_log('Erro ao calcular saldo: '.$e->getMessage());
-
-            return 0;
-        }
-    } */
 
     // Obter resumo do caixa
     public function obterResumo($caixa_id = null)
@@ -455,7 +402,9 @@ class Caixa
                 'status' => $caixaDados['status'],
             ];
         } catch (Exception $e) {
-            error_log('Erro ao obter resumo: '.$e->getMessage());
+            Logger::error('Erro no resumo', [
+                'Erro: ' => $e->getMessage(),
+            ]);
 
             return [];
         }

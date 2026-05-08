@@ -12,6 +12,7 @@ import Relatorios from './components/Relatorios';
 import Recibos from './components/Recibos';
 import Configuracoes from './components/Configuracoes';
 import ModuloPdv from "./components/ModuloPdv";
+import Logger from './utils/Logger';
 
 function App() {
     // Estados principais
@@ -34,10 +35,10 @@ function App() {
         setCarregando(false);
     }, []);
 
-    // 🆕 LISTENER PARA FECHAMENTO DE CAIXA
+    // LISTENER PARA FECHAMENTO DE CAIXA
     useEffect(() => {
         const handleCaixaFechado = () => {
-            console.log('📢 App - Evento caixaFechado recebido');
+            Logger.info('App - Evento caixaFechado recebido');
             setTelaAtual('dashboard');
             localStorage.removeItem('caixa_fechado');
         };
@@ -54,7 +55,6 @@ function App() {
     
     // Função de login
     const handleLogin = (dadosUsuario) => {
-        console.log('Login bem-sucedido:', dadosUsuario);
         setLogado(true);
         setTelaAtual('dashboard');
     };
@@ -69,14 +69,14 @@ function App() {
     
     // Função de navegação
     const handleNavigate = (novaTela) => {
-        console.log('🔄 Navegando de', telaAtual, 'para', novaTela);
+        Logger.info('Navegando de', { info: telaAtual, novaTela });
         setTelaAtual(novaTela);
     };
     
-    // 🆕 FUNÇÃO ESPECÍFICA PARA VOLTAR AO DASHBOARD
+    // FUNÇÃO ESPECÍFICA PARA VOLTAR AO DASHBOARD
     const handleVoltarDashboard = () => {
-        console.log('🏠 App - handleVoltarDashboard chamado');
-        console.log('🏠 App - Voltando para dashboard de:', telaAtual);
+        Logger.info('App - handleVoltarDashboard chamado', { info: telaAtual });
+        Logger.info('App - Voltando para dashboard de:', { info: telaAtual });
         setTelaAtual('dashboard');
     };
     
@@ -98,7 +98,7 @@ function App() {
     }
     
     // DEBUG - Mostrar estado atual
-    console.log('🐛 Estado atual:', { logado, telaAtual });
+    Logger.info('Estado atual:', { logado, telaAtual });
     
     return (
         <div className="App">
@@ -115,7 +115,7 @@ function App() {
                     zIndex: 9999,
                 }}
             >
-                🐛 {logado ? "Logado" : "Não logado"} | Tela: {telaAtual}
+                {logado ? "Logado" : "Não logado"} | Tela: {telaAtual}
             </div>
 
             {/* TELA DE LOGIN */}
@@ -141,7 +141,7 @@ function App() {
                 <Dashboard onLogout={handleLogout} onNavigate={handleNavigate} />
             )}
 
-            {/* 🆕 TELA DO MÓDULO PDV */}
+            {/* TELA DO MÓDULO PDV */}
             {logado && telaAtual === "modulo-pdv" && (
                 <ModuloPdv onVoltar={handleVoltarDashboard} />
             )}

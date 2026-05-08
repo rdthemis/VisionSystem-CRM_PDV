@@ -17,7 +17,7 @@ class PedidoController
     public function buscarTodos()
     {
         try {
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $resultado = $pedido->buscarTodos();
 
             return [
@@ -40,7 +40,7 @@ class PedidoController
     public function buscarPorStatus($status)
     {
         try {
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $resultado = $pedido->buscarTodos($status); // Seu model já aceita status
 
             return [
@@ -71,7 +71,7 @@ class PedidoController
                 ];
             }
 
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $resultado = $pedido->buscarPorId($id);
 
             if ($resultado) {
@@ -110,7 +110,7 @@ class PedidoController
                     GROUP BY p.id
                     ORDER BY p.created_at DESC';
 
-            $stmt = $this->database->conectar()->prepare($sql);
+            $stmt = $this->database->getConnection()->prepare($sql);
             $stmt->execute([$cliente_id]);
             $resultado = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -187,7 +187,7 @@ class PedidoController
                 $cliente_id = intval($dados['cliente_id']);
 
                 // Validar se cliente existe
-                $stmt = $this->database->conectar()->prepare('SELECT nome FROM clientes WHERE id = ? AND ativo = 1');
+                $stmt = $this->database->getConnection()->prepare('SELECT nome FROM clientes WHERE id = ? AND ativo = 1');
                 $stmt->execute([$cliente_id]);
                 $cliente = $stmt->fetch();
 
@@ -227,7 +227,7 @@ class PedidoController
             }
 
             // Criar instância do model
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
 
             // 🔧 DEFINIR PROPRIEDADES COM DADOS DO CLIENTE
             $pedido->cliente_id = $cliente_id; // NULL para avulso, ID para cadastrado
@@ -345,7 +345,7 @@ class PedidoController
             }
 
             // Criar instância do model
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
 
             // Definir propriedades do pedido
             $pedido->total = $totalPedido;
@@ -415,7 +415,7 @@ class PedidoController
              }
 
              // Criar instância do model
-             $pedido = new Pedido($this->database->conectar());
+             $pedido = new Pedido($this->database->getConnection());
 
              // Definir propriedades do pedido
              $pedido->total = floatval($dados['total']);
@@ -483,7 +483,7 @@ class PedidoController
             error_log("🔍 Atualizando pedido ID: {$pedido_id}");
 
             // Criar instância do model
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $pedido->id = $pedido_id;
 
             // 🔧 MELHORIA: Verificar se pedido existe antes de atualizar
@@ -599,7 +599,7 @@ class PedidoController
             error_log("🔄 Iniciando atualização completa do pedido {$pedido->id}");
 
             // 🔧 INICIAR TRANSAÇÃO para garantir consistência
-            $this->database->conectar()->beginTransaction();
+            $this->database->getConnection()->beginTransaction();
 
             // Preparar dados para atualização da tabela principal
             $camposAtualizar = [];
@@ -655,7 +655,7 @@ class PedidoController
                 error_log("🔍 SQL pedido: {$sql}");
                 error_log('📋 Valores pedido: '.json_encode($valores));
 
-                $stmt = $this->database->conectar()->prepare($sql);
+                $stmt = $this->database->getConnection()->prepare($sql);
                 $resultado = $stmt->execute($valores);
 
                 if (!$resultado) {
@@ -671,7 +671,7 @@ class PedidoController
 
                 // 🗑️ REMOVER TODOS OS ITENS ANTIGOS
                 $sqlDelete = 'DELETE FROM pedido_itens WHERE pedido_id = ?';
-                $stmtDelete = $this->database->conectar()->prepare($sqlDelete);
+                $stmtDelete = $this->database->getConnection()->prepare($sqlDelete);
                 $resultadoDelete = $stmtDelete->execute([$pedido->id]);
 
                 if (!$resultadoDelete) {
@@ -686,7 +686,7 @@ class PedidoController
                 $sqlInsert = 'INSERT INTO pedido_itens 
               (pedido_id, produto_id, quantidade, preco_unitario, subtotal, adicionais, observacoes) 
               VALUES (?, ?, ?, ?, ?, ?, ?)';
-                $stmtInsert = $this->database->conectar()->prepare($sqlInsert);
+                $stmtInsert = $this->database->getConnection()->prepare($sqlInsert);
 
                 $totalCalculado = 0;
                 $itensInseridos = 0;
@@ -734,7 +734,7 @@ class PedidoController
                 // 3️⃣ ATUALIZAR TOTAL FINAL (baseado nos itens reais)
                 if ($itensInseridos > 0) {
                     $sqlUpdateTotal = 'UPDATE pedidos SET total = ?, updated_at = NOW() WHERE id = ?';
-                    $stmtUpdateTotal = $this->database->conectar()->prepare($sqlUpdateTotal);
+                    $stmtUpdateTotal = $this->database->getConnection()->prepare($sqlUpdateTotal);
                     $resultadoUpdateTotal = $stmtUpdateTotal->execute([$totalCalculado, $pedido->id]);
 
                     if (!$resultadoUpdateTotal) {
@@ -746,7 +746,7 @@ class PedidoController
             }
 
             // 🔧 CONFIRMAR TRANSAÇÃO
-            $this->database->conectar()->commit();
+            $this->database->getConnection()->commit();
             error_log('✅ Transação confirmada - Pedido atualizado completamente');
 
             return [
@@ -760,7 +760,7 @@ class PedidoController
             ];
         } catch (Exception $e) {
             // 🔙 REVERTER TRANSAÇÃO EM CASO DE ERRO
-            $this->database->conectar()->rollback();
+            $this->database->getConnection()->rollback();
             error_log('❌ Erro na atualização completa (transação revertida): '.$e->getMessage());
 
             return [
@@ -781,7 +781,7 @@ class PedidoController
                 ];
             }
 
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $pedido->id = $id;
 
             // Usar o método cancelar do model
@@ -821,7 +821,7 @@ class PedidoController
                 ];
             }
 
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $pedido->id = $dados['pedido_id'];
 
             $resultado = $pedido->adicionarItemExistente(
@@ -862,7 +862,7 @@ class PedidoController
                 ];
             }
 
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $pedido->id = $dados['pedido_id'];
 
             $resultado = $pedido->removerItem($dados['item_id']);
@@ -892,7 +892,7 @@ class PedidoController
     public function buscarProdutosDisponiveis()
     {
         try {
-            $pedido = new Pedido($this->database->conectar());
+            $pedido = new Pedido($this->database->getConnection());
             $resultado = $pedido->buscarProdutosDisponiveis();
 
             return [
@@ -942,7 +942,7 @@ class PedidoController
             // 2️⃣ BUSCAR PEDIDO ORIGEM
             // ==========================================
 
-            $pedidoOrigem = new Pedido($this->database->conectar());
+            $pedidoOrigem = new Pedido($this->database->getConnection());
             $dadosOrigem = $pedidoOrigem->buscarPorId($pedidoOrigemId);
 
             if (!$dadosOrigem) {
@@ -979,7 +979,7 @@ class PedidoController
                 $pedidoDestinoId = intval($dados['comandaDestinoId']);
 
                 // Validar se comanda destino existe e está aberta
-                $pedidoDestino = new Pedido($this->database->conectar());
+                $pedidoDestino = new Pedido($this->database->getConnection());
                 $dadosDestino = $pedidoDestino->buscarPorId($pedidoDestinoId);
 
                 if (!$dadosDestino) {
@@ -1009,7 +1009,7 @@ class PedidoController
                 $nomeCliente = trim($dados['nomeNovaComanda']);
 
                 // Criar pedido vazio
-                $novoPedido = new Pedido($this->database->conectar());
+                $novoPedido = new Pedido($this->database->getConnection());
                 $novoPedido->cliente_id = null; // Cliente avulso
                 $novoPedido->cliente_nome = $nomeCliente;
                 $novoPedido->total = 0;
@@ -1036,7 +1036,7 @@ class PedidoController
             // 4️⃣ PROCESSAR TRANSFERÊNCIA (COM TRANSAÇÃO)
             // ==========================================
 
-            $this->database->conectar()->beginTransaction();
+            $this->database->getConnection()->beginTransaction();
 
             try {
                 $itensTransferidos = 0;
@@ -1055,7 +1055,7 @@ class PedidoController
                     $sqlBuscarItem = 'SELECT * FROM pedido_itens 
                                     WHERE pedido_id = ? AND produto_id = ? 
                                     LIMIT 1';
-                    $stmtBuscar = $this->database->conectar()->prepare($sqlBuscarItem);
+                    $stmtBuscar = $this->database->getConnection()->prepare($sqlBuscarItem);
                     $stmtBuscar->execute([$pedidoOrigemId, $produtoId]);
                     $itemOrigem = $stmtBuscar->fetch(PDO::FETCH_ASSOC);
 
@@ -1073,7 +1073,7 @@ class PedidoController
                     if ($quantidadeTransferir >= $quantidadeOrigem) {
                         // Transferir tudo - REMOVER item
                         $sqlRemover = 'DELETE FROM pedido_itens WHERE id = ?';
-                        $stmtRemover = $this->database->conectar()->prepare($sqlRemover);
+                        $stmtRemover = $this->database->getConnection()->prepare($sqlRemover);
                         $stmtRemover->execute([$itemOrigem['id']]);
                         error_log('   🗑️ Item removido completamente do origem');
                     } else {
@@ -1084,7 +1084,7 @@ class PedidoController
                         $sqlReduzir = 'UPDATE pedido_itens 
                                     SET quantidade = ?, subtotal = ? 
                                     WHERE id = ?';
-                        $stmtReduzir = $this->database->conectar()->prepare($sqlReduzir);
+                        $stmtReduzir = $this->database->getConnection()->prepare($sqlReduzir);
                         $stmtReduzir->execute([$novaQuantidade, $novoSubtotal, $itemOrigem['id']]);
                         error_log("   ➖ Quantidade reduzida de {$quantidadeOrigem} para {$novaQuantidade}");
                     }
@@ -1096,7 +1096,7 @@ class PedidoController
                     $sqlAdicionar = 'INSERT INTO pedido_itens 
                                     (pedido_id, produto_id, quantidade, preco_unitario, subtotal, adicionais, observacoes)
                                     VALUES (?, ?, ?, ?, ?, ?, ?)';
-                    $stmtAdicionar = $this->database->conectar()->prepare($sqlAdicionar);
+                    $stmtAdicionar = $this->database->getConnection()->prepare($sqlAdicionar);
                     $stmtAdicionar->execute([
                         $pedidoDestinoId,
                         $produtoId,
@@ -1121,12 +1121,12 @@ class PedidoController
                 $sqlTotalOrigem = 'SELECT COALESCE(SUM(subtotal), 0) as total 
                                 FROM pedido_itens 
                                 WHERE pedido_id = ?';
-                $stmtTotalOrigem = $this->database->conectar()->prepare($sqlTotalOrigem);
+                $stmtTotalOrigem = $this->database->getConnection()->prepare($sqlTotalOrigem);
                 $stmtTotalOrigem->execute([$pedidoOrigemId]);
                 $novoTotalOrigem = floatval($stmtTotalOrigem->fetchColumn());
 
                 $sqlAtualizarOrigem = 'UPDATE pedidos SET total = ?, updated_at = NOW() WHERE id = ?';
-                $stmtAtualizarOrigem = $this->database->conectar()->prepare($sqlAtualizarOrigem);
+                $stmtAtualizarOrigem = $this->database->getConnection()->prepare($sqlAtualizarOrigem);
                 $stmtAtualizarOrigem->execute([$novoTotalOrigem, $pedidoOrigemId]);
 
                 error_log("💰 Total origem atualizado: {$novoTotalOrigem}");
@@ -1135,12 +1135,12 @@ class PedidoController
                 $sqlTotalDestino = 'SELECT COALESCE(SUM(subtotal), 0) as total 
                                     FROM pedido_itens 
                                     WHERE pedido_id = ?';
-                $stmtTotalDestino = $this->database->conectar()->prepare($sqlTotalDestino);
+                $stmtTotalDestino = $this->database->getConnection()->prepare($sqlTotalDestino);
                 $stmtTotalDestino->execute([$pedidoDestinoId]);
                 $novoTotalDestino = floatval($stmtTotalDestino->fetchColumn());
 
                 $sqlAtualizarDestino = 'UPDATE pedidos SET total = ?, updated_at = NOW() WHERE id = ?';
-                $stmtAtualizarDestino = $this->database->conectar()->prepare($sqlAtualizarDestino);
+                $stmtAtualizarDestino = $this->database->getConnection()->prepare($sqlAtualizarDestino);
                 $stmtAtualizarDestino->execute([$novoTotalDestino, $pedidoDestinoId]);
 
                 error_log("💰 Total destino atualizado: {$novoTotalDestino}");
@@ -1149,7 +1149,7 @@ class PedidoController
                 // 6️⃣ CONFIRMAR TRANSAÇÃO
                 // ==========================================
 
-                $this->database->conectar()->commit();
+                $this->database->getConnection()->commit();
 
                 error_log('✅ ===== TRANSFERÊNCIA CONCLUÍDA =====');
                 error_log("   📊 {$itensTransferidos} itens transferidos");
@@ -1169,7 +1169,7 @@ class PedidoController
                 ];
             } catch (Exception $e) {
                 // Reverter em caso de erro
-                $this->database->conectar()->rollback();
+                $this->database->getConnection()->rollback();
                 throw $e;
             }
         } catch (Exception $e) {

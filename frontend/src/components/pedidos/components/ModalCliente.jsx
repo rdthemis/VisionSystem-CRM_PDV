@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { debounce } from 'lodash';
+import Logger from '../../../utils/Logger';
 
 /**
  * Modal de busca de clientes cadastrados
@@ -59,7 +60,7 @@ const ModalCliente = ({
       }
 
     } catch (error) {
-      console.error('Erro ao buscar clientes:', error);
+      Logger.error('Erro ao buscar clientes:', { erro: error });
       setErro('Erro ao buscar clientes. Tente novamente.');
       setClientes([]);
     } finally {

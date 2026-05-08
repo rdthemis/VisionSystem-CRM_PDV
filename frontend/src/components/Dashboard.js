@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService'; // seu apiService existente
 import caixaService from '../services/caixaService'; // NOVO import
 import ModalAberturaCaixa from './ModalAberturaCaixa'; // Importe o modal
+import Logger from '../utils/Logger';
 
 function Dashboard({ onLogout, onNavigate }) {
     const [usuario, setUsuario] = useState(null);
     const [estatisticas, setEstatisticas] = useState(null);
     const [loading, setLoading] = useState(true);
 
-  // 🆕 NOVOS ESTADOS PARA CONTROLE DO CAIXA
+  // NOVOS ESTADOS PARA CONTROLE DO CAIXA
   const [showModalCaixa, setShowModalCaixa] = useState(false);
   const [loadingCaixa, setLoadingCaixa] = useState(false);
   const [mensagemCaixa, setMensagemCaixa] = useState('');
@@ -29,24 +30,24 @@ function Dashboard({ onLogout, onNavigate }) {
                 setEstatisticas(resultado.data);
             }
         } catch (error) {
-            console.error('Erro ao carregar estatísticas:', error);
+            Logger.error('Erro ao carregar estatísticas:', {erro: error});
         } finally {
             setLoading(false);
         }
   };
   
-  // 🆕 FUNÇÃO PARA VERIFICAR STATUS DO CAIXA
+  //   FUNÇÃO PARA VERIFICAR STATUS DO CAIXA
   const verificarCaixaAberto = async () => {
     try {
       const response = await caixaService.verificarCaixaAberto();
       return response.success && response.data && response.data.caixa_aberto;
     } catch (error) {
-      console.error('Erro ao verificar caixa:', error);
+      Logger.error('Erro ao verificar caixa:', {erro: error});
       return false;
     }
   };
 
-  // 🆕 FUNÇÃO PARA ABRIR CAIXA
+  //   FUNÇÃO PARA ABRIR CAIXA
   const abrirCaixa = async (saldoInicial, observacoes) => {
     setLoadingCaixa(true);
     setMensagemCaixa('');
@@ -55,7 +56,7 @@ function Dashboard({ onLogout, onNavigate }) {
       const response = await caixaService.abrirCaixa(saldoInicial, observacoes);
 
       if (response.success) {
-        console.log('✅ Caixa aberto com sucesso!');
+        Logger.info('Caixa aberto com sucesso!', {info: "Caica aberto"});
         setShowModalCaixa(false);
         setMensagemCaixa('Caixa aberto com sucesso! Redirecionando para PDV...');
 
@@ -66,71 +67,64 @@ function Dashboard({ onLogout, onNavigate }) {
         setMensagemCaixa(`Erro ao abrir caixa: ${response.message}`);
       }
     } catch (error) {
-      console.error('Erro ao abrir caixa:', error);
+      Logger.error('Erro ao abrir caixa:', {erro: error});
       setMensagemCaixa(`Erro ao abrir caixa: ${error.message}`);
     } finally {
       setLoadingCaixa(false);
     }
   };
 
-  // 🔧 MODIFICAR A FUNÇÃO DO PDV
+  //   MODIFICAR A FUNÇÃO DO PDV
   const handleModuloPdvClick = async () => {
-    console.log("Verificando caixa antes de acessar PDV...");
+    Logger.info('Verificando caixa antes de acessar PDV...', {info: "Verificando Caixa"});
 
     try {
       const caixaAberto = await verificarCaixaAberto();
 
       if (caixaAberto) {
-        console.log("✅ Caixa já está aberto, acessando PDV...");
+        Logger.info('Caixa já está aberto', {info: "Acessando PDV..."});
         onNavigate('modulo-pdv');
       } else {
-        console.log("⚠️ Nenhum caixa aberto, solicitando abertura...");
+        Logger.info('Nenhum caixa aberto', {info: "Solicitando abertura..."});
         setShowModalCaixa(true);
       }
     } catch (error) {
-      console.error('Erro ao verificar caixa:', error);
+      Logger.error('Erro ao verificar caixa:', {erro: error});
       alert('Erro ao verificar status do caixa. Tente novamente.');
     }
   };
 
     const handleClientesClick = () => {
-        console.log('Navegando para clientes');
+        Logger.info('Navegando para clientes', {info: "Clientes"});
         if (onNavigate) {
             onNavigate('clientes');
         }
     };
 
     const handleContasReceberClick = () => {
-        console.log('Navegando para contas a receber');
+        Logger.info('Navegando para contas a receber', {info: "Contas a Receber"});
         if (onNavigate) {
             onNavigate('contas-receber');
         }
     };
-    
-    /* const handleModuloPdvClick = () => {
-        console.log("Navegando para modulo pdv");
-        if (onNavigate) {
-            onNavigate("modulo-pdv");
-        }
-    };
- */
+
     // NOVA FUNÇÃO: Navegar para relatórios
     const handleRelatoriosClick = () => {
-        console.log('Navegando para relatórios');
+        Logger.info('Navegando para relatórios', {info: "Relatórios"});
         if (onNavigate) {
             onNavigate('relatorios');
         }
     };
 
     const handleRecibosClick = () => {
-        console.log('Navegando para recibos');
+        Logger.info('Navegando para recibos', {info: "Recibos"});
         if (onNavigate) {
             onNavigate('recibos');
         }
   };
   
     const handleConfiguracoesClick = () => {
-      console.log("Navegando para configurações");
+      Logger.info('Navegando para configurações', {info: "Configurações"});
       if (onNavigate) {
         onNavigate("configuracoes");
       }
@@ -147,7 +141,7 @@ function Dashboard({ onLogout, onNavigate }) {
       <div
         style={{ padding: "20px", background: "#f5f5f5", minHeight: "100vh" }}
       >
-        {/* 🆕 MOSTRAR MENSAGEM DE STATUS DO CAIXA */}
+        {/*   MOSTRAR MENSAGEM DE STATUS DO CAIXA */}
         {mensagemCaixa && (
           <div style={{
             background: mensagemCaixa.includes('Erro') ? '#f8d7da' : '#d1edff',
@@ -887,7 +881,7 @@ function Dashboard({ onLogout, onNavigate }) {
                 </button>
               </div>
             )}
-            {/* 🆕 MODAL DE ABERTURA DE CAIXA */}
+            {/*   MODAL DE ABERTURA DE CAIXA */}
             <ModalAberturaCaixa
               isOpen={showModalCaixa}
               onClose={() => setShowModalCaixa(false)}

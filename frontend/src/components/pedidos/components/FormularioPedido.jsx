@@ -56,6 +56,7 @@ const FormularioPedido = ({
   onVoltar,
   onCancelar,
   onImprimir,
+  onContaConsumo,   // 🆕 Handler para conta de consumo
   onFinalizar,
   onPagar
 }) => {
@@ -104,6 +105,7 @@ const FormularioPedido = ({
         onDecrementarQuantidade={onDecrementarQuantidade}    // 🆕 ADICIONAR
         buscarPedidos={buscarPedidos}    // ✅ ADICIONAR
         onTransferir={onTransferir}      // ✅ ADICIONAR
+        onContaConsumo={onContaConsumo}
         onImprimir={onImprimir}
         onFinalizar={onFinalizar}
         onPagar={onPagar}

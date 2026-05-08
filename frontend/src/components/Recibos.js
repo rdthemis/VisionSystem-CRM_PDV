@@ -3,6 +3,7 @@ import { apiService } from '../services/apiService';
 import { recibosService } from '../services/recibosService';
 import { emailService } from '../services/emailService';
 import { whatsappService } from '../services/whatsappService';
+import Logger from '../utils/Logger';
 
 function Recibos({ onVoltar }) {
     // ===========================================
@@ -96,18 +97,18 @@ function Recibos({ onVoltar }) {
             setLoading(true);
             setErro('');
 
-            console.log('🔍 Carregando recibos com filtros:', filtros);
+            Logger.info('Carregando recibos com filtros:', { info: filtros });
             const resultado = await recibosService.listar(filtros);
 
             if (resultado.success) {
                 setRecibos(resultado.data || []);
-                console.log('✅ Recibos carregados:', resultado.data?.length || 0);
+                Logger.info('Recibos carregados:', { info: resultado.data?.length || 0 });
             } else {
                 setErro(resultado.message || 'Erro ao carregar recibos');
-                console.error('❌ Erro na resposta:', resultado);
+                Logger.error('Erro na resposta:', { erro: resultado });
             }
         } catch (error) {
-            console.error('❌ Erro ao carregar recibos:', error);
+            Logger.error('Erro ao carregar recibos:', { erro: error });
             setErro('Erro de conexão ao carregar recibos');
         } finally {
             setLoading(false);
@@ -122,7 +123,7 @@ function Recibos({ onVoltar }) {
                 setClientes(resultado.data || []);
             }
         } catch (error) {
-            console.error('Erro ao carregar clientes:', error);
+            Logger.error('Erro ao carregar clientes:', { erro: error });
         }
     };
 
@@ -179,7 +180,7 @@ function Recibos({ onVoltar }) {
                 setErro(resultado.message || 'Erro ao criar recibo');
             }
         } catch (error) {
-            console.error('Erro ao criar recibo:', error);
+            Logger.error('Erro ao criar recibo:', { erro: error });
             setErro('Erro de conexão ao criar recibo');
         } finally {
             setLoading(false);
@@ -201,7 +202,7 @@ function Recibos({ onVoltar }) {
                 setErro(resultado.message || 'Erro ao cancelar recibo');
             }
         } catch (error) {
-            console.error('Erro ao cancelar recibo:', error);
+        Logger.error('Erro ao cancelar recibo:', { erro: error });
             setErro('Erro ao cancelar recibo');
         }
     };
@@ -237,7 +238,7 @@ function Recibos({ onVoltar }) {
                 setErro('Erro ao visualizar recibo');
             }
         } catch (error) {
-            console.error('Erro ao visualizar recibo:', error);
+            Logger.error('Erro ao visualizar recibo:', { erro: error });
             setErro('Erro ao visualizar recibo');
         }
     };
@@ -277,7 +278,7 @@ function Recibos({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao enviar recibo por email:', error);
+            Logger.error('Erro ao enviar recibo por email:', { erro: error });
             setErro('Erro ao enviar recibo por email');
         } finally {
             setLoading(false);
@@ -322,7 +323,7 @@ function Recibos({ onVoltar }) {
                 setErro(resultado.message);
             }
         } catch (error) {
-            console.error('Erro ao enviar recibo por WhatsApp:', error);
+            Logger.error('Erro ao enviar recibo por WhatsApp:', { erro: error });
             setErro('Erro ao enviar recibo por WhatsApp');
         } finally {
             setLoading(false);

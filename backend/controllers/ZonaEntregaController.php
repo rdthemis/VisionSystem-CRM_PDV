@@ -14,35 +14,36 @@ class ZonaEntregaController
     }
 
     /**
-     * Buscar todas as zonas
+     * Buscar todas as zonas.
      */
     public function buscarTodas($apenasAtivas = false)
     {
         try {
-            $zona = new ZonaEntrega($this->database->conectar());
+            $zona = new ZonaEntrega($this->database->getConnection());
             $resultado = $zona->buscarTodas($apenasAtivas);
 
             http_response_code(200);
             echo json_encode([
                 'success' => true,
-                'data' => $resultado
+                'data' => $resultado,
             ]);
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar zonas: ' . $e->getMessage());
+            error_log('❌ Erro ao buscar zonas: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao buscar zonas: ' . $e->getMessage()
+                'message' => 'Erro ao buscar zonas: '.$e->getMessage(),
             ]);
+
             return;
         }
     }
 
     /**
-     * Buscar zona por ID
+     * Buscar zona por ID.
      */
     public function buscarPorId($id)
     {
@@ -51,43 +52,45 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'ID inválido'
+                    'message' => 'ID inválido',
                 ]);
+
                 return;
             }
 
-            $zona = new ZonaEntrega($this->database->conectar());
+            $zona = new ZonaEntrega($this->database->getConnection());
             $resultado = $zona->buscarPorId($id);
 
             if ($resultado) {
                 http_response_code(200);
                 echo json_encode([
                     'success' => true,
-                    'data' => $resultado
+                    'data' => $resultado,
                 ]);
             } else {
                 http_response_code(404);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Zona não encontrada'
+                    'message' => 'Zona não encontrada',
                 ]);
             }
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar zona: ' . $e->getMessage());
+            error_log('❌ Erro ao buscar zona: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao buscar zona: ' . $e->getMessage()
+                'message' => 'Erro ao buscar zona: '.$e->getMessage(),
             ]);
+
             return;
         }
     }
 
     /**
-     * Criar nova zona
+     * Criar nova zona.
      */
     public function criar($dados)
     {
@@ -97,8 +100,9 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Nome da zona é obrigatório'
+                    'message' => 'Nome da zona é obrigatório',
                 ]);
+
                 return;
             }
 
@@ -106,12 +110,13 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Valor da taxa é obrigatório e deve ser numérico'
+                    'message' => 'Valor da taxa é obrigatório e deve ser numérico',
                 ]);
+
                 return;
             }
 
-            $zona = new ZonaEntrega($this->database->conectar());
+            $zona = new ZonaEntrega($this->database->getConnection());
             $zona->nome = $dados['nome'];
             $zona->valor = $dados['valor'];
             $zona->descricao = $dados['descricao'] ?? '';
@@ -122,31 +127,32 @@ class ZonaEntregaController
                 echo json_encode([
                     'success' => true,
                     'message' => 'Zona criada com sucesso',
-                    'data' => ['id' => $zona->id]
+                    'data' => ['id' => $zona->id],
                 ]);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Erro ao criar zona'
+                    'message' => 'Erro ao criar zona',
                 ]);
             }
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao criar zona: ' . $e->getMessage());
+            error_log('❌ Erro ao criar zona: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao criar zona: ' . $e->getMessage()
+                'message' => 'Erro ao criar zona: '.$e->getMessage(),
             ]);
+
             return;
         }
     }
 
     /**
-     * Atualizar zona
+     * Atualizar zona.
      */
     public function atualizar($dados)
     {
@@ -156,8 +162,9 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'ID é obrigatório'
+                    'message' => 'ID é obrigatório',
                 ]);
+
                 return;
             }
 
@@ -165,8 +172,9 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Nome da zona é obrigatório'
+                    'message' => 'Nome da zona é obrigatório',
                 ]);
+
                 return;
             }
 
@@ -174,12 +182,13 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Valor da taxa é obrigatório e deve ser numérico'
+                    'message' => 'Valor da taxa é obrigatório e deve ser numérico',
                 ]);
+
                 return;
             }
 
-            $zona = new ZonaEntrega($this->database->conectar());
+            $zona = new ZonaEntrega($this->database->getConnection());
             $zona->id = $dados['id'];
             $zona->nome = $dados['nome'];
             $zona->valor = $dados['valor'];
@@ -190,31 +199,32 @@ class ZonaEntregaController
                 http_response_code(200);
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Zona atualizada com sucesso'
+                    'message' => 'Zona atualizada com sucesso',
                 ]);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Erro ao atualizar zona'
+                    'message' => 'Erro ao atualizar zona',
                 ]);
             }
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao atualizar zona: ' . $e->getMessage());
+            error_log('❌ Erro ao atualizar zona: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao atualizar zona: ' . $e->getMessage()
+                'message' => 'Erro ao atualizar zona: '.$e->getMessage(),
             ]);
+
             return;
         }
     }
 
     /**
-     * Deletar zona
+     * Deletar zona.
      */
     public function deletar($id)
     {
@@ -223,37 +233,39 @@ class ZonaEntregaController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'ID inválido'
+                    'message' => 'ID inválido',
                 ]);
+
                 return;
             }
 
-            $zona = new ZonaEntrega($this->database->conectar());
+            $zona = new ZonaEntrega($this->database->getConnection());
             $zona->id = $id;
 
             if ($zona->deletar()) {
                 http_response_code(200);
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Zona excluída com sucesso'
+                    'message' => 'Zona excluída com sucesso',
                 ]);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Erro ao excluir zona'
+                    'message' => 'Erro ao excluir zona',
                 ]);
             }
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao excluir zona: ' . $e->getMessage());
+            error_log('❌ Erro ao excluir zona: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao excluir zona: ' . $e->getMessage()
+                'message' => 'Erro ao excluir zona: '.$e->getMessage(),
             ]);
+
             return;
         }
     }

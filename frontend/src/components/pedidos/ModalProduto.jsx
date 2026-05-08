@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import AdicionaisGrid from '../AdicionaisGrid';
 import adicionaisService from '../../services/adicionaisService';
+import Logger from '../../utils/Logger';
 
 /**
  * Modal para adicionar/editar produto no pedido
@@ -67,7 +68,7 @@ const ModalProduto = ({
    */
   useEffect(() => {
   if (modoEdicao && dadosIniciais?.adicionais && adicionaisDisponiveis.length > 0) {
-    console.log('🔄 Restaurando adicionais após carregar disponíveis');
+    Logger.info('Restaurando adicionais após carregar disponíveis', { info: dadosIniciais.adicionais, disponiveis: adicionaisDisponiveis });
     
     // Filtrar apenas adicionais que existem nos disponíveis
     const adicionaisValidos = dadosIniciais.adicionais.filter(adicionalItem => 
@@ -76,7 +77,7 @@ const ModalProduto = ({
     
     if (adicionaisValidos.length > 0) {
       setAdicionaisSelecionados(adicionaisValidos);
-      console.log('✅ Adicionais restaurados:', adicionaisValidos);
+      Logger.debug('Adicionais restaurados:', { debug: adicionaisValidos });
     }
   }
 }, [adicionaisDisponiveis, modoEdicao]);
@@ -92,18 +93,18 @@ const ModalProduto = ({
   const carregarAdicionaisPorCategoria = async (categoriaId) => {
     try {
       setLoading(true);
-      console.log(`📦 Buscando adicionais da categoria ${categoriaId}...`);
-      
+      Logger.debug('Buscando adicionais da categoria', { categoriaId });
+
       const adicionais = await adicionaisService.buscarPorCategoria(categoriaId);
       
       // Filtrar apenas adicionais ativos
       const adicionaisAtivos = adicionais.filter(ad => ad.ativo);
       
-      console.log(`✅ ${adicionaisAtivos.length} adicionais encontrados`);
+      Logger.debug(`${adicionaisAtivos.length} adicionais encontrados`, { categoriaId });
       setAdicionaisDisponiveis(adicionaisAtivos);
       
     } catch (error) {
-      console.error('❌ Erro ao carregar adicionais:', error);
+      Logger.error('❌ Erro ao carregar adicionais:', { error, categoriaId });
       setAdicionaisDisponiveis([]);
       alert('Erro ao carregar adicionais: ' + error.message);
     } finally {
@@ -189,7 +190,7 @@ const ModalProduto = ({
       observacoes: observacoes
     };
 
-    console.log('✅ Item confirmado:', itemCompleto);
+    Logger.debug('Item confirmado:', itemCompleto);
     
     // Chama função do componente pai
     onConfirmar(itemCompleto);

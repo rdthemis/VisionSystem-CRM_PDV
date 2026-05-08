@@ -43,7 +43,7 @@ import Caixa from './components/caixa';
 
 // Uso
 <Caixa 
-    onCaixaFechado={() => console.log('Caixa fechado')} 
+    onCaixaFechado={() => Logger.info('Caixa fechado', {info: "Caixa Fechado"})} 
     onVoltarDashboard={() => setTela('dashboard')} 
 />
 ```

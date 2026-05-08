@@ -1,5 +1,6 @@
 // src/services/recibosService.js
 import { apiService } from './apiService';
+import Logger from '../utils/Logger';
 
 export const recibosService = {
     // Listar recibos com filtros
@@ -15,14 +16,14 @@ export const recibosService = {
             });
 
             const url = `/recibos${params.toString() ? `?${params.toString()}` : ''}`;
-            console.log('🧾 Buscando recibos:', url);
+            Logger.debug('Buscando recibos:', { debug: 'recibosService.listar', url });
 
             const resultado = await apiService.get(url);
-            console.log('🧾 Resultado recibos:', resultado);
+            Logger.info('Resultado recibos:', { info: 'recibosService.listar', resultado });
 
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao listar recibos:', error);
+            Logger.error('Erro ao listar recibos:', { erro: error });
             throw error;
         }
     },
@@ -30,12 +31,12 @@ export const recibosService = {
     // Criar novo recibo
     async criar(dados) {
         try {
-            console.log('🧾 Criando recibo:', dados);
+            Logger.debug('Criando recibo:', { debug: 'recibosService.criar', dados });
             const resultado = await apiService.post('/recibos', dados);
-            console.log('🧾 Recibo criado:', resultado);
+            Logger.info('Recibo criado:', { info: 'recibosService.criar', resultado });
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao criar recibo:', error);
+            Logger.error('Erro ao criar recibo:', { erro: error });
             throw error;
         }
     },
@@ -46,7 +47,7 @@ export const recibosService = {
             const resultado = await apiService.get(`/recibos/${id}`);
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao buscar recibo:', error);
+            Logger.error('Erro ao buscar recibo:', { erro: error });
             throw error;
         }
     },
@@ -57,7 +58,7 @@ export const recibosService = {
             const resultado = await apiService.put(`/recibos/${id}/cancelar`);
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao cancelar recibo:', error);
+            Logger.error('Erro ao cancelar recibo:', { erro: error });
             throw error;
         }
     },
@@ -68,7 +69,7 @@ export const recibosService = {
             const resultado = await apiService.post(`/recibos/gerar-pagamento/${contaId}`, dados);
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao gerar recibo para pagamento:', error);
+            Logger.error('Erro ao gerar recibo para pagamento:', { erro: error });
             throw error;
         }
     },
@@ -84,7 +85,7 @@ export const recibosService = {
             const resultado = await apiService.get(`/recibos/cliente/${clienteId}?${params.toString()}`);
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao buscar recibos por cliente:', error);
+            Logger.error('Erro ao buscar recibos por cliente:', { erro: error });
             throw error;
         }
     },
@@ -95,7 +96,7 @@ export const recibosService = {
             const resultado = await apiService.get('/recibos/resumo');
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao obter resumo de recibos:', error);
+            Logger.error('Erro ao obter resumo de recibos:', { erro: error });
             throw error;
         }
     },
@@ -106,7 +107,7 @@ export const recibosService = {
             const resultado = await apiService.get(`/recibos/${id}/visualizar`);
             return resultado;
         } catch (error) {
-            console.error('❌ Erro ao visualizar recibo:', error);
+            Logger.error('Erro ao visualizar recibo:', { erro: error });
             throw error;
         }
     }

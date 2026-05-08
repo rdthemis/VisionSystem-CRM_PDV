@@ -1,5 +1,6 @@
 // src/services/adicionaisService.js
 import axios from 'axios';
+import Logger from '../utils/Logger';
 
 // Configuração da API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -16,7 +17,7 @@ const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Erro na API:', error);
+        Logger.error('Erro na API:', { erro: error });
         return Promise.reject(error);
     }
 );
@@ -49,7 +50,7 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        Logger.error('Erro na requisição:', { erro: error });
         throw error;
     }
 };
@@ -66,7 +67,7 @@ const adicionaisService = {
                 throw new Error(data?.message || 'Erro ao buscar adicionais');
             }
         } catch (error) {
-            console.error('Erro ao buscar adicionais:', error);
+            Logger.error('Erro ao buscar adicionais:', { erro: error });
             throw new Error('Erro ao carregar adicionais. Verifique sua conexão.');
         }
     },
@@ -82,7 +83,7 @@ const adicionaisService = {
                 throw new Error(data?.message || 'Erro ao buscar adicionais da categoria');
             }
         } catch (error) {
-            console.error('Erro ao buscar adicionais por categoria:', error);
+            Logger.error('Erro ao buscar adicionais por categoria:', { erro: error });
             throw new Error('Erro ao filtrar adicionais por categoria.');
         }
     },
@@ -101,7 +102,7 @@ const adicionaisService = {
                 throw new Error(data?.message || 'Erro ao criar adicional');
             }
         } catch (error) {
-            console.error('Erro ao criar adicional:', error);
+            Logger.error('Erro ao criar adicional:', { erro: error });
             throw new Error('Erro ao salvar adicional. Verifique os dados e tente novamente.');
         }
     },
@@ -120,7 +121,7 @@ const adicionaisService = {
                 throw new Error(data?.message || 'Erro ao atualizar adicional');
             }
         } catch (error) {
-            console.error('Erro ao atualizar adicional:', error);
+            Logger.error('Erro ao atualizar adicional:', { erro: error });
             throw new Error('Erro ao atualizar adicional. Tente novamente.');
         }
     },
@@ -139,7 +140,7 @@ const adicionaisService = {
                 throw new Error(data?.message || 'Erro ao excluir adicional');
             }
         } catch (error) {
-            console.error('Erro ao deletar adicional:', error);
+            Logger.error('Erro ao deletar adicional:', { erro: error });
             throw new Error('Erro ao excluir adicional. Verifique se não está sendo usado em pedidos.');
         }
     },
@@ -155,7 +156,7 @@ const adicionaisService = {
                 throw new Error(data?.message || 'Adicional não encontrado');
             }
         } catch (error) {
-            console.error('Erro ao buscar adicional:', error);
+            Logger.error('Erro ao buscar adicional:', { erro: error });
             throw new Error('Erro ao carregar adicional.');
         }
     }

@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdicionaisGrid from './AdicionaisGrid';
+import Logger from '../utils/Logger'; // Supondo que você tenha um logger para erros
 
 const ExemploModalProduto = () => {
     // Estado dos adicionais disponíveis (virá do backend)
@@ -28,20 +29,20 @@ const ExemploModalProduto = () => {
                 setAdicionaisDisponiveis(data.adicionais);
             }
         } catch (error) {
-            console.error('Erro ao carregar adicionais:', error);
+            Logger.error('Erro ao carregar adicionais:', {erro: error});
         }
     };
 
     // Handler para quando os adicionais mudarem
     const handleAdicionaisChange = (novosAdicionais) => {
         setAdicionaisSelecionados(novosAdicionais);
-        console.log('Adicionais selecionados:', novosAdicionais);
+        Logger.info('Adicionais selecionados:', { info: novosAdicionais });
     };
 
     // Handler para quando as observações mudarem
     const handleObservacoesChange = (novasObservacoes) => {
         setObservacoes(novasObservacoes);
-        console.log('Observações:', novasObservacoes);
+        Logger.info('Observações:', { info: novasObservacoes });
     };
 
     // Calcular total dos adicionais
@@ -62,8 +63,8 @@ const ExemploModalProduto = () => {
             total_adicionais: calcularTotalAdicionais()
         };
 
-        console.log('Item para adicionar ao pedido:', item);
-        
+        Logger.info('Item para adicionar ao pedido:', { info: item });
+
         // Aqui você faria a chamada para adicionar ao pedido
         // Ex: adicionarItemAoPedido(item);
         
@@ -96,7 +97,7 @@ const ExemploModalProduto = () => {
             </div>
 
             <div className="modal-footer">
-                <button className="btn-cancelar" onClick={() => console.log('Cancelar')}>
+                <button className="btn-cancelar" onClick={() => Logger.info('Cancelar', { info: 'Usuário cancelou a adição do produto' })}>
                     Cancelar
                 </button>
                 <button className="btn-adicionar" onClick={adicionarAoPedido}>

@@ -15,7 +15,7 @@ class UsuarioController
     public function __construct($database)
     {
         $this->database = $database;
-        $this->security = new Security($database->conectar());
+        $this->security = new Security($database->getConnection());
     }
 
     /**
@@ -24,7 +24,7 @@ class UsuarioController
     public function buscarTodos($apenasAtivos = false)
     {
         try {
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             $resultado = $usuario->buscarTodos($apenasAtivos);
 
             http_response_code(200);
@@ -63,7 +63,7 @@ class UsuarioController
                 return;
             }
 
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             $resultado = $usuario->buscarPorId($id);
 
             if ($resultado) {
@@ -159,7 +159,7 @@ class UsuarioController
             }
 
             // Verificar se email já existe
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             if ($usuario->emailExiste($dados['email'])) {
                 http_response_code(400);
                 echo json_encode([
@@ -259,7 +259,7 @@ class UsuarioController
             }
 
             // Verificar se email já existe (exceto para o próprio usuário)
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             if ($usuario->emailExiste($dados['email'], $dados['id'])) {
                 http_response_code(400);
                 echo json_encode([
@@ -339,7 +339,7 @@ class UsuarioController
             // Não permitir deletar próprio usuário
             // (verificar com dados do token se necessário)
 
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             $usuario->id = $id;
 
             if ($usuario->deletar()) {
@@ -376,7 +376,7 @@ class UsuarioController
     public function obterEstatisticas()
     {
         try {
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             $stats = $usuario->obterEstatisticas();
 
             http_response_code(200);

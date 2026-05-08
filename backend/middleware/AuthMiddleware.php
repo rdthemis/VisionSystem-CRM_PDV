@@ -7,7 +7,7 @@ require_once __DIR__.'/../config/Security.php';
 
 function verificarAuth($database)
 {
-    $security = new Security($database->conectar());
+    $security = new Security($database->getConnection());
 
     // Obter token do header Authorization
     $headers = getallheaders();
@@ -17,15 +17,22 @@ function verificarAuth($database)
         http_response_code(401);
         echo json_encode([
             'success' => false,
-            'message' => 'Token de autenticação não fornecido'
+            'message' => 'Token de autenticação não fornecido',
         ]);
         exit;
     }
 
-    // Extrair token (formato: "Bearer TOKEN")
-    $token = str_replace('Bearer ', '', $authHeader);
+    // Agora $payload está garantidamente definido
+    if (!preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Formato de token inválido',
+        ]);
+        exit;
+    }
 
-    // Validar token
+    $token = trim($matches[1]);
     $payload = $security->validateAccessToken($token);
 
     if (!$payload) {
@@ -33,18 +40,18 @@ function verificarAuth($database)
         echo json_encode([
             'success' => false,
             'message' => 'Token inválido ou expirado',
-            'code' => 'TOKEN_EXPIRED'
+            'code' => 'TOKEN_EXPIRED',
         ]);
         exit;
     }
 
     // Verificar se usuário ainda está ativo
     try {
-        $sql = "SELECT id, nome, email, tipo, ativo 
+        $sql = 'SELECT id, nome, email, tipo, ativo 
                 FROM usuarios 
-                WHERE id = ? AND ativo = 1";
-        
-        $stmt = $database->conectar()->prepare($sql);
+                WHERE id = ? AND ativo = 1';
+
+        $stmt = $database->getConnection()->prepare($sql);
         $stmt->execute([$payload['user_id']]);
         $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -52,7 +59,7 @@ function verificarAuth($database)
             http_response_code(401);
             echo json_encode([
                 'success' => false,
-                'message' => 'Usuário não encontrado ou inativo'
+                'message' => 'Usuário não encontrado ou inativo',
             ]);
             exit;
         }
@@ -62,23 +69,22 @@ function verificarAuth($database)
             'success' => true,
             'user' => $usuario,
             'user_id' => $usuario['id'],
-            'user_tipo' => $usuario['tipo']
+            'user_tipo' => $usuario['tipo'],
         ];
-
     } catch (Exception $e) {
-        error_log('❌ Erro no middleware de auth: ' . $e->getMessage());
-        
+        error_log('❌ Erro no middleware de auth: '.$e->getMessage());
+
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Erro ao validar autenticação'
+            'message' => 'Erro ao validar autenticação',
         ]);
         exit;
     }
 }
 
 /**
- * Verificar se usuário tem permissão de admin
+ * Verificar se usuário tem permissão de admin.
  */
 function verificarAdmin($database)
 {
@@ -88,7 +94,7 @@ function verificarAdmin($database)
         http_response_code(403);
         echo json_encode([
             'success' => false,
-            'message' => 'Acesso negado. Apenas administradores.'
+            'message' => 'Acesso negado. Apenas administradores.',
         ]);
         exit;
     }
@@ -97,7 +103,7 @@ function verificarAdmin($database)
 }
 
 /**
- * Verificar autenticação OPCIONAL (permite acesso mesmo sem token)
+ * Verificar autenticação OPCIONAL (permite acesso mesmo sem token).
  */
 function verificarAuthOpcional($database)
 {
@@ -108,20 +114,36 @@ function verificarAuthOpcional($database)
         return null; // Sem autenticação
     }
 
-    $security = new Security($database->conectar());
-    $token = str_replace('Bearer ', '', $authHeader);
+    $security = new Security($database->getConnection());
+
+    if (!preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Formato de token inválido',
+        ]);
+        exit;
+    }
+
+    $token = trim($matches[1]);
     $payload = $security->validateAccessToken($token);
 
     if (!$payload) {
-        return null; // Token inválido
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Token inválido ou expirado',
+            'code' => 'TOKEN_EXPIRED',
+        ]);
+        exit;
     }
 
     try {
-        $sql = "SELECT id, nome, email, tipo 
+        $sql = 'SELECT id, nome, email, tipo 
                 FROM usuarios 
-                WHERE id = ? AND ativo = 1";
-        
-        $stmt = $database->conectar()->prepare($sql);
+                WHERE id = ? AND ativo = 1';
+
+        $stmt = $database->getConnection()->prepare($sql);
         $stmt->execute([$payload['user_id']]);
         $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -129,14 +151,14 @@ function verificarAuthOpcional($database)
             return [
                 'success' => true,
                 'user' => $usuario,
-                'user_id' => $usuario['id']
+                'user_id' => $usuario['id'],
             ];
         }
 
         return null;
-
     } catch (Exception $e) {
-        error_log('❌ Erro ao verificar auth opcional: ' . $e->getMessage());
+        error_log('❌ Erro ao verificar auth opcional: '.$e->getMessage());
+
         return null;
     }
 }

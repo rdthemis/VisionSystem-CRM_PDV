@@ -99,7 +99,7 @@ class Produto
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
         $stmt->bindParam(':categoria_id', $this->categoria_id);
-        $stmt->bindParam(':ativo', $this->ativo);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
@@ -134,7 +134,7 @@ class Produto
         $stmt->bindParam(':preco', $this->preco);
         $stmt->bindParam(':categoria_id', $this->categoria_id);
         $stmt->bindParam(':ativo', $this->ativo);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }
@@ -148,7 +148,7 @@ class Produto
 
         $stmt = $this->conn->prepare($query);
         $this->id = intval($this->id);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }
@@ -158,7 +158,7 @@ class Produto
     {
         $query = 'SELECT id FROM categorias WHERE id = :id AND ativo = 1';
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $categoria_id);
+        $stmt->bindParam(':id', $categoria_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetch() !== false;

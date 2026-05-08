@@ -8,7 +8,7 @@ class Auth
 
     public function __construct($database)
     {
-        $this->db = $database->conectar();
+        $this->db = $database->getConnection();
     }
 
     // Login com verificação no banco

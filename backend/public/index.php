@@ -7,37 +7,50 @@
 
 use function Laravel\Prompts\error;
 
-require_once __DIR__.'/../src/Database.php';
-require_once __DIR__.'/cors.php';
-//require_once __DIR__.'/../src/Auth.php';
+// 1. Carregar configurações de ambiente
+require_once __DIR__.'/../config/environment.php';
+
+// 2. Carregar classes de segurança
+require_once __DIR__.'/../config/SecurityHeaders.php';
+require_once __DIR__.'/../config/InputValidator.php';
+
+// 3. Aplicar headers de segurança
+SecurityHeaders::apply(IS_PRODUCTION);
+SecurityHeaders::applyForAPI();
+
+// 4. Carregar outras dependências
+require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/../config/Database.php';
+require_once __DIR__.'/../config/Security.php';
+require_once __DIR__.'/../middleware/AuthMiddleware.php';
+require_once __DIR__.'/../config/Logger.php';
+
+// 5. Conectar ao banco
+$database = new Database();
+
 require_once __DIR__.'/../src/Clientes.php';
 require_once __DIR__.'/../src/ContasReceber.php';
 require_once __DIR__.'/../src/Recibos.php';
 require_once __DIR__.'/../src/Relatorios.php';
 require_once __DIR__.'/../src/Backup.php';
 require_once __DIR__.'/../src/EmailService.php';
+require_once __DIR__.'/../models/Caixa.php';
+require_once __DIR__.'/../models/Adicional.php';
+require_once __DIR__.'/../models/Categoria.php';
+require_once __DIR__.'/../models/Pedido.php';
+require_once __DIR__.'/../models/Produto.php';
+require_once __DIR__.'/../models/Usuario.php';
+require_once __DIR__.'/../models/ZonaEntrega.php';
 require_once __DIR__.'/../controllers/CategoriaController.php';
 require_once __DIR__.'/../controllers/ProdutoController.php';
 require_once __DIR__.'/../controllers/PedidoController.php';
 require_once __DIR__.'/../controllers/AuthController.php';
-require_once __DIR__.'/../middleware/AuthMiddleware.php';
 require_once __DIR__.'/../controllers/UsuarioController.php';
-
-$database = new Database();
-$database->conectar();
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
-
-// Sempre retornar JSON
-// header('Content-Type: application/json; charset=utf-8');
-// Headers obrigatórios
-// header('Access-Control-Allow-Origin: http://localhost:3000');
-// header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-// header('Access-Control-Allow-Headers: Content-Type, Authorization');
-// header('Access-Control-Allow-Credentials: true');
 
 // Responder OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -45,59 +58,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// GUARD - Evita que o arquivo seja carregado mais de uma vez
+// (Resolve: "Cannot redeclare getEnv()")
+// ══════════════════════════════════════════════════════════════════
+if (defined('ENVIRONMENT_LOADED')) {
+    return;
+}
+define('ENVIRONMENT_LOADED', true);
+
 // ==========================================
 // TRATAMENTO DE ERROS
 // ==========================================
 
 register_shutdown_function(function () {
     $error = error_get_last();
-    if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR])) {
+    if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        Logger::error('Fatal error', [
+            'erro' => $error['message'],
+            'arquivo' => $error['file'],
+            'linha' => $error['line']
+        ]);
+        
         http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Erro interno do servidor',
-            'debug' => [
+        $response = ['success' => false, 'message' => 'Erro interno do servidor'];
+        
+        if (!IS_PRODUCTION) {
+            $response['debug'] = [
                 'error' => $error['message'],
                 'file' => basename($error['file']),
                 'line' => $error['line'],
-            ],
-        ]);
-    }
-});
-
-set_exception_handler(function ($exception) {
-    error_log('❌ Exceção: '.$exception->getMessage());
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Erro interno do servidor',
-        'debug' => [
-            'error' => $exception->getMessage(),
-            'file' => basename($exception->getFile()),
-            'line' => $exception->getLine(),
-        ],
-    ]);
-});
-try {
-    // ==========================================
-    // CARREGAR DEPENDÊNCIAS
-    // ==========================================
-
-    // Carregar .env se existir
-    if (file_exists(__DIR__.'/../.env')) {
-        $lines = file(__DIR__.'/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos(trim($line), '#') === 0) {
-                continue;
-            }
-            if (strpos($line, '=') === false) {
-                continue;
-            }
-            list($name, $value) = explode('=', $line, 2);
-            $_ENV[trim($name)] = trim($value);
+            ];
         }
+        
+        echo json_encode($response);
+    }
+});
+
+// Handler de erro que mantém CORS
+set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    // Garantir CORS mesmo em erro
+    if (!headers_sent()) {
+        @header('Access-Control-Allow-Origin: http://localhost:3000');
+        @header('Access-Control-Allow-Credentials: true');
+        @header('Content-Type: application/json; charset=utf-8');
     }
 
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        Logger::error('Fatal error', [
+            'erro' => $error['message'],
+            'arquivo' => $error['file'],
+            'linha' => $error['line'],
+        ]);
+
+        http_response_code(500);
+        $response = ['success' => false, 'message' => 'Erro interno do servidor'];
+
+        if (!IS_PRODUCTION) {
+            $response['debug'] = [
+                'error' => $error['message'],
+                'file' => basename($error['file']),
+                'line' => $error['line'],
+            ];
+        }
+
+        echo json_encode($response);
+    }
+    exit;
+});
+
+try {
     // ==========================================
     // ROTEAMENTO
     // ==========================================
@@ -126,321 +157,319 @@ try {
         exit;
     }
 
-    if ($uri === '/db-test') {
-        $resultado = $database->testarConexao();
-        echo json_encode($resultado);
-        exit;
-    }
-
-    if ($uri === '/db-tables') {
-        $resultado = $database->verificarTabelas();
-        echo json_encode($resultado);
-        exit;
-    }
+    if (($uri === '/db-test' || $uri === '/db-tables') && !IS_PRODUCTION) {
+        if ($uri === '/db-test') {
+            $resultado = $database->getConnection();
+            echo json_encode($resultado);
+            exit;
+        }
+    
+        if ($uri === '/db-tables') {
+            $resultado = $database->verificarTabelas();
+            echo json_encode($resultado);
+            exit;
+        }
+}
 
     // ==========================================
     // ROTAS DE AUTENTICAÇÃO
     // ==========================================
-        
+
     // 🔐 POST /auth/login - Login com bcrypt
-if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/login') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
+    if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/login') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Dados inválidos',
+            ]);
+            exit;
+        }
+
+        $authController = new AuthController($database);
+        $authController->login($input);
         exit;
     }
 
-    $input = json_decode(file_get_contents('php://input'), true);
+    // 🔄 POST /auth/refresh - Renovar access token
+    if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/refresh') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
 
-    if (!$input) {
-        http_response_code(400);
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Dados inválidos',
+            ]);
+            exit;
+        }
+
+        $authController = new AuthController($database);
+        $authController->refresh($input);
+        exit;
+    }
+
+    // 🚪 POST /auth/logout - Logout (revogar tokens)
+    if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/logout') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Dados inválidos',
+            ]);
+            exit;
+        }
+
+        $authController = new AuthController($database);
+        $authController->logout($input);
+        exit;
+    }
+
+    // 🔐 PUT /auth/alterar-senha - Alterar senha
+    if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/auth/alterar-senha') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
+
+        // Requer autenticação
+        $authResult = verificarAuth($database);
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Dados inválidos',
+            ]);
+            exit;
+        }
+
+        $authController = new AuthController($database);
+        $authController->alterarSenha($input, $authResult['user_id']);
+        exit;
+    }
+
+    // 👤 GET /auth/me - Obter dados do usuário autenticado
+    if ($method === 'GET' && $uri === '/auth/me') {
+        $authResult = verificarAuth($database);
+
+        http_response_code(200);
         echo json_encode([
-            'success' => false,
-            'message' => 'Dados inválidos'
+            'success' => true,
+            'data' => $authResult['user'],
         ]);
         exit;
     }
 
-    $authController = new AuthController($database);
-    $authController->login($input);
-    exit;
-}
+    // 📊 GET /auth/sessoes - Listar sessões ativas do usuário
+    if ($method === 'GET' && $uri === '/auth/sessoes') {
+        $authResult = verificarAuth($database);
 
-// 🔄 POST /auth/refresh - Renovar access token
-if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/refresh') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
-        exit;
-    }
-
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    if (!$input) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Dados inválidos'
-        ]);
-        exit;
-    }
-
-    $authController = new AuthController($database);
-    $authController->refresh($input);
-    exit;
-}
-
-// 🚪 POST /auth/logout - Logout (revogar tokens)
-if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/auth/logout') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
-        exit;
-    }
-
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    if (!$input) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Dados inválidos'
-        ]);
-        exit;
-    }
-
-    $authController = new AuthController($database);
-    $authController->logout($input);
-    exit;
-}
-
-// 🔐 PUT /auth/alterar-senha - Alterar senha
-if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/auth/alterar-senha') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
-        exit;
-    }
-
-    // Requer autenticação
-    $authResult = verificarAuth($database);
-
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    if (!$input) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Dados inválidos'
-        ]);
-        exit;
-    }
-
-    $authController = new AuthController($database);
-    $authController->alterarSenha($input, $authResult['user_id']);
-    exit;
-}
-
-// 👤 GET /auth/me - Obter dados do usuário autenticado
-if ($method === 'GET' && $uri === '/auth/me') {
-    
-    $authResult = verificarAuth($database);
-
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'data' => $authResult['user']
-    ]);
-    exit;
-}
-
-// 📊 GET /auth/sessoes - Listar sessões ativas do usuário
-if ($method === 'GET' && $uri === '/auth/sessoes') {
-    
-    $authResult = verificarAuth($database);
-
-    try {
-        $sql = "SELECT id, ip_address, user_agent, created_at, last_activity, expires_at
+        try {
+            $sql = 'SELECT id, ip_address, user_agent, created_at, last_activity, expires_at
                 FROM sessoes_ativas 
                 WHERE usuario_id = ? 
-                ORDER BY last_activity DESC";
+                ORDER BY last_activity DESC';
 
-        $stmt = $database->conectar()->prepare($sql);
-        $stmt->execute([$authResult['user_id']]);
-        $sessoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $stmt = $database->getConnection()->prepare($sql);
+            $stmt->execute([$authResult['user_id']]);
+            $sessoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'data' => $sessoes
-        ]);
-
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Erro ao buscar sessões'
-        ]);
-    }
-    exit;
-}
-
-// 🗑️ DELETE /auth/sessoes - Revogar todas as sessões (exceto a atual)
-if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/auth/sessoes') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'data' => $sessoes,
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erro ao buscar sessões',
+            ]);
+        }
         exit;
     }
 
-    $authResult = verificarAuth($database);
-    $security = new Security($database->conectar());
+    // 🗑️ DELETE /auth/sessoes - Revogar todas as sessões (exceto a atual)
+    if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/auth/sessoes') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
 
-    // Obter token atual
-    $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-    $token = str_replace('Bearer ', '', $authHeader);
-    $payload = $security->decodeToken($token);
+        $authResult = verificarAuth($database);
+        $security = new Security($database->getConnection());
 
-    try {
-        // Deletar todas as sessões exceto a atual (se tiver refresh_token no payload)
-        $sql = "DELETE FROM sessoes_ativas 
-                WHERE usuario_id = ?";
+        // Obter token atual
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        if (preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
+            $token = trim($matches[1]);
+        } else {
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token inválido',
+            ]);
+            exit;
+        }
 
-        $stmt = $database->conectar()->prepare($sql);
-        $stmt->execute([$authResult['user_id']]);
+        $payload = $security->decodeToken($token);
 
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'message' => 'Todas as outras sessões foram encerradas'
-        ]);
+        try {
+            // Deletar todas as sessões exceto a atual (se tiver refresh_token no payload)
+            $sql = 'DELETE FROM sessoes_ativas 
+                WHERE usuario_id = ?';
 
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Erro ao revogar sessões'
-        ]);
+            $stmt = $database->getConnection()->prepare($sql);
+            $stmt->execute([$authResult['user_id']]);
+
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Todas as outras sessões foram encerradas',
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erro ao revogar sessões',
+            ]);
+        }
+        exit;
     }
-    exit;
-}
-        
 
     // ==========================================
     // ROTAS DE USUÁRIOS
     // ==========================================
 
     // GET /usuarios - Buscar usuários
-if ($method === 'GET' && $uri === '/usuarios') {
-    // Requer autenticação de ADMIN
-    $authResult = verificarAdmin($database);
+    if ($method === 'GET' && $uri === '/usuarios') {
+        // Requer autenticação de ADMIN
+        $authResult = verificarAdmin($database);
 
-    $usuariosController = new UsuarioController($database);
+        $usuariosController = new UsuarioController($database);
 
-    // Buscar por ID específico
-    if (isset($_GET['id'])) {
-        $usuariosController->buscarPorId($_GET['id']);
-    } else {
-        // Buscar todos
-        $apenasAtivos = isset($_GET['ativos']) && $_GET['ativos'] === 'true';
-        $usuariosController->buscarTodos($apenasAtivos);
-    }
-    exit;
-}
-
-// POST /usuarios - Criar usuário
-if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/usuarios') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
+        // Buscar por ID específico
+        if (isset($_GET['id'])) {
+            $usuariosController->buscarPorId($_GET['id']);
+        } else {
+            // Buscar todos
+            $apenasAtivos = isset($_GET['ativos']) && $_GET['ativos'] === 'true';
+            $usuariosController->buscarTodos($apenasAtivos);
+        }
         exit;
     }
 
-    // Requer autenticação de ADMIN
-    $authResult = verificarAdmin($database);
+    // POST /usuarios - Criar usuário
+    if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/usuarios') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
 
-    $input = json_decode(file_get_contents('php://input'), true);
+        // Requer autenticação de ADMIN
+        $authResult = verificarAdmin($database);
 
-    if (!$input) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Dados inválidos'
-        ]);
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Dados inválidos',
+            ]);
+            exit;
+        }
+
+        $usuariosController = new UsuarioController($database);
+        $usuariosController->criar($input);
         exit;
     }
 
-    $usuariosController = new UsuarioController($database);
-    $usuariosController->criar($input);
-    exit;
-}
+    // PUT /usuarios - Atualizar usuário
+    if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/usuarios') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
 
-// PUT /usuarios - Atualizar usuário
-if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/usuarios') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
+        // Requer autenticação de ADMIN
+        $authResult = verificarAdmin($database);
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input || !isset($input['id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'ID do usuário é obrigatório',
+            ]);
+            exit;
+        }
+
+        $usuariosController = new UsuarioController($database);
+        $usuariosController->atualizar($input);
         exit;
     }
 
-    // Requer autenticação de ADMIN
-    $authResult = verificarAdmin($database);
+    // DELETE /usuarios - Deletar usuário
+    if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/usuarios') {
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
 
-    $input = json_decode(file_get_contents('php://input'), true);
+        // Requer autenticação de ADMIN
+        $authResult = verificarAdmin($database);
 
-    if (!$input || !isset($input['id'])) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'ID do usuário é obrigatório'
-        ]);
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input || !isset($input['id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'ID do usuário é obrigatório',
+            ]);
+            exit;
+        }
+
+        $usuariosController = new UsuarioController($database);
+        $usuariosController->deletar($input['id']);
         exit;
     }
 
-    $usuariosController = new UsuarioController($database);
-    $usuariosController->atualizar($input);
-    exit;
-}
+    // GET /usuarios/estatisticas - Estatísticas
+    if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
+        // Requer autenticação de ADMIN
+        $authResult = verificarAdmin($database);
 
-// DELETE /usuarios - Deletar usuário
-if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/usuarios') {
-    
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
+        $usuariosController = new UsuarioController($database);
+        $usuariosController->obterEstatisticas();
         exit;
     }
-
-    // Requer autenticação de ADMIN
-    $authResult = verificarAdmin($database);
-
-    $input = json_decode(file_get_contents('php://input'), true);
-
-    if (!$input || !isset($input['id'])) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => 'ID do usuário é obrigatório'
-        ]);
-        exit;
-    }
-
-    $usuariosController = new UsuarioController($database);
-    $usuariosController->deletar($input['id']);
-    exit;
-}
-
-// GET /usuarios/estatisticas - Estatísticas
-if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
-    
-    // Requer autenticação de ADMIN
-    $authResult = verificarAdmin($database);
-
-    $usuariosController = new UsuarioController($database);
-    $usuariosController->obterEstatisticas();
-    exit;
-}
-
 
     // ==========================================
     // ROTAS DE CATEGORIAS
@@ -452,7 +481,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
         $categorias = new CategoriaController($database);
 
-        $resultado = $categorias->listar();
+        $categorias->listar();
 
         exit;
     }
@@ -473,14 +502,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $categorias = new CategoriaController($database);
-        $resultado = $categorias->criar($input);
-
-        if ($resultado['success']) {
-            http_response_code(201);
-        } else {
-            http_response_code(400);
-        }
-
+        $categorias->criar($input);
         exit;
     }
 
@@ -649,7 +671,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
         $produtos = new ProdutoController($database);
 
-        $resultado = $produtos->listar();
+        $produtos->listar();
 
         exit;
     }
@@ -670,13 +692,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $produtos = new ProdutoController($database);
-        $resultado = $produtos->criar($input);
-
-        if ($resultado['success']) {
-            http_response_code(201);
-        } else {
-            http_response_code(400);
-        }
+        $produtos->criar($input);
 
         exit;
     }
@@ -697,7 +713,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $produtos = new ProdutoController($database);
-        $resultado = $produtos->atualizar($input);
+        $produtos->atualizar($input);
 
         exit;
     }
@@ -718,10 +734,11 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $produtos = new ProdutoController($database);
-        $resultado = $produtos->deletar($input['id']);
+        $produtos->deletar($input['id']);
 
         exit;
     }
+
     // ==========================================
     // ROTAS DE PEDIDOS - VERSÃO CORRIGIDA
     // ==========================================
@@ -831,7 +848,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             ]);
             exit;
         }
-        error_log('Chegando no controler');
+        error_log('index.php L829 - Chegando no controler');
         // 🔧 CORREÇÃO: Usar o CONTROLLER, não o Model
         $pedidosController = new PedidoController($database);
         $resultado = $pedidosController->atualizar($input);
@@ -910,13 +927,12 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
     // 🔄 TRANSFERIR - POST /pedidos/transferir
     if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/pedidos/transferir') {
-        
         // Se for OPTIONS (preflight), retornar 204 sem autenticação
         if ($method === 'OPTIONS') {
             http_response_code(204);
             exit;
         }
-        
+
         // POST - requer autenticação
         $authResult = verificarAuth($database);
 
@@ -977,7 +993,6 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
     // POST /zonas-entrega - Criar zona
     if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/zonas-entrega') {
-        
         if ($method === 'OPTIONS') {
             http_response_code(204);
             exit;
@@ -991,7 +1006,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'Dados inválidos'
+                'message' => 'Dados inválidos',
             ]);
             exit;
         }
@@ -1004,7 +1019,6 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
     // PUT /zonas-entrega - Atualizar zona
     if (($method === 'PUT' || $method === 'OPTIONS') && $uri === '/zonas-entrega') {
-        
         if ($method === 'OPTIONS') {
             http_response_code(204);
             exit;
@@ -1018,7 +1032,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'ID da zona é obrigatório'
+                'message' => 'ID da zona é obrigatório',
             ]);
             exit;
         }
@@ -1031,7 +1045,6 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
     // DELETE /zonas-entrega - Deletar zona
     if (($method === 'DELETE' || $method === 'OPTIONS') && $uri === '/zonas-entrega') {
-        
         if ($method === 'OPTIONS') {
             http_response_code(204);
             exit;
@@ -1045,7 +1058,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'ID da zona é obrigatório'
+                'message' => 'ID da zona é obrigatório',
             ]);
             exit;
         }
@@ -1055,7 +1068,6 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         $zonasController->deletar($input['id']);
         exit;
     }
-
 
     // ==========================================
     // ROTAS DE CLIENTES
@@ -1114,7 +1126,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $clientes = new Clientes($database);
-        $resultado = $clientes->criar($input, $authResult['usuario_id']);
+        $resultado = $clientes->criar($input, $authResult['user_id']);
 
         if ($resultado['success']) {
             http_response_code(201);
@@ -1142,7 +1154,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $clientes = new Clientes($database);
-        $resultado = $clientes->atualizar($id, $input, $authResult['usuario_id']);
+        $resultado = $clientes->atualizar($id, $input, $authResult['user_id']);
 
         if ($resultado['success']) {
             http_response_code(200);
@@ -1244,7 +1256,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $contasReceber = new ContasReceber($database);
-        $resultado = $contasReceber->criar($input, $authResult['usuario_id']);
+        $resultado = $contasReceber->criar($input, $authResult['user_id']);
 
         if ($resultado['success']) {
             http_response_code(201);
@@ -1272,7 +1284,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $contasReceber = new ContasReceber($database);
-        $resultado = $contasReceber->atualizar($id, $input, $authResult['usuario_id']);
+        $resultado = $contasReceber->atualizar($id, $input, $authResult['user_id']);
 
         if ($resultado['success']) {
             http_response_code(200);
@@ -1317,7 +1329,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $contasReceber = new ContasReceber($database);
-        $resultado = $contasReceber->adicionarPagamento($contaId, $input, $authResult['usuario_id']);
+        $resultado = $contasReceber->adicionarPagamento($contaId, $input, $authResult['user_id']);
 
         if ($resultado['success']) {
             http_response_code(201);
@@ -1356,7 +1368,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
         $dataInicio = $_GET['data_inicio'] ?? date('Y-m-01');
         $dataFim = $_GET['data_fim'] ?? date('Y-m-t');
-        $tipo = $_GET['user_tipo'] ?? 'vencimento';
+        $tipo = $_GET['tipo'] ?? 'vencimento';
 
         $contasReceber = new ContasReceber($database);
         $resultado = $contasReceber->relatorio($dataInicio, $dataFim, $tipo);
@@ -1385,7 +1397,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         $authResult = verificarAuth($database);
 
         require_once __DIR__.'/../models/Caixa.php';
-        $caixa = new Caixa($database->conectar());
+        $caixa = new Caixa($database->getConnection());
 
         try {
             // Verificar se é busca de resumo
@@ -1404,8 +1416,8 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
                 $caixaId = $_GET['caixa_id'] ?? null;
                 $filtros = [];
 
-                if (isset($_GET['user_tipo'])) {
-                    $filtros['user_tipo'] = $_GET['user_tipo'];
+                if (isset($_GET['tipo'])) {
+                    $filtros['tipo'] = $_GET['tipo'];
                 }
                 if (isset($_GET['categoria'])) {
                     $filtros['categoria'] = $_GET['categoria'];
@@ -1491,7 +1503,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
                 $user_id = $authResult['user']['id'];
                 error_log("✅ Usuario ID encontrado em ['user']: ".$user_id);
             } elseif (isset($authResult['user']) && isset($authResult['user']['user_id'])) {
-                // Dados estão em $authResult['usuario']['usuario_id']
+                // Dados estão em $authResult['usuario']['user_id']
                 $user_id = $authResult['user']['user_id'];
                 error_log("✅ Usuario ID encontrado em ['user']['user_id']: ".$user_id);
             }
@@ -1527,7 +1539,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             }
 
             require_once __DIR__.'/../models/Caixa.php';
-            $caixa = new Caixa($database->conectar());
+            $caixa = new Caixa($database->getConnection());
 
             // Verificar se já existe caixa aberto
             $caixaAberto = $caixa->verificarCaixaAberto();
@@ -1594,16 +1606,15 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
     // POST /caixa/movimento - Adicionar movimento ao caixa
     if ($method === 'POST' && $uri === '/caixa/movimento') {
         $authResult = verificarAuth($database);
-        error_log('Auth result: '.json_encode($authResult));
+        error_log('Auth result linha 1586: '.json_encode($authResult));
 
-        require_once __DIR__.'/../models/Caixa.php';
-        $caixa = new Caixa($database->conectar());
+        $caixa = new Caixa($database->getConnection());
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
 
             // Validar dados obrigatórios
-            $camposObrigatorios = ['user_tipo', 'valor', 'descricao', 'categoria'];
+            $camposObrigatorios = ['tipo', 'valor', 'descricao', 'categoria'];
             foreach ($camposObrigatorios as $campo) {
                 if (!isset($input[$campo]) || empty($input[$campo])) {
                     echo json_encode([
@@ -1615,7 +1626,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
                 }
             }
 
-            if (!in_array($input['user_tipo'], ['entrada', 'saida'])) {
+            if (!in_array($input['tipo'], ['entrada', 'saida'])) {
                 echo json_encode([
                     'success' => false,
                     'message' => 'Tipo deve ser "entrada" ou "saida"',
@@ -1646,18 +1657,18 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
 
             // Verificar se tem usuario_id (pode estar direto no authResult ou em ['usuario'])
             $user_id = null;
-            if (isset($authResult['usuario_id'])) {
+            if (isset($authResult['user_id'])) {
                 // Dados estão diretamente no authResult
-                $user_id = $authResult['usuario_id'];
+                $user_id = $authResult['user_id'];
                 error_log('✅ Usuario ID encontrado diretamente: '.$user_id);
             } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['id'])) {
                 // Dados estão em $authResult['usuario']
                 $user_id = $authResult['usuario']['id'];
                 error_log("✅ Usuario ID encontrado em ['usuario']: ".$user_id);
-            } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['usuario_id'])) {
-                // Dados estão em $authResult['usuario']['usuario_id']
-                $user_id = $authResult['usuario']['usuario_id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']['usuario_id']: ".$user_id);
+            } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['user_id'])) {
+                // Dados estão em $authResult['usuario']['user_id']
+                $user_id = $authResult['usuario']['user_id'];
+                error_log("✅ Usuario ID encontrado em ['usuario']['user_id']: ".$user_id);
             }
 
             if (!$user_id) {
@@ -1674,7 +1685,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             error_log('✅ Autenticação OK - Usuario ID: '.$user_id);
 
             $resultado = $caixa->adicionarMovimento(
-                $input['user_tipo'],
+                $input['tipo'],
                 floatval($input['valor']),
                 $input['descricao'],
                 $input['categoria'],
@@ -1704,7 +1715,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         $authResult = verificarAuth($database);
 
         // 🔧 VALIDAÇÃO: Verificar se há pedidos em aberto
-        $pedidosModel = new Pedido($database->conectar());
+        $pedidosModel = new Pedido($database->getConnection());
         $pedidosAbertos = $pedidosModel->buscarTodos('aberto');
 
         if (!empty($pedidosAbertos)) {
@@ -1718,13 +1729,13 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         require_once __DIR__.'/../models/Caixa.php';
-        $caixa = new Caixa($database->conectar());
+        $caixa = new Caixa($database->getConnection());
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
 
             $observacoes = $input['observacoes_fechamento'] ?? '';
-            $user_id = $authResult['usuario_id'];
+            $user_id = $authResult['user_id'];
 
             $resultado = $caixa->fecharCaixa($user_id, $observacoes);
 
@@ -1804,7 +1815,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         $recibos = new Recibos($database);
 
         // Pegar usuario_id do authResult
-        $user_id = $authResult['usuario_id'];
+        $user_id = $authResult['user_id'];
 
         $resultado = $recibos->criar($input, $user_id);
 
@@ -1852,8 +1863,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         try {
-            $usuarioController = new UsuarioController($database);
-            $authResult = $usuarioController->verificarToken($token);
+            $authResult = verificarAuth($database);
 
             if (!$authResult) {
                 http_response_code(401);
@@ -1917,8 +1927,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             $totalClientes = $stmt->fetch()['total'];
 
             // Clientes por tipo
-            $stmt = $pdo->query('
-    SELECT
+            $stmt = $pdo->query('SELECT
     tipo_pessoa,
     COUNT(*) as total
     FROM clientes
@@ -1928,8 +1937,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             $clientesPorTipo = $stmt->fetchAll();
 
             // Clientes por UF
-            $stmt = $pdo->query('
-    SELECT
+            $stmt = $pdo->query('SELECT
     uf,
     COUNT(*) as total
     FROM clientes
@@ -1941,16 +1949,14 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             $clientesPorUF = $stmt->fetchAll();
 
             // Clientes cadastrados hoje
-            $stmt = $pdo->query('
-    SELECT COUNT(*) as total
+            $stmt = $pdo->query('SELECT COUNT(*) as total
     FROM clientes
     WHERE ativo = 1 AND DATE(created_at) = CURDATE()
     ');
             $clientesHoje = $stmt->fetch()['total'];
 
             // Contas a receber
-            $stmt = $pdo->query("
-    SELECT
+            $stmt = $pdo->query("SELECT
     COUNT(*) as total_contas,
     SUM(valor_original - valor_recebido) as valor_pendente,
     SUM(CASE WHEN status = 'vencido' THEN valor_original - valor_recebido ELSE 0 END) as valor_vencido
@@ -1958,8 +1964,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
     WHERE ativo = 1 AND status IN ('pendente', 'vencido')
     ");
             $contasReceber = $stmt->fetch();
-            $stmt = $pdo->query('
-    SELECT COUNT(*) as total
+            $stmt = $pdo->query('SELECT COUNT(*) as total
     FROM clientes
     WHERE ativo = 1 AND YEARWEEK(created_at) = YEARWEEK(NOW())
     ');
@@ -2080,7 +2085,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $usuarioController = new UsuarioController($database);
-        $usuarioController->listarUsuario();
+        $usuarioController->buscarTodos();
 
         exit;
     }
@@ -2095,9 +2100,9 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        
+
         $usuarioController = new UsuarioController($database);
-        $usuarioController->criarUsuario($input);
+        $usuarioController->criar($input);
         exit;
     }
 
@@ -2199,7 +2204,7 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $arquivo = $input['arquivo'] ?? '';
-            $tipoRestore = $input['user_tipo'] ?? 'normal'; // 'normal' ou 'completo'
+            $tipoRestore = $input['tipo'] ?? 'normal'; // 'normal' ou 'completo'
 
             if (empty($arquivo)) {
                 throw new Exception('Nome do arquivo não fornecido');
@@ -2485,16 +2490,16 @@ if ($method === 'GET' && $uri === '/usuarios/estatisticas') {
             // Testar diferentes estruturas
             $possiveisUsuarioIds = [];
 
-            if (isset($authResult['usuario_id'])) {
-                $possiveisUsuarioIds['direto'] = $authResult['usuario_id'];
+            if (isset($authResult['user_id'])) {
+                $possiveisUsuarioIds['direto'] = $authResult['user_id'];
             }
 
             if (isset($authResult['usuario']) && isset($authResult['usuario']['id'])) {
                 $possiveisUsuarioIds['usuario.id'] = $authResult['usuario']['id'];
             }
 
-            if (isset($authResult['usuario']) && isset($authResult['usuario']['usuario_id'])) {
-                $possiveisUsuarioIds['usuario.usuario_id'] = $authResult['usuario']['usuario_id'];
+            if (isset($authResult['usuario']) && isset($authResult['usuario']['user_id'])) {
+                $possiveisUsuarioIds['usuario.usuario_id'] = $authResult['usuario']['user_id'];
             }
 
             if (isset($authResult['id'])) {

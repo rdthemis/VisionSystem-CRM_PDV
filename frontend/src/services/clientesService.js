@@ -1,6 +1,7 @@
 // frontend/src/services/clientesService.js
 
 import axios from 'axios';
+import logger from '../utils/Logger';
 
 // Configuração base da API
 // Se o XAMPP estiver na porta 80 (padrão):
@@ -24,7 +25,7 @@ const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Erro na API:', error);
+        logger.error('Erro na API:', { erro: error });
         return Promise.reject(error);
     }
 );
@@ -57,7 +58,7 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        logger.error('Erro na requisição:', { erro: error });
         throw error;
     }
 };
@@ -162,7 +163,7 @@ const clientesService = {
                 }
             };
         } catch (error) {
-            console.error('Erro ao buscar CEP:', error);
+            logger.error('Erro ao buscar CEP:', { erro: error });
             return {
                 success: false,
                 message: 'Erro ao buscar CEP'

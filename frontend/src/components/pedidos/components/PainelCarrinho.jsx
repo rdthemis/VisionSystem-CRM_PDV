@@ -25,12 +25,15 @@ const PainelCarrinho = ({
   onIncrementarQuantidade,
   onDecrementarQuantidade,
   onImprimir,
+  onContaConsumo,   // 🆕 Handler para conta de consumo
   onFinalizar,
   onVincular,
   onPagar,
   buscarPedidos,      // 🆕 Para o modal de transferência
   onTransferir,       // 🆕 Callback de transferência
 }) => {
+
+  // ...
 
   // ----------------------------------------
   // 📦 ESTADOS DOS MODAIS
@@ -210,13 +213,22 @@ const PainelCarrinho = ({
           {/* 🆕 CONTA */}
           <button
             className="btn-acao"
-            onClick={() => setModalContaVisivel(true)}
+            onClick={onContaConsumo}
             disabled={carrinho.length === 0}
             title="Ver conta do cliente"
           >
             <i className="fas fa-receipt"></i>
             <span>Conta</span>
           </button>
+          {/*<button
+            className="btn-acao"
+            onClick={() => setModalContaVisivel(true)}
+            disabled={carrinho.length === 0}
+            title="Ver conta do cliente"
+          >
+            <i className="fas fa-receipt"></i>
+            <span>Conta</span>
+          </button>*/}
 
           {/* 🆕 TRANSFERÊNCIA */}
           <button

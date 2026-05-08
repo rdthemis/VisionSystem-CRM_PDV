@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import thermalPrintService from '../services/thermalPrintService'; // ajuste o caminho conforme necessário
+import Logger from '../utils/Logger';
 
 const DiagnosticoImpressora = () => {
     const [resultado, setResultado] = useState('');
@@ -27,9 +28,7 @@ const DiagnosticoImpressora = () => {
         setEtapaAtual('Verificando portas autorizadas...');
 
         try {
-            console.clear();
-            console.log('🚀 INICIANDO DIAGNÓSTICO DA IMPRESSORA');
-            console.log('═══════════════════════════════════════');
+            Logger.info('INICIANDO DIAGNÓSTICO DA IMPRESSORA', {info: "Diagnóstico Impressora"});
 
             // 🔧 CHAMAR DIAGNÓSTICO SEM TENTAR CONEXÃO (evita user gesture)
             const diagnostico = await thermalPrintService.diagnosticarConexao(false);
@@ -37,23 +36,23 @@ const DiagnosticoImpressora = () => {
             let mensagem = '';
 
             if (diagnostico.success) {
-                mensagem = '✅ DIAGNÓSTICO CONCLUÍDO!\n\n';
+                mensagem = 'DIAGNÓSTICO CONCLUÍDO!\n\n';
 
                 if (diagnostico.hasAuthorizedPorts) {
-                    mensagem += '📟 Encontradas impressoras já autorizadas!\n';
+                    mensagem += 'Encontradas impressoras já autorizadas!\n';
                     mensagem += 'Use o botão "Conectar" para testar a conexão.\n\n';
                 } else {
-                    mensagem += '⚠️ Nenhuma impressora autorizada encontrada.\n';
+                    mensagem += 'Nenhuma impressora autorizada encontrada.\n';
                     mensagem += 'Use o botão "Conectar" para selecionar sua impressora.\n\n';
                 }
 
                 if (diagnostico.vendorId) {
-                    mensagem += `📋 Informações salvas:\n`;
+                    mensagem += `Informações salvas:\n`;
                     mensagem += `• VendorId: 0x${diagnostico.vendorId}\n`;
                     mensagem += `• ProductId: 0x${diagnostico.productId}\n\n`;
                 }
 
-                mensagem += '📋 Detalhes:\n';
+                mensagem += 'Detalhes:\n';
                 diagnostico.details.forEach(detalhe => {
                     mensagem += `• ${detalhe}\n`;
                 });

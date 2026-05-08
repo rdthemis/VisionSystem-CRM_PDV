@@ -1,15 +1,16 @@
 // src/services/printService.js
-// 🖨️ Serviço principal de impressão - VERSÃO REFATORADA E CORRIGIDA
-// ✅ Código duplicado removido
-// ✅ Templates reutilizáveis
-// ✅ Integração com ConfigService
-// ✅ FUNÇÕES TÉRMICAS ADICIONADAS - conectarImpressoraTermica, desconectarImpressoraTermica, testarImpressoraTermica
+//  Serviço principal de impressão - VERSÃO REFATORADA E CORRIGIDA
+//  Código duplicado removido
+//  Templates reutilizáveis
+//  Integração com ConfigService
+//  FUNÇÕES TÉRMICAS ADICIONADAS - conectarImpressoraTermica, desconectarImpressoraTermica, testarImpressoraTermica
 
 import thermalPrintService from './thermalPrintService';
 import configService from './ConfigService';
+import Logger from '../utils/Logger';
 
 // ========================================
-// 📋 TEMPLATES HTML REUTILIZÁVEIS
+//   TEMPLATES HTML REUTILIZÁVEIS
 // ========================================
 
 const HTMLTemplates = {
@@ -218,27 +219,50 @@ const HTMLTemplates = {
      */
     formatarPreco: (valor) => {
         return `R$ ${parseFloat(valor || 0).toFixed(2)}`;
-    }
+    },
+
+    /**
+     * Função para verificar tipo de entrega e retornar texto correspondente
+     */
+    
+    
 };
 
+const verificaTipoEntrega = (venda) => {
+    return TIPO_LABELS[venda.tipo_entrega] || TIPO_LABELS['local'];
+};
+
+// ── Labels dos tipos de pedido ────────────────────────────────────
+const TIPO_LABELS = {
+    delivery: { texto: 'DELIVERY' },
+    drive_thru: { texto: 'DRIVE-THRU' },
+    local: { texto: 'CONSUMO LOCAL' },
+    entrega_gratis: { texto: 'DELIVERY' },
+    centro: { texto: 'DELIVERY' },
+    bairro_proximo: { texto: 'DELIVERY' },
+    bairro_distante: { texto: 'DELIVERY' },
+    zona_rural: { texto: 'DELIVERY' },
+    mesa: { texto: 'MESA' },
+}
+
 // ========================================
-// 🖨️ SERVIÇO PRINCIPAL
+//  SERVIÇO PRINCIPAL
 // ========================================
 
 const printService = {
 
-    // 🔧 Obter tipo de impressora configurada
+    //  Obter tipo de impressora configurada
     obterTipoImpressao: () => {
         return configService.get('impressora_tipo');
     },
 
-    // 🔧 Verificar se é térmica
+    //  Verificar se é térmica
     isTermica: () => {
         return configService.isTermica();
     },
 
     // ========================================
-    // 📄 IMPRESSÃO DE COMANDA
+    //  IMPRESSÃO DE COMANDA
     // ========================================
 
     /**
@@ -246,7 +270,7 @@ const printService = {
     */
     imprimirComanda: async (dados) => {
     try {
-        console.log('🖨️ Imprimindo comanda:', dados);
+        Logger.info(' Imprimindo comanda:', { info: 'printService.imprimirComanda', dados });
 
         const config = await configService.get('impressao_comanda');
         const impressora = config?.impressora || 'padrao';
@@ -265,7 +289,7 @@ const printService = {
         ${dados.tipo_pedido === 'entrega' ? '🚚 ENTREGA' : '📍 BALCÃO'}
         `;
 
-        // 🚚 ADICIONAR DADOS DE ENTREGA SE HOUVER
+        // ADICIONAR DADOS DE ENTREGA SE HOUVER
         if (dados.tipo_pedido === 'entrega') {
         conteudo += `
         ──────────────────────────────
@@ -287,7 +311,7 @@ const printService = {
         `;
 
         // Itens
-        dados.itens.forEach((item, index) => {
+        dados.itens?.forEach((item, index) => {
         conteudo += `
         ${index + 1}. ${item.nome}
             Qtd: ${item.quantidade}
@@ -296,7 +320,7 @@ const printService = {
         // Adicionais
         if (item.adicionais && item.adicionais.length > 0) {
             conteudo += '   Adicionais:\n';
-            item.adicionais.forEach(adicional => {
+            item.adicionais?.forEach(adicional => {
             conteudo += `   + ${adicional.nome}\n`;
             });
         }
@@ -361,7 +385,7 @@ const printService = {
         return { success: true };
 
     } catch (error) {
-        console.error('❌ Erro ao imprimir comanda:', error);
+        Logger.error(' Erro ao imprimir comanda:', { erro: error });
         throw error;
     }
     },
@@ -371,10 +395,11 @@ const printService = {
     // ============================================
 
     // Localizar a função imprimirReciboVenda e adicionar dados de entrega:
-
+    
+    /**
     imprimirReciboVenda: async (dados) => {
     try {
-        console.log('🖨️ Imprimindo recibo:', dados);
+        console.log(' Imprimindo recibo:', dados);
 
         const config = await configService.getConfiguracao('impressao_recibo');
 
@@ -463,10 +488,10 @@ const printService = {
             <title>Recibo ${dados.numero}</title>
             <style>
                 @page { size: 80mm auto; margin: 0; }
-                body { 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px; 
-                margin: 0; 
+                body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                margin: 0;
                 padding: 10px;
                 white-space: pre-wrap;
                 }
@@ -486,24 +511,25 @@ const printService = {
         return { success: true };
 
     } catch (error) {
-        console.error('❌ Erro ao imprimir recibo:', error);
+        console.error(' Erro ao imprimir recibo:', error);
         throw error;
     }
     },
+    */
 
     imprimirComandaTermica: async (pedido) => {
         // Implementação comentada - descomentar quando thermalPrintService estiver pronto
         const statusConexao = await thermalPrintService.obterStatusDetalhado();
 
         if (!statusConexao.conectada) {
-            console.log(`🔄 Reconectando...`);
+            Logger.info(' Impressionando comanda:', { info: 'printService.imprimirComandaTermica', pedido });
             await thermalPrintService.conectar();
         }
 
         const comandosESCPOS = thermalPrintService.gerarComandaESCPOS(pedido);
         return await thermalPrintService.enviarParaImpressora(comandosESCPOS, 'comanda');
         /*
-        console.log('⚠️ Impressão térmica ainda não implementada, usando fallback');
+        console.log('  Impressão térmica ainda não implementada, usando fallback');
         const htmlComanda = printService.gerarHTMLComanda(pedido);
         return await printService.executarImpressao(htmlComanda, 'comanda');*/
     },
@@ -576,29 +602,29 @@ const printService = {
     },
 
     // ========================================
-    // 🧾 IMPRESSÃO DE RECIBO DE VENDA
+    //  IMPRESSÃO DE RECIBO DE VENDA
     // ========================================
 
     imprimirReciboVenda: async (venda) => {
         try {
             if (printService.isTermica()) {
-                console.log('🔥 Usando impressão térmica para recibo');
+                Logger.info(' Usando impressão térmica para recibo', { info: 'printService.imprimirReciboVenda', venda });
                 return await printService.imprimirReciboTermica(venda);
             } else {
-                console.log('🖨️ Usando impressão comum para recibo', venda);
+                Logger.debug(' Usando impressão comum para recibo', { debug: 'printService.imprimirReciboVenda', venda });
                 const htmlRecibo = printService.gerarHTMLRecibo(venda);
                 return await printService.executarImpressao(htmlRecibo, 'recibo');
             }
         } catch (error) {
-            console.error('❌ Erro ao imprimir recibo:', error);
+            Logger.error(' Erro ao imprimir recibo:', { erro: error });
 
-            // Fallback para impressão comum
-            if (printService.isTermica()) {
-                console.log('🔄 Fallback: tentando impressão comum...');
+                // Fallback para impressão comum
+                if (printService.isTermica()) {
+                Logger.info(' Fallback: tentando impressão comum...', { info: 'printService.imprimirReciboVenda', venda });
                 const htmlRecibo = printService.gerarHTMLRecibo(venda);
                 return await printService.executarImpressao(htmlRecibo, 'recibo');
             }
-
+            Logger.error(' Erro ao imprimir recibo:', { erro: error });
             throw error;
         }
     },
@@ -608,14 +634,14 @@ const printService = {
         const statusConexao = await thermalPrintService.obterStatusDetalhado();
 
         if (!statusConexao.conectada) {
-            console.log(`🔄 Reconectando...`);
+            Logger.info(` Reconectando...`, { info: 'printService.imprimirReciboTermica', venda });
             await thermalPrintService.conectar();
         }
 
         const comandosESCPOS = thermalPrintService.gerarReciboESCPOS(venda);
         return await thermalPrintService.enviarParaImpressora(comandosESCPOS, 'recibo');
         /*
-        console.log('⚠️ Impressão térmica de recibo ainda não implementada, usando fallback');
+        console.log('  Impressão térmica de recibo ainda não implementada, usando fallback');
         const htmlRecibo = printService.gerarHTMLRecibo(venda);
         return await printService.executarImpressao(htmlRecibo, 'recibo');*/
     },
@@ -639,6 +665,10 @@ const printService = {
             <span>${venda.cliente || 'Não informado'}</span>
         </div>
         <div class="info-linha">
+        <strong>Tipo de Pedido:</strong>
+            <span>${verificaTipoEntrega(venda).texto}</span>
+        </div>
+        <div class="info-linha">
             <strong>Forma de Pagamento:</strong>
             <span>${venda.forma_pagamento || 'Não especificada'}</span>
         </div>
@@ -650,7 +680,7 @@ const printService = {
         // Itens da venda
         html += `
     <div class="secao">
-        <div class="secao-titulo">📦 PRODUTOS</div>
+        <div class="secao-titulo">PRODUTOS</div>
 `;
 
         venda.itens.forEach(item => {
@@ -682,7 +712,7 @@ const printService = {
         const subtotal = venda.itens.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
         const total = subtotal - (venda.desconto || 0);
         const valorPago = parseFloat(venda.valor_pago || total);
-        const troco = valorPago - total;
+        const troco = valorPago - total - venda.taxa_entrega;
 
         html += `
     <div class="totais">
@@ -699,6 +729,10 @@ const printService = {
         <div class="total-linha total-final">
             <strong>TOTAL:</strong>
             <strong>${HTMLTemplates.formatarPreco(total)}</strong>
+        </div>
+        <div class="total-linha total-final">
+            <strong>ENTREGA:</strong>
+            <strong>${HTMLTemplates.formatarPreco(venda.taxa_entrega || 0)}</strong>
         </div>
         ${venda.forma_pagamento !== 'prazo' ? `
         <div class="linha-separadora"></div>
@@ -722,7 +756,7 @@ const printService = {
     },
 
     // ========================================
-    // 📊 IMPRESSÃO DE RELATÓRIO DE CAIXA
+    //  IMPRESSÃO DE RELATÓRIO DE CAIXA
     // ========================================
 
     imprimirRelatorioCaixa: async (dadosCaixa) => {
@@ -730,7 +764,7 @@ const printService = {
             const html = printService.gerarHTMLRelatorio(dadosCaixa);
             return await printService.executarImpressao(html, 'relatorio');
         } catch (error) {
-            console.error('❌ Erro ao imprimir relatório:', error);
+            Logger.error(' Erro ao imprimir relatório:', { erro: error });
             throw error;
         }
     },
@@ -750,7 +784,7 @@ const printService = {
         // Informações do caixa
         html += `
     <div class="secao">
-        <div class="secao-titulo">📊 RELATÓRIO DE FECHAMENTO DE CAIXA</div>
+        <div class="secao-titulo"> RELATÓRIO DE FECHAMENTO DE CAIXA</div>
         <div class="info-linha">
             <strong>Caixa #:</strong>
             <span>${dadosCaixa.id}</span>
@@ -775,7 +809,7 @@ const printService = {
         // Resumo financeiro
         html += `
     <div class="secao">
-        <div class="secao-titulo">💰 RESUMO FINANCEIRO</div>
+        <div class="secao-titulo"> RESUMO FINANCEIRO</div>
         <div class="totais">
             <div class="total-linha">
                 <strong>Saldo Inicial:</strong>
@@ -802,7 +836,7 @@ const printService = {
             html += `
     <div class="linha-separadora"></div>
     <div class="secao">
-        <div class="secao-titulo">📈 MOVIMENTOS (${entradas.length + saidas.length} total)</div>
+        <div class="secao-titulo"> MOVIMENTOS (${entradas.length + saidas.length} total)</div>
         <div class="info-linha">
             <span>Entradas: ${entradas.length}</span>
             <span>Saídas: ${saidas.length}</span>
@@ -817,7 +851,7 @@ const printService = {
     },
 
     // ========================================
-    // 🖨️ FUNÇÕES DE EXECUÇÃO
+    //  FUNÇÕES DE EXECUÇÃO
     // ========================================
 
     executarImpressao: async (htmlContent, tipo) => {
@@ -862,7 +896,7 @@ const printService = {
     },
 
     // ========================================
-    // 🔧 CONFIGURAÇÕES E UTILITÁRIOS
+    //  CONFIGURAÇÕES E UTILITÁRIOS
     // ========================================
 
     configurarImpressora: (novoTipo, opcoes = {}) => {
@@ -876,7 +910,7 @@ const printService = {
             configService.set('impressora_cortar_papel', opcoes.cortarPapel);
         }
 
-        console.log(`✅ Impressora configurada: ${novoTipo}`);
+        Logger.info(` Impressora configurada: ${novoTipo}`);
 
         // Iniciar monitoramento se mudou para térmica
         if (novoTipo === 'termica') {
@@ -899,7 +933,7 @@ const printService = {
     iniciarMonitoramentoConexao: () => {
         if (!printService.isTermica()) return;
 
-        console.log('🔄 Iniciando monitoramento de conexão térmica...');
+        Logger.info(' Iniciando monitoramento de conexão térmica...', {info: 'printService.iniciarMonitoramentoConexao'});
 
         const verificar = async () => {
             const status = await thermalPrintService.obterStatusDetalhado();
@@ -919,7 +953,7 @@ const printService = {
 
     conectarViaInterface: async () => {
         if (!printService.isTermica()) {
-            console.log('⚠️ Não é impressora térmica');
+            Logger.info('  Não é impressora térmica', { info: 'printService.conectarViaInterface' });
             return false;
         }
 
@@ -932,14 +966,14 @@ const printService = {
 
             return conectado;
         } catch (error) {
-            console.error('❌ Erro ao conectar:', error);
+            Logger.error(' Erro ao conectar:', { erro: error });
             return false;
         }
     },
 
     // ========================================
-    // 🔌 FUNÇÕES PARA GERENCIAR IMPRESSORA TÉRMICA
-    // ✅ NOVAS FUNÇÕES ADICIONADAS PARA CORRIGIR ERRO
+    // FUNÇÕES PARA GERENCIAR IMPRESSORA TÉRMICA
+    //  NOVAS FUNÇÕES ADICIONADAS PARA CORRIGIR ERRO
     // ========================================
 
     /**
@@ -947,7 +981,7 @@ const printService = {
      */
     conectarImpressoraTermica: async () => {
         if (!printService.isTermica()) {
-            console.log('⚠️ Não é impressora térmica');
+            Logger.info('  Não é impressora térmica', { info: 'printService.conectarImpressoraTermica' });
             return {
                 success: false,
                 conectado: false,
@@ -956,7 +990,7 @@ const printService = {
         }
 
         try {
-            console.log('🔌 Conectando impressora térmica via interface do usuário...');
+            Logger.info('Conectando impressora térmica via interface do usuário...', { info: 'printService.conectarImpressoraTermica' });
             const conectado = await thermalPrintService.conectar();
 
             // Disparar evento de mudança de status
@@ -968,11 +1002,11 @@ const printService = {
                 success: conectado,
                 conectado: conectado,
                 message: conectado
-                    ? '✅ Impressora térmica conectada com sucesso!'
-                    : '❌ Falha ao conectar impressora térmica'
+                    ? ' Impressora térmica conectada com sucesso!'
+                    : ' Falha ao conectar impressora térmica'
             };
-        } catch (error) {
-            console.error('❌ Erro ao conectar impressora térmica:', error);
+        } catch (error) {   
+            Logger.error(' Erro ao conectar impressora térmica:', { erro: error });
 
             return {
                 success: false,
@@ -988,7 +1022,7 @@ const printService = {
      */
     desconectarImpressoraTermica: async () => {
         if (!printService.isTermica()) {
-            console.log('⚠️ Não é impressora térmica');
+            Logger.info('  Não é impressora térmica', { info: 'printService.desconectarImpressoraTermica' });
             return {
                 success: false,
                 message: 'Tipo de impressora configurado não é térmica'
@@ -996,7 +1030,7 @@ const printService = {
         }
 
         try {
-            console.log('🔌 Desconectando impressora térmica...');
+            Logger.info('Desconectando impressora térmica...', { info: 'printService.desconectarImpressoraTermica' });
             const desconectado = await thermalPrintService.desconectar();
 
             // Disparar evento de mudança de status
@@ -1007,11 +1041,11 @@ const printService = {
             return {
                 success: desconectado,
                 message: desconectado
-                    ? '🔌 Impressora térmica desconectada'
-                    : '❌ Erro ao desconectar'
+                    ? 'Impressora térmica desconectada'
+                    : ' Erro ao desconectar'
             };
         } catch (error) {
-            console.error('❌ Erro ao desconectar impressora:', error);
+            Logger.error(' Erro ao desconectar impressora:', { erro: error });
 
             return {
                 success: false,
@@ -1026,7 +1060,7 @@ const printService = {
      */
     testarImpressoraTermica: async () => {
         if (!printService.isTermica()) {
-            console.log('⚠️ Não é impressora térmica');
+            Logger.info('  Não é impressora térmica', { info: 'printService.testarImpressoraTermica' });
             return {
                 success: false,
                 message: 'Tipo de impressora configurado não é térmica'
@@ -1034,13 +1068,13 @@ const printService = {
         }
 
         try {
-            console.log('🧪 Executando teste de impressão...');
+            Logger.info('Executando teste de impressão...', { info: 'printService.testarImpressoraTermica' });
 
             // Verificar conexão primeiro
             const statusConexao = await thermalPrintService.obterStatusDetalhado();
 
             if (!statusConexao.conectada) {
-                console.log('🔄 Impressora não conectada, tentando conectar...');
+                Logger.info(' Impressora não conectada, tentando conectar...', { info: 'printService.testarImpressoraTermica' } );
                 await thermalPrintService.conectar();
             }
 
@@ -1067,11 +1101,11 @@ const printService = {
             return {
                 success: resultado.success,
                 message: resultado.success
-                    ? '✅ Teste realizado com sucesso! Verifique a impressora.'
-                    : '❌ Falha no teste de impressão'
+                    ? ' Teste realizado com sucesso! Verifique a impressora.'
+                    : ' Falha no teste de impressão'
             };
         } catch (error) {
-            console.error('❌ Erro no teste de impressão:', error);
+            Logger.error(' Erro no teste de impressão:', { erro: error });
 
             return {
                 success: false,

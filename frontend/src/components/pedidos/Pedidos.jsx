@@ -20,6 +20,9 @@ import printService from '../../services/printService';
 import configService from '../../services/ConfigService';
 import ModalEntrega from './components/ModalEntrega';
 import zonasEntregaService from '../../services/zonasEntregaService';
+import ComandaPreview from '../../components/ComandaPreview';
+import { usePrintComanda } from '../../hooks/usePrintComanda';
+import Logger from '../../utils/Logger';
 
 // CSS
 import './Pedidos.css';
@@ -27,8 +30,10 @@ import './Pedidos.css';
 const Pedidos = ({ onRefresh }) => {
   
   // ========================================
-  // 📦 ESTADOS PRINCIPAIS
+  // ESTADOS PRINCIPAIS
   // ========================================
+
+  const { imprimir } = usePrintComanda();
   
   const [view, setView] = useState('comandas');
   
@@ -36,6 +41,7 @@ const Pedidos = ({ onRefresh }) => {
   const [produtos, setProdutos] = useState([]);
   const [pedidos, setPedidos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [dadosComanda, setDadosComanda] = useState(null);
   
   // Estados de busca/filtro
   const [categoriaAtiva, setCategoriaAtiva] = useState('');
@@ -46,10 +52,14 @@ const Pedidos = ({ onRefresh }) => {
   const [clientePedido, setClientePedido] = useState('');
   const [clienteCadastrado, setClienteCadastrado] = useState(null);
   
+
+  //Show Comandas - Preview
+  const [showComanda, setShowComanda] = useState(false);
+  
   // Pedido atual
   const [pedidoAtual, setPedidoAtual] = useState(null);
   
-  // 🆕 CONTROLE DE AUTO-SAVE
+  // CONTROLE DE AUTO-SAVE
   const [salvandoAutomaticamente, setSalvandoAutomaticamente] = useState(false);
   const [ultimoSalvamento, setUltimoSalvamento] = useState(null);
   
@@ -77,8 +87,8 @@ const Pedidos = ({ onRefresh }) => {
     removerItem,
     atualizarItem,
     atualizarQuantidade,
-    incrementarQuantidade,      // 🆕 ADICIONAR
-    decrementarQuantidade,      // 🆕 ADICIONAR
+    incrementarQuantidade,      // ADICIONAR
+    decrementarQuantidade,      // ADICIONAR
     limparCarrinho,
     calcularTotais,
     iniciarEdicao,
@@ -89,25 +99,32 @@ const Pedidos = ({ onRefresh }) => {
   } = useCarrinho();
 
   // ========================================
-  // 🔄 EFEITOS
+  // EFEITOS
   // ========================================
+
+  useEffect(() => {
+  if (dadosComanda && dadosComanda.itens?.length > 0) {
+    Logger.debug('dadosComanda atualizado:', { debug: dadosComanda });
+    setShowComanda(true); // Mostrar preview quando dadosComanda for atualizado
+  }
+}, [dadosComanda]);
   
   useEffect(() => {
     carregarDados();
   }, []);
 
-  // 🆕 AUTO-SAVE: Salva automaticamente quando carrinho muda
+  // AUTO-SAVE: Salva automaticamente quando carrinho muda
   useEffect(() => {
     // Só salva se:
     // 1. Já existe um pedido criado
     // 2. Não está salvando no momento
     // 3. Tem pelo menos um cliente
     if (pedidoAtual?.id && !salvandoAutomaticamente && (clientePedido || clienteCadastrado)) {
-      console.log('⏰ Auto-save disparado após mudança no carrinho');
-      console.log('   - Pedido ID:', pedidoAtual.id);
-      console.log('   - Cliente do pedido:', pedidoAtual.cliente_nome);
-      console.log('   - Itens no carrinho:', carrinho.length);
-      
+      Logger.debug('Auto-save disparado após mudança no carrinho');
+      Logger.debug('   - Pedido ID:', { debug: pedidoAtual.id });
+      Logger.debug('   - Cliente do pedido:', { debug: pedidoAtual.cliente_nome });
+      Logger.debug('   - Itens no carrinho:', { debug: carrinho.length });
+
       const timer = setTimeout(() => {
         salvarAutomaticamente();
       }, 1000); // Aguarda 1 segundo após última mudança
@@ -124,7 +141,7 @@ const Pedidos = ({ onRefresh }) => {
       const produto = produtos.find(p => p.id === itemEmEdicao.produto_id);
       
       if (produto) {
-        console.log('🔧 Abrindo modal para editar item:', itemEmEdicao);
+        Logger.debug('Abrindo modal para editar item:', { debug: itemEmEdicao });
         setProdutoSelecionado(produto);
         setModalProdutoAberto(true);
       }
@@ -132,7 +149,7 @@ const Pedidos = ({ onRefresh }) => {
   }, [itemEditando, produtos]);
 
   // ========================================
-  // 📡 FUNÇÕES DE API
+  // FUNÇÕES DE API
   // ========================================
   
   /**
@@ -155,7 +172,7 @@ const Pedidos = ({ onRefresh }) => {
       setCategorias(categoriasUnicas);
       
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      Logger.error('Erro ao carregar dados:', { erro: error });
       mostrarMensagem('Erro ao carregar dados', 'error');
     } finally {
       setLoading(false);
@@ -163,18 +180,18 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   /**
-   * 🆕 CRIAR PEDIDO VAZIO (só com cliente)
+   * CRIAR PEDIDO VAZIO (só com cliente)
    * Chamado automaticamente ao selecionar cliente
    */
   const criarPedidoVazio = async (cliente) => {
     try {
       setSalvandoAutomaticamente(true);
       
-      // 🔧 LOG DETALHADO para debug
-      console.log('💾 Criando pedido vazio');
-      console.log('👤 Cliente recebido:', JSON.stringify(cliente));
-      console.log('   - ID:', cliente.id);
-      console.log('   - Nome:', cliente.nome);
+      // LOG DETALHADO para debug
+      Logger.debug('Criando pedido vazio');
+      Logger.debug('Cliente recebido:', { debug: cliente });
+      Logger.debug('   - ID:', { debug: cliente.id });
+      Logger.debug('   - Nome:', { debug: cliente.nome });
       
       const dadosPedido = {
         total: 0,
@@ -197,12 +214,12 @@ const Pedidos = ({ onRefresh }) => {
         itens: []
       };
 
-      console.log('📤 Enviando para API:', JSON.stringify(dadosPedido));
+      Logger.debug('Enviando para API:', { debug: dadosPedido });
 
       const resultado = await pedidoService.criar(dadosPedido);
 
       if (resultado?.success) {
-        console.log('✅ Pedido criado:', resultado.data);
+        Logger.debug('Pedido criado:', { debug: resultado.data });
         
         // 🔧 IMPORTANTE: Armazenar os dados do cliente no pedidoAtual
         const pedidoCompleto = {
@@ -220,7 +237,7 @@ const Pedidos = ({ onRefresh }) => {
       }
       
     } catch (error) {
-      console.error('❌ Erro ao criar pedido vazio:', error);
+      Logger.error('Erro ao criar pedido vazio:', { erro: error });
       mostrarMensagem(`Erro: ${error.message}`, 'error');
       return null;
     } finally {
@@ -229,7 +246,7 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   /**
-   * 🆕 SALVAR AUTOMATICAMENTE
+   * SALVAR AUTOMATICAMENTE
    * Atualiza o pedido com os itens atuais do carrinho
    */
   const salvarAutomaticamente = async () => {
@@ -237,7 +254,7 @@ const Pedidos = ({ onRefresh }) => {
     
     try {
       setSalvandoAutomaticamente(true);
-      console.log('💾 Salvando automaticamente...');
+      Logger.info('Salvando automaticamente...', {info: { pedidoId: pedidoAtual.id, clienteId: clienteCadastrado?.id, clienteNome: clientePedido } });
       
       const totais = calcularTotais();
       
@@ -263,19 +280,19 @@ const Pedidos = ({ onRefresh }) => {
         }))
       };
 
-      console.log('📤 Auto-save - Cliente ID:', dadosAtualizacao.cliente_id);
-      console.log('📤 Auto-save - Cliente Nome:', dadosAtualizacao.cliente_nome);
-      console.log('📤 Auto-save - Valor item:', dadosAtualizacao.preco_produto);
+      Logger.info('Auto-save - Cliente ID:', { info: dadosAtualizacao.cliente_id });
+      Logger.info('Auto-save - Cliente Nome:', { info: dadosAtualizacao.cliente_nome });
+      Logger.info('Auto-save - Valor item:', { info: dadosAtualizacao.preco_produto });
 
       const resultado = await pedidoService.atualizar(dadosAtualizacao);
 
       if (resultado?.success) {
-        console.log('✅ Salvo automaticamente');
+        Logger.info('Salvo automaticamente', { info: { pedidoId: pedidoAtual.id, clienteId: dadosAtualizacao.cliente_id, clienteNome: dadosAtualizacao.cliente_nome } });
         setUltimoSalvamento(new Date());
       }
       
     } catch (error) {
-      console.error('⚠️ Erro no auto-save:', error);
+      Logger.error('Erro no auto-save:', { erro: error });
     } finally {
       setSalvandoAutomaticamente(false);
     }
@@ -284,26 +301,32 @@ const Pedidos = ({ onRefresh }) => {
   /**
    * Processa pagamento do pedido
    */
-  // 9️⃣ MODIFICAR: processarPagamento (incluir dados de entrega)
+  // MODIFICAR: processarPagamento (incluir dados de entrega)
   // Dentro da função processarPagamento, onde monta dadosPedido, adicionar:
   const processarPagamento = async (dadosPagamento) => {
     try {
       const totais = calcularTotais();
-      
+      const dados_pagamento = {
+        id_venda: pedidoAtual.numero_pedido,
+        valorPago: dadosPagamento.valorPago,
+        valorTroco: dadosPagamento.valorTroco,
+        formaPagamento: dadosPagamento.formaPagamento
+      };
+
       // Calcular total final (com taxa de entrega se houver)
       const totalFinal = totais.totalPagar + (dadosEntrega?.taxa_entrega || 0);
       
       const dadosPedido = {
         id: pedidoAtual.id,
         id_venda: pedidoAtual.numero_pedido,
-        total: totalFinal, // ✅ Total com taxa de entrega
+        total: totalFinal, // Total com taxa de entrega
         status: 'finalizado',
         forma_pagamento: dadosPagamento.formaPagamento,
         
         cliente_id: pedidoAtual.cliente_id || clienteCadastrado?.id || null,
         cliente_nome: pedidoAtual.cliente_nome || clientePedido || 'Balcão',
         
-        // 🚚 DADOS DE ENTREGA (se houver)
+        // DADOS DE ENTREGA (se houver)
         tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
         endereco_entrega: dadosEntrega?.endereco_entrega || null,
         taxa_entrega: dadosEntrega?.taxa_entrega || 0,
@@ -314,13 +337,13 @@ const Pedidos = ({ onRefresh }) => {
           produto_nome: item.nome,
           quantidade: item.quantidade,
           preco_unitario: parseFloat(item.preco),
-          preco_produto: parseFloat(pedidoAtual.preco_produto),
+          preco_produto: parseFloat(item.preco_produto),
           adicionais: item?.adicionais || [],
           observacoes: item?.observacoes || '' 
         })),
         
         observacoes_pagamento: dadosPagamento.observacoes,
-        dados_pagamento: dadosPagamento
+        dados_pagamento // Incluir dados de pagamento para registro no caixa e impressão
       };
 
       // Salvar ou atualizar pedido
@@ -332,23 +355,25 @@ const Pedidos = ({ onRefresh }) => {
         resultado = await pedidoService.criar(dadosPedido);
       }
 
+      Logger.debug('resultado.data completo:', { info: resultado.data });
+
       if (!resultado?.success) {
         throw new Error(resultado?.message || 'Erro ao processar');
       }
 
       // Registrar no caixa (se não for a prazo)
-      if (dadosPagamento.formaPagamento !== 'prazo') {
-        console.log("Valor Venda: ", resultado.valor)
-        await registrarNoCaixa(resultado.data, dadosPagamento);
+      if (dados_pagamento.formaPagamento !== 'prazo') {
+        Logger.info("Valor Venda: ", { info: resultado.valor });
+        await registrarNoCaixa(resultado.data, dados_pagamento, totalFinal);
       }
 
       // Criar conta a receber (se for a prazo)
-      if (dadosPagamento.formaPagamento === 'prazo' && clienteCadastrado?.id) {
-        await criarContaReceber(resultado.data, dadosPagamento);
+      if (dados_pagamento.formaPagamento === 'prazo' && clienteCadastrado?.id) {
+        await criarContaReceber(resultado.data, dados_pagamento);
       }
 
       // Impressão automática
-      await verificarImpressaoReciboAuto(resultado.data, dadosPagamento);
+      await verificarImpressaoReciboAuto(resultado.data, dados_pagamento);
 
       mostrarMensagem('Pagamento processado com sucesso!', 'success');
       fecharModalPagamento();
@@ -357,7 +382,7 @@ const Pedidos = ({ onRefresh }) => {
       setView('comandas');
       
     } catch (error) {
-      console.error('Erro no pagamento:', error);
+      Logger.error('Erro no pagamento:', { erro: error });
       throw error; // Repassar erro para o modal
     }
   };
@@ -365,18 +390,23 @@ const Pedidos = ({ onRefresh }) => {
   /**
    * Registra venda no caixa
    */
-  const registrarNoCaixa = async (pedido, dadosPagamento) => {
-    try {
-      await caixaService.registrarVendaComCaixa({
-        valor: pedido.total,
-        numero_pedido: pedido.numero_pedido,
-        pedido_id: pedido.id,
-        forma_pagamento: dadosPagamento.formaPagamento
-      });
-    } catch (error) {
-      console.warn('Aviso: erro ao registrar no caixa:', error);
+  const registrarNoCaixa = async (pedido, dadosPagamento, valorTotal) => {
+  try {
+    const resultado = await caixaService.registrarVendaComCaixa({
+      valor: valorTotal,
+      numero_pedido: pedido.numero_pedido,
+      pedido_id: pedido.id,
+      forma_pagamento: dadosPagamento.formaPagamento
+    });
+    
+    if (!resultado?.success) {
+      Logger.error('Falha ao registrar no caixa:', { erro: resultado?.message });
+      mostrarMensagem(`Aviso: ${resultado?.message}`, 'warning');
     }
-  };
+  } catch (error) {
+    Logger.warn('Aviso: erro ao registrar no caixa:', { erro: error });
+  }
+};
 
   /**
    * Cria conta a receber para pagamento a prazo
@@ -399,7 +429,7 @@ const Pedidos = ({ onRefresh }) => {
 
       await contasReceberService.criar(dadosConta);
     } catch (error) {
-      console.warn('Aviso: erro ao criar conta a receber:', error);
+      Logger.warn('Aviso: erro ao criar conta a receber:', { erro: error });
     }
   };
 
@@ -424,11 +454,11 @@ const Pedidos = ({ onRefresh }) => {
           observacoes: pedido.observacoes || '',
           data: new Date()
         };
-        
-        console.log('🖨️ Impressão automática de comanda...');
+        setDadosComanda(dadosComanda); // Armazenar dados para preview
+        Logger.info('Impressão automática de comanda...', { info: dadosComanda });
         await printService.imprimirComanda(dadosComanda);
       } catch (error) {
-        console.warn('⚠️ Erro na impressão automática:', error);
+        Logger.warn('Erro na impressão automática:', { erro: error });
       }
     }
   };
@@ -437,13 +467,14 @@ const Pedidos = ({ onRefresh }) => {
    * Verifica e executa impressão automática de recibo
    */
   const verificarImpressaoReciboAuto = async (pedido, dadosPagamento) => {
-    console.log(pedido)
+    Logger.info('Pedido enviado para impressão:', { info: pedido });
+    Logger.info('Dados de pagamento para impressão:', { info: dadosPagamento });
     const autoImprimir = configService.autoImprimirRecibo();
     
     if (!autoImprimir) {
       try {
         const dadosRecibo = {
-          numero: pedido.id_venda,
+          numero: dadosPagamento.id_venda || pedido.numero_pedido,
           id: pedido.id,
           cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
           itens: carrinho.map(item => ({
@@ -454,17 +485,19 @@ const Pedidos = ({ onRefresh }) => {
             totalItem: item.subtotal,
             adicionais: item.adicionais || []
           })),
-          total: pedido.total,
+          total: dadosPagamento.valorPago || pedido.total,
           forma_pagamento: dadosPagamento.formaPagamento,
           valor_pago: dadosPagamento.valorPago,
           troco: dadosPagamento.valorTroco,
+          taxa_entrega: dadosEntrega?.taxa_entrega || 0,
+          tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
           data: new Date()
         };
         
-        console.log('🖨️ Impressão automática de recibo...', dadosRecibo);
+        Logger.info('Impressão automática de recibo...', { info: dadosRecibo });
         await printService.imprimirReciboVenda(dadosRecibo);
       } catch (error) {
-        console.warn('⚠️ Erro na impressão do recibo:', error);
+        Logger.warn('Erro na impressão do recibo:', { erro: error });
       }
     }
   };
@@ -472,22 +505,20 @@ const Pedidos = ({ onRefresh }) => {
   /**
    * Vincular Comanda a uma mesa.
    */
- // const handleVincular = () => {
-   // alert('Modulo em desenvolvimento.');
-   // return;
-  //}
 
-  /**
-   * Imprime comanda atual
-   * Verifica se entrega foi configurada antes de imprimir
-   */
-  const handleImprimir = async () => {
+  const handleContaConsumoFake = () => {
+
+  setShowComanda(true);
+  Logger.info('handleContaConsumoFake EXECUTOU', { info: { showComanda: true } });
+};
+
+  const handleContaConsumo = async () => {
     if (carrinho.length === 0) {
       alert('Adicione pelo menos um item antes de imprimir!');
       return;
     }
 
-    // 🚚 SE NÃO TEM ENTREGA CONFIGURADA, ABRIR MODAL
+    // SE NÃO TEM ENTREGA CONFIGURADA, ABRIR MODAL
     if (!dadosEntrega) {
       const desejaConfigurarEntrega = window.confirm(
         'Esta comanda ainda não tem entrega configurada.\n\n' +
@@ -502,45 +533,49 @@ const Pedidos = ({ onRefresh }) => {
     }
 
     try {
-      const dadosComanda = {
+        const pedido = ({
         numero: pedidoAtual?.id || `Comanda-${Date.now()}`,
         cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
+        telefone: clienteCadastrado?.telefone || '',
         mesa: pedidoAtual?.mesa || '',
         
-        // 🚚 DADOS DE ENTREGA (se houver)
-        tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
+        //DADOS DE ENTREGA (se houver)
+        tipo_entrega: dadosEntrega?.tipo_pedido || 'Local',
         endereco_entrega: dadosEntrega?.endereco_entrega || null,
         zona_entrega: dadosEntrega?.zona_nome || null,
         taxa_entrega: dadosEntrega?.taxa_entrega || 0,
         
+        
         itens: carrinho.map(item => ({
           quantidade: item.quantidade,
           nome: item.produto_nome,
-          preco: '',
-          total: item.quantidade * item.preco_unitario,
+          preco: item.preco_produto,
+          total: item.quantidade * item.preco_produto,
           observacoes: item.observacoes || '',
           adicionais: item.adicionais || []
         })),
-        observacoes: pedidoAtual?.observacoes || '',
+        observacoes: pedidoAtual.observacoes || '',
         data: new Date()
-      };
-
-      console.log('🖨️ Imprimindo comanda:', dadosComanda);
-      await printService.imprimirComanda(dadosComanda);
-      mostrarMensagem('Comanda impressa com sucesso!', 'success');
+        });
+      
+      setDadosComanda(pedido); // Atualiza estado para preview
+      
+      Logger.info('Imprimindo conta da comanda:', { info: pedido });
+      setShowComanda(true); // Mostrar preview antes de imprimir
+      mostrarMensagem('Conta da comanda impressa com sucesso!', 'success');
 
     } catch (error) {
-      console.error('❌ Erro ao imprimir comanda:', error);
-      mostrarMensagem(`Erro ao imprimir: ${error.message}`, 'error');
+      Logger.error('Erro ao conta comanda:', { erro: error });
+      mostrarMensagem(`Erro ao imprimir conta comanda: ${error.message}`, 'error');
     }
   };
 
     /**
-   * 🔄 HANDLER: Processa transferência de itens entre comandas
+   * HANDLER: Processa transferência de itens entre comandas
    */
   const handleTransferir = async (dadosTransferencia) => {
     try {
-      console.log('🔄 Iniciando transferência:', dadosTransferencia);
+      Logger.info('Iniciando transferência:', { info: dadosTransferencia });
 
       // Preparar dados para o backend
       const payload = {
@@ -557,14 +592,14 @@ const Pedidos = ({ onRefresh }) => {
         }))
       };
 
-      console.log('📤 Enviando para API:', payload);
+      Logger.info('Enviando para API:', { info: payload });
 
       // Chamar API de transferência
       const resultado = await pedidoService.transferir(payload);
 
       if (resultado?.success) {
-        console.log('✅ Transferência concluída:', resultado.data);
-        
+        Logger.info('Transferência concluída:', { info: resultado.data });
+
         mostrarMensagem(
           `${resultado.data.itensTransferidos} item(ns) transferido(s) com sucesso!`, 
           'success'
@@ -581,7 +616,7 @@ const Pedidos = ({ onRefresh }) => {
       }
 
     } catch (error) {
-      console.error('❌ Erro na transferência:', error);
+      Logger.error('Erro na transferência:', { erro: error });
       mostrarMensagem(`Erro: ${error.message}`, 'error');
       throw error;
     }
@@ -610,16 +645,16 @@ const Pedidos = ({ onRefresh }) => {
       mostrarMensagem('Comanda impressa!', 'success');
 
     } catch (error) {
-      console.error('❌ Erro ao imprimir:', error);
+      Logger.error('Erro ao imprimir:', { erro: error });
       mostrarMensagem(`Erro: ${error.message}`, 'error');
     }
   }; 
   
   /**
-   * 🆕 MODIFICADO: Inicia novo pedido
+   * MODIFICADO: Inicia novo pedido
    */
   const iniciarNovoPedido = () => {
-    console.log('🆕 Iniciando novo pedido - abrindo seleção de cliente');
+    Logger.info('Iniciando novo pedido', { info: 'Abrindo seleção de cliente' });
     limparFormulario();
     setAguardandoCliente(true);
     abrirModalCliente();
@@ -648,7 +683,7 @@ const Pedidos = ({ onRefresh }) => {
       });
     }
 
-    // ✅ LIMPAR CARRINHO ANTES DE CARREGAR NOVOS ITENS!
+    // LIMPAR CARRINHO ANTES DE CARREGAR NOVOS ITENS!
     limparCarrinho();
     
     if (pedidoCompleto.itens?.length > 0) {
@@ -658,7 +693,7 @@ const Pedidos = ({ onRefresh }) => {
     setView('novo-pedido');
     
   } catch (error) {
-    console.error('Erro ao carregar pedido:', error);
+    Logger.error('Erro ao carregar pedido:', { erro: error });
     mostrarMensagem('Erro ao carregar pedido', 'error');
   } finally {
     setLoadingPedido(false);
@@ -666,7 +701,7 @@ const Pedidos = ({ onRefresh }) => {
 };
 
   /**
-   * 🆕 MODIFICADO: Não é mais necessário - auto-save cuida disso
+   * MODIFICADO: Não é mais necessário - auto-save cuida disso
    */
   const finalizarPedido = async () => {
     // Apenas fecha e volta - o pedido já está salvo
@@ -729,7 +764,7 @@ const Pedidos = ({ onRefresh }) => {
       setView('comandas');
       
     } catch (error) {
-      console.error('Erro ao cancelar:', error);
+      Logger.error('Erro ao cancelar:', { erro: error });
       throw error;
     }
   };
@@ -746,11 +781,11 @@ const Pedidos = ({ onRefresh }) => {
     setBusca('');
     setCodigoBusca('');
     setUltimoSalvamento(null);
-    limparDadosEntrega(); // ✅ ADICIONAR ESTA LINHA
+    limparDadosEntrega(); // ADICIONAR ESTA LINHA
   };
 
   // ========================================
-  // 🛒 HANDLERS DO CARRINHO
+  // HANDLERS DO CARRINHO
   // ========================================
   
   /**
@@ -767,9 +802,9 @@ const Pedidos = ({ onRefresh }) => {
   const fecharModalProduto = () => {
     setModalProdutoAberto(false);
     setProdutoSelecionado(null);
-    
+    Logger.info('Modal de produto fechado', { info: { itemEditando } });
     if (itemEditando !== null) {
-      console.log('❌ Edição cancelada');
+      Logger.info('Edição cancelada', { info: { itemEditando } });
       cancelarEdicao();
     }
   };
@@ -779,12 +814,12 @@ const Pedidos = ({ onRefresh }) => {
    */
   const handleConfirmarProduto = (itemCompleto) => {
     if (itemEditando !== null) {
-      console.log('✏️ Atualizando item no índice:', itemEditando);
+      Logger.info('Atualizando item no índice:', { info: itemEditando });
       atualizarItem(itemEditando, itemCompleto);
       cancelarEdicao();
       mostrarMensagem('Item atualizado!', 'success');
     } else {
-      console.log('➕ Adicionando novo item');
+      Logger.info('Adicionando novo item', { info: itemCompleto });
       adicionarItem(itemCompleto);
       mostrarMensagem('Item adicionado!', 'success');
     }
@@ -792,19 +827,19 @@ const Pedidos = ({ onRefresh }) => {
     fecharModalProduto();
   };
 
-  // 3️⃣ FUNÇÃO: Abrir modal de entrega
+  // FUNÇÃO: Abrir modal de entrega
   const abrirModalEntrega = () => {
     setModalEntregaAberto(true);
   };
 
-  // 4️⃣ FUNÇÃO: Fechar modal de entrega
+  // FUNÇÃO: Fechar modal de entrega
   const fecharModalEntrega = () => {
     setModalEntregaAberto(false);
   };
 
-  // 5️⃣ FUNÇÃO: Confirmar entrega
+  // FUNÇÃO: Confirmar entrega
   const handleConfirmarEntrega = async (dados) => {
-    console.log('🚚 Dados de entrega:', dados);
+    Logger.info('Dados de entrega:', { info: dados });
     
     // Armazenar dados de entrega
     setDadosEntrega({
@@ -812,7 +847,7 @@ const Pedidos = ({ onRefresh }) => {
       zona_nome: dados.zonaNome,
       taxa_entrega: dados.taxa,
       endereco_entrega: dados.endereco,
-      tipo_pedido: 'entrega'
+      tipo_pedido: dados.zonaNome !== null ? dados.zonaNome : 'local' // Definir tipo de pedido com base na presença de zona de entrega
     });
 
     // Se já existe pedido, atualizar com dados de entrega
@@ -843,7 +878,7 @@ const Pedidos = ({ onRefresh }) => {
           'success'
         );
       } catch (error) {
-        console.error('Erro ao configurar entrega:', error);
+        Logger.error('Erro ao configurar entrega:', { erro: error });
         mostrarMensagem('Erro ao configurar entrega', 'error');
       }
     } else {
@@ -854,7 +889,7 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  // 6️⃣ FUNÇÃO: Limpar dados de entrega
+  // FUNÇÃO: Limpar dados de entrega
   const limparDadosEntrega = () => {
     setDadosEntrega(null);
   };
@@ -877,7 +912,7 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   // ========================================
-  // 👤 HANDLERS DE CLIENTE
+  // HANDLERS DE CLIENTE
   // ========================================
   
   /**
@@ -905,18 +940,18 @@ const Pedidos = ({ onRefresh }) => {
     setModalClienteAberto(false);
 
     if (aguardandoCliente) {
-      console.log('❌ Seleção de cliente cancelada');
+      Logger.info('Seleção de cliente cancelada', { info: "Seleção Cancelada" });
       setAguardandoCliente(false);
     }
   };
 
   /**
-   * 🆕 MODIFICADO: Seleciona cliente e cria pedido automaticamente
+   * MODIFICADO: Seleciona cliente e cria pedido automaticamente
    */
   const selecionarClienteModal = async (cliente) => {
-    console.log('👤 Cliente selecionado do modal:', cliente);
-    console.log('   - ID:', cliente.id);
-    console.log('   - Nome:', cliente.nome);
+    Logger.info('Cliente selecionado do modal:', { info: cliente });
+    Logger.info('   - ID:', { info: cliente.id });
+    Logger.info('   - Nome:', { info: cliente.nome });
     
     // 🔧 IMPORTANTE: Atualizar states ANTES de criar pedido
     const clienteData = cliente.id ? {
@@ -931,33 +966,32 @@ const Pedidos = ({ onRefresh }) => {
   
     mostrarMensagem(`Cliente ${cliente.nome} selecionado!`, 'success');
   
-    // 🆕 CRIAR PEDIDO AUTOMATICAMENTE
+    // CRIAR PEDIDO AUTOMATICAMENTE
     if (aguardandoCliente) {
-      limparCarrinho(); //✅ Garantir carrinho vazio     
+      limparCarrinho(); //Garantir carrinho vazio     
       // 🔧 Passar o cliente completo para a função
       const pedidoCriado = await criarPedidoVazio(cliente);
-      
-      if (pedidoCriado) {
-        console.log('✅ Pedido criado com sucesso');
-        console.log('   - ID do pedido:', pedidoCriado.id);
-        console.log('   - Cliente ID:', pedidoCriado.cliente_id);
-        console.log('   - Cliente Nome:', pedidoCriado.cliente_nome);
-        
+      try {
+        if (pedidoCriado) {
+        Logger.info('✅ Pedido criado com sucesso', { info: { id: pedidoCriado.id, cliente_id: pedidoCriado.cliente_id, cliente_nome: pedidoCriado.cliente_nome } });
         setAguardandoCliente(false);
         setView('novo-pedido');
         mostrarMensagem('Comanda aberta! Adicione os itens.', 'success');
-      } else {
-        console.error('❌ Falha ao criar pedido');
+      } 
+        
+      } catch (error) {
+        Logger.error('Falha ao criar pedido', { erro: error });
         setAguardandoCliente(false);
+        
       }
     }
   };
 
   /**
-   * 🆕 MODIFICADO: Pula cliente e cria pedido "Balcão"
+   * MODIFICADO: Pula cliente e cria pedido "Balcão"
    */
   const pularSelecaoCliente = async () => {
-    console.log('⏭️ Pulando seleção de cliente - criando pedido Balcão');
+    Logger.info('Pulando seleção de cliente - criando pedido Balcão', { info: { cliente: 'Balcão' } });
     
     const clienteBalcao = {
       id: null,
@@ -969,28 +1003,30 @@ const Pedidos = ({ onRefresh }) => {
     fecharModalCliente();
     
     if (aguardandoCliente) {
-      limparCarrinho(); // ✅ Garantir carrinho vazio
+      limparCarrinho(); // Garantir carrinho vazio
       
       // Criar pedido com cliente "Balcão"
       const pedidoCriado = await criarPedidoVazio(clienteBalcao);
       
-      if (pedidoCriado) {
-        console.log('✅ Pedido Balcão criado');
-        console.log('   - ID do pedido:', pedidoCriado.id);
-        console.log('   - Cliente Nome:', pedidoCriado.cliente_nome);
+      try {
+
+        if (pedidoCriado) {
+        Logger.info('Pedido Balcão criado', { info: { id: pedidoCriado.id, cliente_nome: pedidoCriado.cliente_nome } });
         
         setAguardandoCliente(false);
         setView('novo-pedido');
         mostrarMensagem('Comanda aberta para Balcão!', 'success');
-      } else {
-        console.error('❌ Falha ao criar pedido Balcão');
+      }
+        
+      } catch (error) {
+        Logger.error('Falha ao criar pedido Balcão', { erro: error });
         setAguardandoCliente(false);
       }
     }
   };
 
   // ========================================
-  // 💳 HANDLERS DE PAGAMENTO
+  // HANDLERS DE PAGAMENTO
   // ========================================
   
   /**
@@ -1012,8 +1048,62 @@ const Pedidos = ({ onRefresh }) => {
     setModalPagamentoAberto(false);
   };
 
+  // Handler de impressão
+  const handleImprimirComanda = async () => {
+  
+    if (carrinho.length === 0) {
+      alert('Adicione pelo menos um item antes de imprimir!');
+      return;
+    }
+
+    //SE NÃO TEM ENTREGA CONFIGURADA, ABRIR MODAL
+    if (!dadosEntrega) {
+      const desejaConfigurarEntrega = window.confirm(
+        'Esta comanda ainda não tem entrega configurada.\n\n' +
+        'Deseja configurar entrega agora?\n\n' +
+        'Clique em OK para configurar ou Cancelar para imprimir sem entrega.'
+      );
+
+      if (desejaConfigurarEntrega) {
+        abrirModalEntrega();
+        return; // Interrompe impressão até configurar entrega
+      }
+    }
+
+    try {
+  // Monta os dados da comanda igual você faz no preview
+  const dadosComandaAtual = {
+    numero: pedidoAtual?.id || `Comanda-${Date.now()}`,
+    cliente: clientePedido || 'Balcão',
+    mesa: pedidoAtual?.mesa || '',
+    tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
+    endereco_entrega: dadosEntrega?.endereco_entrega || null,
+    taxa_entrega: dadosEntrega?.taxa_entrega || 0,
+    itens: carrinho.map(item => ({
+      qtd: item.quantidade,
+      descricao: item.produto_nome,
+      valor_unit: item.preco_unitario,
+      observacao: item.observacoes || '',
+      adicionais: item.adicionais || []
+    })),
+    observacao: pedidoAtual?.observacoes || '',
+    tipo_impressao: 'producao',
+  };
+
+  const resultado = await imprimir(dadosComandaAtual);
+  if (resultado.success) {
+    mostrarMensagem('Comanda impressa com sucesso!', 'success');
+  } else {
+    mostrarMensagem(resultado.message || 'Erro ao imprimir', 'error');
+    }
+    } catch (error) {
+      Logger.error('Erro ao imprimir comanda:', { erro: error });
+      mostrarMensagem(`Erro ao imprimir: ${error.message}`, 'error');
+    }
+};
+
   // ========================================
-  // 💬 MENSAGENS
+  // MENSAGENS
   // ========================================
   
   const mostrarMensagem = (texto, tipo = 'info') => {
@@ -1027,7 +1117,7 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   // ========================================
-  // 🎨 RENDERIZAÇÃO
+  // RENDERIZAÇÃO
   // ========================================
   
   if (loading) {
@@ -1050,7 +1140,7 @@ const Pedidos = ({ onRefresh }) => {
         </div>
       )}
 
-      {/* 🆕 Indicador de auto-save */}
+      {/*Indicador de auto-save */}
       {salvandoAutomaticamente && (
         <div className="auto-save-indicator">
           <i className="fas fa-spinner fa-spin"></i>
@@ -1094,24 +1184,47 @@ const Pedidos = ({ onRefresh }) => {
             onEditarItem={iniciarEdicao}
             onRemoverItem={removerItem}
             onAlterarQuantidade={atualizarQuantidade}
-            onIncrementarQuantidade={incrementarQuantidade}    // 🆕 ADICIONAR
-            onDecrementarQuantidade={decrementarQuantidade}    // 🆕 ADICIONAR
+            onIncrementarQuantidade={incrementarQuantidade}    // ADICIONAR
+            onDecrementarQuantidade={decrementarQuantidade}    // ADICIONAR
             onVoltar={voltarParaComandas}
             onCancelar={cancelarComanda}
-            onImprimir={handleImprimir}
+            onImprimir={handleImprimirComanda} // ADICIONAR HANDLER DE IMPRESSÃO
+            onContaConsumo={handleContaConsumo} // ADICIONAR HANDLER DE CONTA CONSUMO
             onFinalizar={finalizarPedido}
             onPagar={abrirModalPagamento}
             //onVincular={handleVincular}
             buscarPedidos={() => pedidoService.buscarTodos('aberto')}  // ✅ ADICIONAR
             onTransferir={handleTransferir}
-            dadosEntrega={dadosEntrega}              // ✅ ADICIONAR
-            onAbrirEntrega={abrirModalEntrega}       // ✅ ADICIONAR
-            onLimparEntrega={limparDadosEntrega}     // ✅ ADICIONAR
+            dadosEntrega={dadosEntrega}              // ADICIONAR
+            onAbrirEntrega={abrirModalEntrega}       // ADICIONAR
+            onLimparEntrega={limparDadosEntrega}     // ADICIONAR
           />
         )}
       </div>
 
+
+
       {/* Modais */}
+
+      <div>
+      {showComanda && (
+          <ComandaPreview
+            pedido = {dadosComanda}
+                    onPrint={ (pedido) => {
+                      Logger.info('Comanda impressa:', { info: { numero: pedido.numero } });
+                      // Aqui você pode salvar no banco, atualizar status, etc.
+                      mostrarMensagem('Comanda impressa com sucesso!', 'success');
+                    }}
+                    onClose={() => setShowComanda(false)}
+                    config={{
+                        nome_empresa: 'SORVETES GELATTO MANNIA',
+                        endereco: 'Rua Guarani 191, Corumbataí do Sul - PR',
+                        telefone: '(44) 9.9826-4006',
+                    }}
+                />
+        )}
+        </div>
+
       <ModalProduto
         isOpen={modalProdutoAberto}
         onClose={fecharModalProduto}
@@ -1128,7 +1241,7 @@ const Pedidos = ({ onRefresh }) => {
         clientePedido={clientePedido}
         clienteCadastrado={clienteCadastrado}
         carrinho={carrinho}
-        totalPedido={calcularTotais().totalPagar}
+        totalPedido={calcularTotais().totalPagar + (dadosEntrega?.taxa_entrega || 0)} // Incluir taxa de entrega no total
         onProcessar={processarPagamento}
       />
 
@@ -1141,7 +1254,7 @@ const Pedidos = ({ onRefresh }) => {
         clienteService={clienteService}
       />
 
-      {/* 🚚 MODAL DE ENTREGA - ADICIONAR AQUI */}
+      {/* MODAL DE ENTREGA - ADICIONAR AQUI */}
       <ModalEntrega
         visible={modalEntregaAberto}
         onFechar={fecharModalEntrega}

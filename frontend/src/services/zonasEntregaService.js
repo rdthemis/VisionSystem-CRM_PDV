@@ -2,6 +2,7 @@
 // 🚚 SERVICE: Gestão de zonas de entrega
 
 import apiService from './apiService';
+import Logger from '../utils/Logger';
 
 const zonasEntregaService = {
   /**
@@ -13,7 +14,7 @@ const zonasEntregaService = {
       const response = await apiService.get(url);
       return response.data || [];
     } catch (error) {
-      console.error('Erro ao buscar zonas:', error);
+      Logger.error('Erro ao buscar zonas:', { erro: error });
       throw error;
     }
   },
@@ -26,7 +27,7 @@ const zonasEntregaService = {
       const response = await apiService.get(`/zonas-entrega?id=${id}`);
       return response.data;
     } catch (error) {
-      console.error('Erro ao buscar zona:', error);
+      Logger.error('Erro ao buscar zona:', { erro: error });
       throw error;
     }
   },
@@ -39,7 +40,7 @@ const zonasEntregaService = {
       const response = await apiService.post('/zonas-entrega', dados);
       return response;
     } catch (error) {
-      console.error('Erro ao criar zona:', error);
+      Logger.error('Erro ao criar zona:', { erro: error });
       throw error;
     }
   },
@@ -52,7 +53,7 @@ const zonasEntregaService = {
       const response = await apiService.put('/zonas-entrega', dados);
       return response;
     } catch (error) {
-      console.error('Erro ao atualizar zona:', error);
+      Logger.error('Erro ao atualizar zona:', { erro: error });
       throw error;
     }
   },
@@ -65,7 +66,7 @@ const zonasEntregaService = {
       const response = await apiService.delete('/zonas-entrega', { id });
       return response;
     } catch (error) {
-      console.error('Erro ao deletar zona:', error);
+      Logger.error('Erro ao deletar zona:', { erro: error });
       throw error;
     }
   },

@@ -1,4 +1,6 @@
 // frontend/src/services/apiService.js
+import Logger from '../utils/Logger';
+
 const API_BASE_URL = 'http://localhost:8000';
 
 class ApiService {
@@ -12,9 +14,9 @@ class ApiService {
     setAuthToken(token) {
         this.authToken = token;
         if (token) {
-            console.log('🔑 Token configurado');
+            Logger.info('Token configurado', {info: "Token configurado"});
         } else {
-            console.log('🔓 Token removido');
+            Logger.info('Token removido', {info: "Token removido"});
         }
     }
 
@@ -48,15 +50,15 @@ class ApiService {
                 ...options.headers,
             },
             mode: 'cors',
-            credentials: 'include',
-        };
+                credentials: 'include',
+            };
 
         if (options.body && typeof options.body === 'object') {
             config.body = JSON.stringify(options.body);
         }
 
         try {
-            console.log('🔗 Requisição:', config.method, url);
+            Logger.info('  Requisição:', { info: config.method, url });
 
             const response = await fetch(url, config);
             const contentType = response.headers.get('content-type');
@@ -64,7 +66,7 @@ class ApiService {
             // Verificar se é JSON
             if (!contentType || !contentType.includes('application/json')) {
                 const text = await response.text();
-                console.error('❌ Resposta não é JSON:', text.substring(0, 200));
+                Logger.error('Resposta não é JSON:', { erro: text.substring(0, 200) });
                 throw new Error(`Resposta não é JSON`);
             }
 
@@ -72,7 +74,7 @@ class ApiService {
 
             // Se 401 e TOKEN_EXPIRED, tentar renovar (implementar depois)
             if (response.status === 401 && data.code === 'TOKEN_EXPIRED') {
-                console.log('🔄 Token expirado, precisa renovar...');
+                Logger.info('Token expirado, precisa renovar...', {info: "Token expirado, precisa renovar..."});
                 // TODO: Implementar renovação automática
             }
 
@@ -83,7 +85,7 @@ class ApiService {
             return data;
 
         } catch (error) {
-            console.error('❌ Erro na requisição:', error);
+            Logger.error(' Erro na requisição:', { erro: error });
             throw error;
         }
     }
@@ -145,7 +147,7 @@ class ApiService {
      */
     async login(email, senha) {
         try {
-            console.log('🔐 Tentando login:', email);
+            Logger.info('Tentando login:', { info: email });
 
             const resultado = await this.post('/auth/login', { email, senha });
 
@@ -162,7 +164,7 @@ class ApiService {
                     // Configurar token na classe
                     this.setAuthToken(accessToken);
 
-                    console.log('✅ Login bem-sucedido');
+                    Logger.info('Login bem-sucedido', { info: resultado.data });
 
                     return {
                         success: true,
@@ -175,7 +177,7 @@ class ApiService {
             return resultado;
 
         } catch (error) {
-            console.error('❌ Erro no login:', error);
+            Logger.error('❌Erro no login:', { erro: error });
             return {
                 success: false,
                 message: error.message || 'Erro ao fazer login'
@@ -194,7 +196,7 @@ class ApiService {
                 await this.post('/auth/logout', { refreshToken });
             }
         } catch (error) {
-            console.error('Erro no logout:', error);
+            Logger.error('Erro no logout:', { erro: error });
         } finally {
             // Limpar dados locais
             localStorage.removeItem('token');
@@ -215,7 +217,7 @@ class ApiService {
             const resultado = await this.get('/auth/me');
             return resultado;
         } catch (error) {
-            console.error('❌ Token inválido:', error);
+            Logger.error('Token inválido:', { erro: error });
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             return { success: false, message: 'Token inválido' };
@@ -240,14 +242,14 @@ class ApiService {
                 localStorage.setItem('token', newToken);
                 this.setAuthToken(newToken);
                 
-                console.log('✅ Token renovado');
+                Logger.info('Token renovado', { info: "Token renovado" });
                 return newToken;
             }
 
             throw new Error('Erro ao renovar token');
 
         } catch (error) {
-            console.error('❌ Erro ao renovar token:', error);
+            Logger.error('Erro ao renovar token:', { erro: error }   );
             this.logout();
             throw error;
         }

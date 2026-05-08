@@ -6,6 +6,7 @@
  * 💰 FORMATAÇÕES MONETÁRIAS
  * ========================================
  */
+import Logger from './loggerUtils';
 
 /**
  * Formata valor para moeda brasileira
@@ -271,12 +272,13 @@ export const truncarTexto = (texto, limite = 50) => {
  * @param {string} texto - Texto a ser copiado
  * @returns {Promise<boolean>} Sucesso da operação
  */
+
 export const copiarParaClipboard = async (texto) => {
     try {
         await navigator.clipboard.writeText(texto);
         return true;
     } catch (error) {
-        console.error('Erro ao copiar:', error);
+        Logger.error('Erro ao copiar:', { erro: error });
 
         // Fallback para navegadores mais antigos
         const textarea = document.createElement('textarea');

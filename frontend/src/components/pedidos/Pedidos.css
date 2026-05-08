@@ -14,11 +14,12 @@
     --success-color: #10b981;
     --danger-color: #ef4444;
     --warning-color: #f59e0b;
-    --pedido-cliente: #595959
+    --pedido-cliente: #595959;
 
     /* Cores de fundo */
     --bg-primary: #ffffff;
     --bg-secondary: #f8fafc;
+    --bg-layout-card: #e8fbff;
     --bg-tertiary: #10b981;
 
     /* Bordas */
@@ -287,7 +288,7 @@
 
 /* Card de pedido */
 .pedido-card {
-    background: var(--bg-secondary);
+    background: var(--bg-layout-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-md);
@@ -311,7 +312,7 @@
 .pedido-numero {
     font-weight: 700;
     color: #1e293b;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .pedido-status {
@@ -348,7 +349,8 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    font-size: 22px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--pedido-cliente);
 }
 
@@ -356,9 +358,9 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    font-size: 14px;
+    font-size: 12px;
     color: var(--secondary-color);
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .pedido-card-footer {
@@ -367,7 +369,7 @@
 }
 
 .pedido-total {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 18px;
     color: var(--success-color);
 }
@@ -496,7 +498,7 @@
 
 .categoria-tab {
     padding: 10px 20px;
-    background: var(--bg-secondary);
+    background: var(--bg-layout-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     cursor: pointer;
@@ -610,7 +612,7 @@
 }
 
 .produto-item {
-    background: var(--bg-secondary);
+    background: var(--bg-layout-card);
     border: 2px solid var(--border-color);
     border-radius: 6px;
     /* ✅ REDUZIDO de 8px */

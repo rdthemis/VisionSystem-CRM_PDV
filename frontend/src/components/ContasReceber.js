@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { contasReceberService } from '../services/contasReceberService';
 import { clientesService } from '../services/clientesService';
 import { recibosService } from '../services/recibosService'; // NOVO: Import do serviço de recibos
+import Logger from '../utils/Logger';
 
 const ContasReceber = () => {
     const [contas, setContas] = useState([]);
@@ -97,7 +98,7 @@ const ContasReceber = () => {
                 setErro('Erro ao visualizar recibo');
             }
         } catch (error) {
-            console.error('Erro ao visualizar recibo:', error);
+            Logger.error('Erro ao visualizar recibo:', {erro: error});
             setErro('Erro ao visualizar recibo');
         }
     };
@@ -150,7 +151,7 @@ const ContasReceber = () => {
                 setClientes(resultado.data);
             }
         } catch (error) {
-            console.error('Erro ao carregar clientes:', error);
+            Logger.error('Erro ao carregar clientes:', {erro: error});
         }
     };
 
@@ -162,7 +163,7 @@ const ContasReceber = () => {
                 setResumoFinanceiro(resultado.data);
             }
         } catch (error) {
-            console.error('Erro ao carregar resumo:', error);
+            Logger.error('Erro ao carregar resumo:', {erro: error});
         }
     };
 
@@ -328,7 +329,7 @@ const ContasReceber = () => {
                     // Se não gerou recibo, mostrar mensagem normal
                     setSucesso(resultado.message);
                     if (resultado.data.recibo_erro) {
-                        console.warn('Erro ao gerar recibo:', resultado.data.recibo_erro);
+                        Logger.warn('Erro ao gerar recibo:', {warn: resultado.data.recibo_erro});
                     }
                 }
 

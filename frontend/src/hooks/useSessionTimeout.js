@@ -2,8 +2,9 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { apiService } from '../services/apiService';
+import Logger from '../utils/Logger';
 
-export const useSessionTimeout = (timeoutMinutes = 30) => {
+export const useSessionTimeout = (timeoutMinutes = 60) => {
     const timeoutRef = useRef(null);
     const warningRef = useRef(null);
 
@@ -11,7 +12,7 @@ export const useSessionTimeout = (timeoutMinutes = 30) => {
         try {
             await apiService.logout();
         } catch (error) {
-            console.error('Erro ao fazer logout:', error);
+            Logger.error('Erro ao fazer logout:', { erro: error });
         }
 
         // Limpar dados locais

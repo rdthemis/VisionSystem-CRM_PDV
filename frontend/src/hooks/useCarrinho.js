@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Logger from '../utils/Logger';
 
 /**
  * Hook customizado para gerenciar carrinho de pedidos
@@ -8,14 +9,14 @@ import { useState, useEffect } from 'react';
  */
 const useCarrinho = () => {
     // ========================================
-    // 📦 ESTADOS
+    // ESTADOS
     // ========================================
 
     const [carrinho, setCarrinho] = useState([]);
     const [itemEditando, setItemEditando] = useState(null);
 
     // ========================================
-    // 💾 PERSISTÊNCIA NO LOCALSTORAGE
+    // PERSISTÊNCIA NO LOCALSTORAGE
     // ========================================
 
     /**
@@ -27,9 +28,9 @@ const useCarrinho = () => {
             try {
                 const dadosCarrinho = JSON.parse(carrinhoSalvo);
                 setCarrinho(dadosCarrinho);
-                console.log('📂 Carrinho carregado do localStorage');
+                Logger.info('Carrinho carregado do localStorage', { info: dadosCarrinho.length });
             } catch (error) {
-                console.error('❌ Erro ao carregar carrinho:', error);
+                Logger.error('Erro ao carregar carrinho:', { erro: error });
             }
         }
     }, []);
@@ -40,14 +41,14 @@ const useCarrinho = () => {
     useEffect(() => {
         if (carrinho?.length > 0) {
             localStorage.setItem('carrinho_temp', JSON.stringify(carrinho));
-            console.log('💾 Carrinho salvo no localStorage');
+            Logger.info('Carrinho salvo no localStorage', { info: carrinho.length });
         } else {
             localStorage.removeItem('carrinho_temp');
         }
     }, [carrinho]);
 
     // ========================================
-    // 🔧 FUNÇÕES DO CARRINHO
+    // FUNÇÕES DO CARRINHO
     // ========================================
 
     /**
@@ -57,7 +58,7 @@ const useCarrinho = () => {
      * @param {Object} item - Item a ser adicionado
      */
     const adicionarItem = (item) => {
-        console.log('➕ Adicionando item:', item);
+        Logger.info('Adicionando item ao carrinho', {info: item });
 
         // Verificar se item já existe (mesmo produto e adicionais)
         const itemExistente = carrinho.find(itemCarrinho =>
@@ -78,7 +79,7 @@ const useCarrinho = () => {
                     : itemCarrinho
             ));
 
-            console.log('✅ Quantidade do item existente incrementada');
+        Logger.info('Quantidade do item existente incrementada', { info: itemExistente });
         } else {
             // 🔧 ADICIONA NOVO ITEM COM ID ÚNICO
             const novoItem = {
@@ -87,7 +88,7 @@ const useCarrinho = () => {
             };
 
             setCarrinho(prev => [...prev, novoItem]);
-            console.log('✅ Novo item adicionado ao carrinho');
+            Logger.info('Novo item adicionado ao carrinho', { info: novoItem });
         }
     };
 
@@ -98,9 +99,9 @@ const useCarrinho = () => {
      * @param {Object} itemAtualizado - Dados atualizados do item
      */
     const atualizarItem = (index, itemAtualizado) => {
-        console.log(`🔄 Atualizando item no índice ${index}`);
-        console.log('📦 Dados novos:', itemAtualizado);
-        console.log('🏷️ Adicionais novos:', itemAtualizado.adicionais);
+        Logger.info(`Atualizando item no índice ${index}`, { info: itemAtualizado });
+        Logger.info('Dados novos:', { info: itemAtualizado });
+        Logger.info('Adicionais novos:', { info: itemAtualizado.adicionais });
 
         setCarrinho(prev => {
             const novoCarrinho = prev.map((item, i) => {
@@ -114,14 +115,14 @@ const useCarrinho = () => {
                 return item;
             });
 
-            console.log('✅ Carrinho após atualização:', novoCarrinho);
-            console.log('✅ Item atualizado:', novoCarrinho[index]);
+            Logger.info('Carrinho após atualização:', { info: novoCarrinho });
+            Logger.info('Item atualizado:', { info: novoCarrinho[index] });
 
             return novoCarrinho;
         });
 
         setItemEditando(null);
-        console.log('✅ Item atualizado com sucesso');
+        Logger.info('Item atualizado com sucesso', { info: itemAtualizado });
     };
 
     /**
@@ -130,11 +131,11 @@ const useCarrinho = () => {
      * @param {number} index - Índice do item a ser removido
      */
     const removerItem = (index) => {
-        console.log(`🗑️ Removendo item no índice ${index}`);
+        Logger.info(`Removendo item no índice ${index}`, { info: carrinho[index] });
 
         setCarrinho(prev => prev.filter((_, i) => i !== index));
 
-        console.log('✅ Item removido do carrinho');
+        Logger.info('Item removido do carrinho', { info: carrinho[index] });
     };
 
     /**
@@ -170,7 +171,7 @@ const useCarrinho = () => {
     };
 
     /**
- * 🆕 Incrementa a quantidade de um item em 1
+ * Incrementa a quantidade de um item em 1
  * 
  * @param {number} index - Índice do item
  */
@@ -195,7 +196,7 @@ const useCarrinho = () => {
     };
 
     /**
-     * 🆕 Decrementa a quantidade de um item em 1
+     * Decrementa a quantidade de um item em 1
      * Se chegar a 0, remove o item
      * 
      * @param {number} index - Índice do item
@@ -229,11 +230,11 @@ const useCarrinho = () => {
      * Limpa todo o carrinho
      */
     const limparCarrinho = () => {
-        console.log('🧹 Limpando carrinho...');
+        Logger.info('Limpando carrinho...', { info: carrinho.length });
         setCarrinho([]);
         setItemEditando(null);
         localStorage.removeItem('carrinho_temp');
-        console.log('✅ Carrinho limpo');
+        Logger.info('Carrinho limpo', { info: carrinho.length });
     };
 
     /**
@@ -263,7 +264,7 @@ const useCarrinho = () => {
     };
 
     // ========================================
-    // 📊 CÁLCULOS
+    // CÁLCULOS
     // ========================================
 
     /**
@@ -301,7 +302,7 @@ const useCarrinho = () => {
     };
 
     // ========================================
-    // 🔄 CARREGAR CARRINHO DE PEDIDO EXISTENTE
+    // CARREGAR CARRINHO DE PEDIDO EXISTENTE
     // ========================================
 
     /**
@@ -311,17 +312,17 @@ const useCarrinho = () => {
      * @param {Array} itens - Array de itens do pedido
      */
     const carregarDePedido = (itens) => {
-        console.log('📦 Carregando itens de pedido existente...');
-        console.log('🔍 Itens recebidos:', JSON.stringify(itens, null, 2)); // ← ADICIONAR
+        Logger.info('Carregando itens de pedido existente...', { info: itens.length });
+        Logger.info('Itens recebidos:', { info: itens });
 
         if (!Array.isArray(itens) || itens.length === 0) {
-            console.warn('⚠️ Nenhum item para carregar');
+            Logger.warn('Nenhum item para carregar', { info: itens });
             return;
         }
 
         // Formatar itens para o padrão do carrinho
         const itensFormatados = itens.map((item, index) => {
-            console.log(`🔍 Item ${index}:`, item); // ← ADICIONAR
+            Logger.info(`Item ${index}:`, { info: item });
 
             const itemFormatado = {
                 _id: item._id || `loaded-${Date.now()}-${index}`,
@@ -335,17 +336,17 @@ const useCarrinho = () => {
                 observacoes: item.observacoes || ''
             };
 
-            console.log(`✅ Item ${index} formatado:`, itemFormatado); // ← ADICIONAR
+            Logger.info(`Item ${index} formatado:`, { info: itemFormatado }); // ← ADICIONAR
 
             return itemFormatado;
         });
 
         setCarrinho(itensFormatados);
-        console.log(`✅ ${itensFormatados?.length} itens carregados no carrinho`);
+        Logger.info(`${itensFormatados?.length} itens carregados no carrinho`, { info: itensFormatados.length });
     };
 
     // ========================================
-    // 📤 RETORNO DO HOOK
+    // RETORNO DO HOOK
     // ========================================
 
     return {
@@ -358,8 +359,8 @@ const useCarrinho = () => {
         atualizarItem,
         removerItem,
         atualizarQuantidade,
-        incrementarQuantidade,    // 🆕 ADICIONAR
-        decrementarQuantidade,    // 🆕 ADICIONAR
+        incrementarQuantidade,    // ADICIONAR
+        decrementarQuantidade,    // ADICIONAR
         limparCarrinho,
 
         // Métodos de edição

@@ -1,6 +1,7 @@
 // src/components/Login.js
 import React, { useState } from 'react';
 import apiService from '../services/apiService';
+import Logger from '../utils/Logger';
 
 function Login({ onLogin, onForgotPassword }) {
     const [formData, setFormData] = useState({
@@ -26,27 +27,27 @@ function Login({ onLogin, onForgotPassword }) {
         setErro('');
 
         try {
-            console.log('🔐 Tentando fazer login com:', formData.email);
+            Logger.info('Tentando fazer login com:', {info: "Usando login: e-mail"});
 
             const resultado = await apiService.login(formData.email, formData.senha);
 
-            console.log('📋 Resultado do login:', resultado);
+            Logger.debug('Resultado do login:', {debug: resultado.data});
 
             if (resultado.success) {
-                console.log('✅ Login bem-sucedido!');
+                Logger.info('Login bem-sucedido!', {info: "Success"});
 
                 // Chamar a função onLogin passada como prop
                 if (onLogin && typeof onLogin === 'function') {
                     onLogin(resultado.data);
                 } else {
-                    console.error('❌ onLogin não foi fornecido ou não é uma função');
+                    Logger.error('onLogin não foi fornecido ou não é uma função', {erro: resultado.data});
                 }
             } else {
-                console.error('❌ Login falhou:', resultado.message);
+                Logger.error('Login falhou:', {erro: resultado.message});
                 setErro(resultado.message || 'Credenciais inválidas');
             }
         } catch (error) {
-            console.error('❌ Erro no processo de login:', error);
+            Logger.error('Erro no processo de login:', {erro: error});
             setErro(error.message || 'Erro de conexão com o servidor');
         } finally {
             setLoading(false);
@@ -54,11 +55,11 @@ function Login({ onLogin, onForgotPassword }) {
     };
 
     const handleForgotPassword = () => {
-        console.log('🔑 Redirecionando para esqueci senha');
+        Logger.info('Redirecionando para esqueci senha', {info: "Redirecionando"});
         if (onForgotPassword && typeof onForgotPassword === 'function') {
             onForgotPassword();
         } else {
-            console.warn('⚠️ onForgotPassword não foi fornecido como prop');
+            Logger.warn('onForgotPassword', {warn: "Não foi fornecido como prop"});
         }
     };
 

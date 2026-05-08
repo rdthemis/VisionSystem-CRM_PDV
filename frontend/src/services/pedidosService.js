@@ -3,6 +3,7 @@
 // frontend/src/services/pedidosService.js
 
 import axios from 'axios';
+import Logger from '../utils/Logger';
 
 // Configuração da API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -19,7 +20,7 @@ const api = axios.create({
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Erro na API:', error);
+        Logger.error('API: Erro na API:', { erro: error });
         return Promise.reject(error);
     }
 );
@@ -52,13 +53,13 @@ const fetchWithAuth = async (url, options = {}) => {
         return data;
 
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        Logger.error('API: Erro na requisição:', { erro: error });
         throw error;
     }
 };
 
 const pedidosService = {
-    // 🔧 ADICIONANDO: Buscar todos os pedidos
+    //  ADICIONANDO: Buscar todos os pedidos
     buscarTodos: async (status = null) => {
         try {
             let url = '/pedidos';
@@ -74,21 +75,21 @@ const pedidosService = {
             } else if (Array.isArray(response)) {
                 return response;
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('API: Resposta inesperada da API:', { erro: response });
                 return [];
             }
         } catch (error) {
-            console.error('Erro ao buscar pedidos:', error);
+            Logger.error('API: Erro ao buscar pedidos:', { erro: error });
             throw new Error('Erro ao buscar pedidos');
         }
     },
 
-    // 🔧 CORRIGIDO: Buscar pedido por ID
+    //  CORRIGIDO: Buscar pedido por ID
     buscarPorId: async (id) => {
         try {
-            // 🔧 CORREÇÃO: Garantir que ID é uma string/número válido
+            //  CORREÇÃO: Garantir que ID é uma string/número válido
             if (!id || id === '[object Object]') {
-                console.error('ID inválido fornecido:', id);
+                Logger.warn('API: ID inválido fornecido:', { warn: id });
                 return { success: false, message: 'ID inválido', data: null };
             }
 
@@ -97,19 +98,19 @@ const pedidosService = {
             if (response && response.success) {
                 return response.data || response;
             } else if (response && !response.success) {
-                console.error('Erro da API:', response.message);
+                Logger.error('API: Erro da API:', { erro: response.message });
                 return response;
             } else {
-                console.error('Resposta inesperada da API:', response);
+                Logger.error('API: Resposta inesperada da API:', { erro: response });
                 return { success: false, message: 'Resposta inválida da API', data: null };
             }
         } catch (error) {
-            console.error('Erro ao buscar pedido:', error);
+            Logger.error('API: Erro ao buscar pedido:', { erro: error });
             throw new Error('Erro ao buscar pedido');
         }
     },
 
-    // 🔧 ADICIONANDO: Buscar pedidos por cliente
+    // ADICIONANDO: Buscar pedidos por cliente
     buscarPorCliente: async (clienteId) => {
         try {
             const response = await api.get(`/pedidos?cliente_id=${clienteId}`);
@@ -121,12 +122,12 @@ const pedidosService = {
             }
             return [];
         } catch (error) {
-            console.error('Erro ao buscar pedidos do cliente:', error);
+            Logger.error('API: Erro ao buscar pedidos do cliente:', { erro: error });
             throw new Error('Erro ao buscar pedidos do cliente');
         }
     },
 
-    // 🔧 ADICIONANDO: Buscar pedidos por status
+    // ADICIONANDO: Buscar pedidos por status
     buscarPorStatus: async (status) => {
         try {
             const response = await api.get(`/pedidos?status=${status}`);
@@ -138,39 +139,38 @@ const pedidosService = {
             }
             return [];
         } catch (error) {
-            console.error('Erro ao buscar pedidos por status:', error);
+            Logger.error('API: Erro ao buscar pedidos por status:', { erro: error });
             throw new Error('Erro ao buscar pedidos por status');
         }
     },
 
-    // 🔧 CORRIGIDO: Criar novo pedido
+    //  CORRIGIDO: Criar novo pedido
     criar: async (pedido) => {
         try {
-            console.log('🆕 CRIANDO PEDIDO...');
-            console.log('📦 Dados enviados:', pedido);
+            Logger.info('API: Criando novo pedido...', { info: 'pedidosService.criar', pedido });
 
             const response = await fetchWithAuth('/pedidos', {
                 method: 'POST',
                 body: JSON.stringify(pedido)
             });
 
-            console.log('📡 Resposta completa recebida:', response);
+            Logger.debug('API: Resposta completa recebida:', { debug: response });
 
-            // 🔧 CORREÇÃO: Verificar diferentes estruturas de resposta
+            //  CORREÇÃO: Verificar diferentes estruturas de resposta
             if (response) {
                 // Se a resposta tem success definido, usar isso
                 if (typeof response.success !== 'undefined') {
                     if (response.success) {
-                        console.log('✅ Pedido criado com sucesso:', response);
+                        Logger.info('API: Pedido criado com sucesso:', { info: response });
                         return response; // Retornar resposta completa
                     } else {
-                        console.error('❌ Erro retornado pela API:', response.message);
+                        Logger.error('API: Erro retornado pela API:', { erro: response.message });
                         return response; // Retornar erro da API
                     }
                 }
                 // Se não tem success mas tem data, assumir sucesso
                 else if (response.data) {
-                    console.log('✅ Pedido criado (sem campo success):', response);
+                    Logger.info('API: Pedido criado (sem campo success):', { info: response });
                     return {
                         success: true,
                         data: response.data,
@@ -179,7 +179,7 @@ const pedidosService = {
                 }
                 // Se é um array ou objeto direto
                 else if (Array.isArray(response) || (typeof response === 'object' && response !== null)) {
-                    console.log('✅ Resposta direta (assumindo sucesso):', response);
+                    Logger.debug('API: Resposta direta (assumindo sucesso):', { debug: response });
                     return {
                         success: true,
                         data: response,
@@ -188,7 +188,7 @@ const pedidosService = {
                 }
                 // Resposta inesperada mas não nula
                 else {
-                    console.error('⚠️ Resposta em formato inesperado:', response);
+                    Logger.error('API: Resposta em formato inesperado:', { erro: response });
                     return {
                         success: false,
                         message: 'Resposta em formato inesperado: ' + JSON.stringify(response)
@@ -197,7 +197,7 @@ const pedidosService = {
             }
             // Resposta nula/undefined
             else {
-                console.error('❌ Resposta vazia/nula da API');
+                Logger.error('API: Resposta vazia/nula da API:', { erro: 'Resposta nula/undefined' });
                 return {
                     success: false,
                     message: 'Nenhuma resposta recebida da API'
@@ -205,7 +205,7 @@ const pedidosService = {
             }
 
         } catch (error) {
-            console.error('❌ Exceção ao criar pedido:', error);
+            Logger.error('API: Exceção ao criar pedido:', { erro: error });
             return {
                 success: false,
                 message: 'Erro na comunicação: ' + error.message
@@ -213,20 +213,20 @@ const pedidosService = {
         }
     },
 
-    // 🔧 CORRIGIDO: Atualizar pedido usando fetchWithAuth
+    //  CORRIGIDO: Atualizar pedido usando fetchWithAuth
     atualizar: async (pedido) => {
         try {
-            console.log('🔄 Atualizando pedido:', pedido);
+            Logger.info('API: Atualizando pedido...', { info: 'pedidosService.atualizar', pedido });
 
             const response = await fetchWithAuth('/pedidos', {
                 method: 'PUT',
                 body: JSON.stringify(pedido)
             });
 
-            console.log('📡 Resposta da atualização:', response);
+            Logger.debug('API: Resposta da atualização:', { debug: response });
 
             if (response && typeof response.success !== 'undefined') {
-                console.log("Valor no service: ", response.data.total)
+                Logger.debug('API: Pedido atualizado com sucesso:', { debug: response });
                 return response;
             } else if (response && !response.error) {
                 return { success: true, data: response };
@@ -235,12 +235,12 @@ const pedidosService = {
             }
 
         } catch (error) {
-            console.error('❌ Erro ao atualizar pedido:', error);
+            Logger.error('API: Erro ao atualizar pedido:', { erro: error });
             return { success: false, message: error.message };
         }
     },
 
-    // 🔧 CORRIGIDO: Deletar pedido usando fetchWithAuth
+    //  CORRIGIDO: Deletar pedido usando fetchWithAuth
     deletar: async (id) => {
         try {
             const response = await fetchWithAuth('/pedidos', {
@@ -254,12 +254,12 @@ const pedidosService = {
                 throw new Error(response?.message || 'Erro ao deletar pedido');
             }
         } catch (error) {
-            console.error('Erro ao deletar pedido:', error);
+            Logger.error('API: Erro ao deletar pedido:', { erro: error });
             throw new Error('Erro ao deletar pedido');
         }
     },
 
-    // 🔧 ADICIONANDO: Atualizar status do pedido
+    //  ADICIONANDO: Atualizar status do pedido
     atualizarStatus: async (id, novoStatus) => {
         try {
             const response = await api.put('/pedidos', {
@@ -268,12 +268,12 @@ const pedidosService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Erro ao atualizar status do pedido:', error);
+            Logger.error('API: Erro ao atualizar status do pedido:', { erro: error });
             throw new Error('Erro ao atualizar status do pedido');
         }
     },
 
-    // 🔧 ADICIONANDO: Adicionar item ao pedido
+    //  ADICIONANDO: Adicionar item ao pedido
     adicionarItem: async (pedidoId, item) => {
         try {
             const response = await api.post('/pedidos/itens', {
@@ -282,12 +282,12 @@ const pedidosService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Erro ao adicionar item ao pedido:', error);
+            Logger.error('API: Erro ao adicionar item ao pedido:', { erro: error });
             throw new Error('Erro ao adicionar item ao pedido');
         }
     },
 
-    // 🔧 ADICIONANDO: Remover item do pedido
+    //  ADICIONANDO: Remover item do pedido
     removerItem: async (pedidoId, itemId) => {
         try {
             const response = await api.delete('/pedidos/itens', {
@@ -298,28 +298,28 @@ const pedidosService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Erro ao remover item do pedido:', error);
+            Logger.error('API: Erro ao remover item do pedido:', { erro: error });
             throw new Error('Erro ao remover item do pedido');
         }
     },
 
     /**
-   * 🔄 TRANSFERIR itens entre comandas
+   * TRANSFERIR itens entre comandas
    */
     transferir: async (dados) => {
         try {
-        console.log('🔄 Service - Transferindo itens:', dados);
+        Logger.info('API: Transferindo itens...', { info: 'pedidosService.transferir', dados });
 
         const response = await fetchWithAuth('/pedidos/transferir', {
                 method: 'POST',
                 body: JSON.stringify(dados)
             });
 
-        console.log('✅ Service - Transferência concluída:', response);
+        Logger.debug('API: Transferência concluída:', { debug: response });
         return response;
 
         } catch (error) {
-        console.error('❌ Service - Erro na transferência:', error);
+        Logger.error('API: Erro na transferência:', { erro: error });
         throw error;
         }
     },
@@ -356,7 +356,7 @@ const pedidosService = {
         return dataObj.toLocaleString('pt-BR');
     },
 
-    // 🔧 ADICIONANDO: Calcular total do pedido
+    //  ADICIONANDO: Calcular total do pedido
     calcularTotal(itens) {
         if (!Array.isArray(itens)) return 0;
 
@@ -367,7 +367,7 @@ const pedidosService = {
         }, 0);
     },
 
-    // 🔧 ADICIONANDO: Validar pedido antes de salvar
+    //  ADICIONANDO: Validar pedido antes de salvar
     validarPedido(pedido) {
         const erros = [];
 

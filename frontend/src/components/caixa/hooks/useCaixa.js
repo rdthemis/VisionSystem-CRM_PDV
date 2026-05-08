@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import caixaService from '../../../services/caixaService';
 import pedidoService from '../../../services/pedidosService';
+import Logger from '../../../utils/Logger';
 
 export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
     // Estados principais
@@ -82,12 +83,12 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
             } else if (movimentos && movimentos.success && Array.isArray(movimentos.data)) {
                 setMovimentosCaixa(movimentos.data);
             } else {
-                console.warn('Movimentos não é um array:', movimentos);
+                Logger.warn('Movimentos não é um array:', {warn: movimentos});
                 setMovimentosCaixa([]);
             }
 
         } catch (error) {
-            console.error('Erro ao carregar dados do caixa:', error);
+            Logger.error('Erro ao carregar dados do caixa:', {erro: error});
             setMensagem('Erro ao carregar dados do caixa: ' + error.message);
             setTipoMensagem('error');
             setMovimentosCaixa([]);
@@ -113,7 +114,7 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
             }
 
         } catch (error) {
-            console.error('Erro ao abrir caixa:', error);
+            Logger.error('Erro ao abrir caixa:', {erro: error});
             setMensagem('Erro ao abrir caixa: ' + error.message);
             setTipoMensagem('error');
             return { success: false, error: error.message };
@@ -125,11 +126,11 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
     // ✅ VALIDAR comandas em aberto
     const validarFechamentoCaixa = async () => {
         try {
-            console.log('🔍 Verificando comandas em aberto...');
+            Logger.info('Verificando comandas em aberto...', {info: 'Verificando comandas...'});
 
             const pedidosAbertos = await pedidoService.buscarTodos('aberto');
 
-            console.log('📋 Pedidos encontrados:', pedidosAbertos);
+            Logger.info('Pedidos encontrados:', {info: pedidosAbertos});
 
             if (pedidosAbertos && pedidosAbertos.length > 0) {
                 return {
@@ -145,7 +146,7 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
             };
 
         } catch (error) {
-            console.error('❌ Erro ao validar:', error);
+            Logger.error('Erro ao validar:', {erro: error});
             return {
                 permitido: false,
                 erro: error.message
@@ -158,8 +159,8 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
         try {
             setLoadingCaixa(true);
 
-            // ✅ VALIDAÇÃO FRONTEND
-            console.log('🔒 Validando fechamento de caixa...');
+            // VALIDAÇÃO FRONTEND
+            Logger.info('Validando fechamento de caixa...', {info: "Fechando caixa..."});
             const validacao = await validarFechamentoCaixa();
 
             if (!validacao.permitido) {
@@ -199,7 +200,7 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
                 };
             }
 
-            console.log('✅ Sem comandas abertas. Fechando caixa...');
+            Logger.info('Sem comandas abertas', {Info: "Fechando caixa..."});
 
             // ✅ Fechar caixa no backend
             const response = await caixaService.fecharCaixa(observacoes);
@@ -244,7 +245,7 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
             return { success: true, data: response.data };
 
         } catch (error) {
-            console.error('❌ Erro ao fechar caixa:', error);
+            Logger.error('Erro ao fechar caixa:', {erro: error});
             setMensagem('Erro ao fechar caixa: ' + error.message);
             setTipoMensagem('error');
             return { success: false, error: error.message };
@@ -285,7 +286,7 @@ export const useCaixa = (onCaixaFechado, onVoltarDashboard) => {
             }
 
         } catch (error) {
-            console.error('Erro ao adicionar movimento:', error);
+            Logger.error('Erro ao adicionar movimento:', {erro: error});
             setMensagem('Erro ao adicionar movimento: ' + error.message);
             setTipoMensagem('error');
             return { success: false, error: error.message };

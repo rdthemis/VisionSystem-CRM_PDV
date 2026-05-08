@@ -2,6 +2,7 @@
 // 🚚 MODAL: Configurar entrega (zona + endereço)
 
 import React, { useState, useEffect } from 'react';
+import Logger from '../../../utils/Logger';
 
 /**
  * Modal para configurar entrega com seleção de zona e endereço
@@ -49,7 +50,7 @@ const ModalEntrega = ({
       const resultado = await buscarZonas(true); // true = apenas ativas
       setZonas(resultado || []);
     } catch (err) {
-      console.error('Erro ao carregar zonas:', err);
+      Logger.error('Erro ao carregar zonas:', { erro: err });
       setErro('Erro ao carregar zonas de entrega');
     } finally {
       setLoading(false);

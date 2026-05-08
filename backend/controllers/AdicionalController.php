@@ -1,4 +1,5 @@
 <?php
+
 // controllers/AdicionalController.php
 require_once __DIR__.'/../models/Adicional.php';
 
@@ -9,7 +10,7 @@ class AdicionalController
 
     public function __construct($database)
     {
-        $this->db = $database->conectar();
+        $this->db = $database->getConnection();
         $this->adicional = new Adicional($this->db);
     }
 
@@ -23,12 +24,12 @@ class AdicionalController
                 if ($adicional) {
                     return [
                         'success' => true,
-                        'data' => $adicional
+                        'data' => $adicional,
                     ];
                 } else {
                     return [
                         'success' => false,
-                        'message' => 'Adicional não encontrado'
+                        'message' => 'Adicional não encontrado',
                     ];
                 }
             }
@@ -43,13 +44,12 @@ class AdicionalController
 
             return [
                 'success' => true,
-                'data' => $adicionais
+                'data' => $adicionais,
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Erro ao buscar adicionais: ' . $e->getMessage()
+                'message' => 'Erro ao buscar adicionais: '.$e->getMessage(),
             ];
         }
     }
@@ -62,21 +62,21 @@ class AdicionalController
             if (empty($dados['nome'])) {
                 return [
                     'success' => false,
-                    'message' => 'Nome é obrigatório'
+                    'message' => 'Nome é obrigatório',
                 ];
             }
 
             if (empty($dados['preco']) || !is_numeric($dados['preco'])) {
                 return [
                     'success' => false,
-                    'message' => 'Preço válido é obrigatório'
+                    'message' => 'Preço válido é obrigatório',
                 ];
             }
 
             if (empty($dados['categoria_id'])) {
                 return [
                     'success' => false,
-                    'message' => 'Categoria é obrigatória'
+                    'message' => 'Categoria é obrigatória',
                 ];
             }
 
@@ -93,19 +93,19 @@ class AdicionalController
                     'success' => true,
                     'message' => 'Adicional criado com sucesso',
                     'data' => [
-                        'id' => $this->adicional->id
-                    ]
+                        'id' => $this->adicional->id,
+                    ],
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Erro ao criar adicional'
+                    'message' => 'Erro ao criar adicional',
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Erro ao criar adicional: ' . $e->getMessage()
+                'message' => 'Erro ao criar adicional: '.$e->getMessage(),
             ];
         }
     }
@@ -118,28 +118,28 @@ class AdicionalController
             if (empty($dados['id'])) {
                 return [
                     'success' => false,
-                    'message' => 'ID é obrigatório'
+                    'message' => 'ID é obrigatório',
                 ];
             }
 
             if (empty($dados['nome'])) {
                 return [
                     'success' => false,
-                    'message' => 'Nome é obrigatório'
+                    'message' => 'Nome é obrigatório',
                 ];
             }
 
             if (empty($dados['preco']) || !is_numeric($dados['preco'])) {
                 return [
                     'success' => false,
-                    'message' => 'Preço válido é obrigatório'
+                    'message' => 'Preço válido é obrigatório',
                 ];
             }
 
             if (empty($dados['categoria_id'])) {
                 return [
                     'success' => false,
-                    'message' => 'Categoria é obrigatória'
+                    'message' => 'Categoria é obrigatória',
                 ];
             }
 
@@ -155,18 +155,18 @@ class AdicionalController
             if ($this->adicional->atualizar()) {
                 return [
                     'success' => true,
-                    'message' => 'Adicional atualizado com sucesso'
+                    'message' => 'Adicional atualizado com sucesso',
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Erro ao atualizar adicional'
+                    'message' => 'Erro ao atualizar adicional',
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Erro ao atualizar adicional: ' . $e->getMessage()
+                'message' => 'Erro ao atualizar adicional: '.$e->getMessage(),
             ];
         }
     }
@@ -178,7 +178,7 @@ class AdicionalController
             if (empty($id)) {
                 return [
                     'success' => false,
-                    'message' => 'ID é obrigatório'
+                    'message' => 'ID é obrigatório',
                 ];
             }
 
@@ -188,18 +188,18 @@ class AdicionalController
             if ($this->adicional->deletar()) {
                 return [
                     'success' => true,
-                    'message' => 'Adicional excluído com sucesso'
+                    'message' => 'Adicional excluído com sucesso',
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Erro ao excluir adicional'
+                    'message' => 'Erro ao excluir adicional',
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Erro ao excluir adicional: ' . $e->getMessage()
+                'message' => 'Erro ao excluir adicional: '.$e->getMessage(),
             ];
         }
     }

@@ -1,5 +1,6 @@
 // src/services/ConfigService.js
 // 🎯 Serviço centralizado de configurações do sistema de impressão
+import logger from '../utils/Logger';
 
 class ConfigService {
     constructor() {
@@ -58,7 +59,7 @@ class ConfigService {
     set(key, value) {
         const fullKey = this.CONFIG_PREFIX + key;
         localStorage.setItem(fullKey, value);
-        console.log(`✅ Config salva: ${key} = ${value}`);
+        logger.info('Config salva', { info: `${key} = ${value}` });
         
         // Disparar evento de mudança
         this.dispatchConfigChange(key, value);
@@ -117,7 +118,7 @@ class ConfigService {
     reset(key) {
         const fullKey = this.CONFIG_PREFIX + key;
         localStorage.removeItem(fullKey);
-        console.log(`🔄 Config resetada: ${key}`);
+        logger.info('Config resetada', { info: ` ${key}` });
         this.dispatchConfigChange(key, this.defaults[key]);
     }
 
@@ -128,7 +129,7 @@ class ConfigService {
         Object.keys(this.defaults).forEach(key => {
             this.reset(key);
         });
-        console.log('🔄 Todas as configurações foram resetadas');
+        logger.info('Todas as configurações foram resetadas', {info: 'Configurações resetadas para os padrões' });
     }
 
     /**
@@ -151,7 +152,7 @@ class ConfigService {
                 this.set(key, value);
             }
         });
-        console.log('✅ Configurações importadas');
+        logger.info('Configurações importadas', { info: 'Sucesso' });
     }
 
     /**

@@ -15,7 +15,7 @@ class Recibos
     public function listar($filtros = [])
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Debug: Log dos filtros recebidos
             error_log('🧾 Recibos - Filtros recebidos: '.json_encode($filtros));
@@ -167,7 +167,7 @@ class Recibos
     public function buscarPorId($id)
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             $stmt = $pdo->prepare('
                 SELECT 
@@ -212,7 +212,7 @@ class Recibos
     public function criar($dados, $usuarioId)
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Debug: Log dos dados recebidos
             error_log('🧾 Dados recebidos para criar recibo: '.json_encode($dados));
@@ -304,7 +304,7 @@ class Recibos
     public function cancelar($id)
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             $stmt = $pdo->prepare('
                 UPDATE recibos 
@@ -372,7 +372,7 @@ class Recibos
     public function gerarParaPagamento($contaId, $dadosPagamento, $usuarioId)
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Buscar dados da conta
             $stmt = $pdo->prepare('

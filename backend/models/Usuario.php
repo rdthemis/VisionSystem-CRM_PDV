@@ -123,9 +123,9 @@ class Usuario
         $stmt = $this->conn->prepare($query);
 
         // Sanitizar
-        $this->nome = htmlspecialchars(strip_tags($this->nome));
-        $this->email = htmlspecialchars(strip_tags($this->email));
-        $this->tipo = htmlspecialchars(strip_tags($this->tipo));
+        $this->nome = trim($this->nome);
+        $this->email = trim($this->email);
+        $this->tipo = trim($this->tipo);
         $this->ativo = $this->ativo ? 1 : 0;
 
         // Bind
@@ -133,7 +133,7 @@ class Usuario
         $stmt->bindParam(':email', $this->email);
         $stmt->bindParam(':password_hash', $this->password_hash);
         $stmt->bindParam(':tipo', $this->tipo);
-        $stmt->bindParam(':ativo', $this->ativo);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
@@ -169,9 +169,9 @@ class Usuario
         $stmt = $this->conn->prepare($query);
 
         // Sanitizar
-        $this->nome = htmlspecialchars(strip_tags($this->nome));
-        $this->email = htmlspecialchars(strip_tags($this->email));
-        $this->tipo = htmlspecialchars(strip_tags($this->tipo));
+        $this->nome = trim($this->nome);
+        $this->email = trim($this->email);
+        $this->tipo = trim($this->tipo);
         $this->ativo = $this->ativo ? 1 : 0;
         $this->id = intval($this->id);
 
@@ -179,8 +179,8 @@ class Usuario
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':email', $this->email);
         $stmt->bindParam(':tipo', $this->tipo);
-        $stmt->bindParam(':ativo', $this->ativo);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         if (!empty($this->password_hash)) {
             $stmt->bindParam(':password_hash', $this->password_hash);
@@ -198,7 +198,7 @@ class Usuario
 
         $stmt = $this->conn->prepare($query);
         $this->id = intval($this->id);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }
@@ -212,7 +212,7 @@ class Usuario
 
         $stmt = $this->conn->prepare($query);
         $this->id = intval($this->id);
-        $stmt->bindParam(':id', $this->id);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }

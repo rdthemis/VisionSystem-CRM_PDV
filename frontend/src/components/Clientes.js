@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clientesService } from '../services/clientesService';
+import Logger from '../utils/Logger';
 
 const Clientes = () => {
     const [clientes, setClientes] = useState([]);
@@ -227,7 +228,7 @@ const Clientes = () => {
                 }));
             }
         } catch (error) {
-            console.error('Erro ao buscar CEP:', error);
+            Logger.error('Erro ao buscar CEP:',{erro: error});
         } finally {
             setLoading(false);
         }

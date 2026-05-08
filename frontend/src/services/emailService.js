@@ -1,16 +1,17 @@
 // src/services/emailService.js
 import { apiService } from './apiService';
+import Logger from '../utils/Logger';
 
 export const emailService = {
     // Carregar configurações de email
     async carregarConfiguracoes() {
         try {
-            console.log('📧 EmailService: Carregando configurações...');
+            Logger.info('EmailService: Carregando configurações...', {info: 'emailService.carregarConfiguracoes'});
             const resultado = await apiService.get('/integracoes/email');
-            console.log('📋 EmailService: Configurações:', resultado);
+            Logger.debug('EmailService: Configurações:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao carregar configurações:', error);
+            Logger.error('EmailService: Erro ao carregar configurações:', { erro: error });
             throw error;
         }
     },
@@ -18,12 +19,12 @@ export const emailService = {
     // Salvar configurações de email
     async salvarConfiguracoes(config) {
         try {
-            console.log('💾 EmailService: Salvando configurações...');
+            Logger.info('EmailService: Salvando configurações...', {info: 'emailService.salvarConfiguracoes'});
             const resultado = await apiService.post('/integracoes/email/salvar', config);
-            console.log('✅ EmailService: Configurações salvas:', resultado);
+            Logger.debug('EmailService: Configurações salvas:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao salvar configurações:', error);
+            Logger.error('EmailService: Erro ao salvar configurações:', { erro: error });
             throw error;
         }
     },
@@ -31,13 +32,13 @@ export const emailService = {
     // Testar configuração de email
     async testar(emailTeste = null) {
         try {
-            console.log('🧪 EmailService: Testando configuração...');
+            Logger.info('EmailService: Testando configuração...', {info: 'emailService.testar'});
             const dados = emailTeste ? { email_teste: emailTeste } : {};
             const resultado = await apiService.post('/integracoes/testar/email', dados);
-            console.log('✅ EmailService: Teste concluído:', resultado);
+            Logger.debug('EmailService: Teste concluído:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro no teste:', error);
+            Logger.error('EmailService: Erro no teste:', { erro: error });
             throw error;
         }
     },
@@ -45,15 +46,15 @@ export const emailService = {
     // Enviar recibo por email
     async enviarRecibo(reciboId, email, nome = '') {
         try {
-            console.log('📧 EmailService: Enviando recibo:', { reciboId, email });
+            Logger.info('EmailService: Enviando recibo...', {info: 'emailService.enviarRecibo', reciboId, email, nome});
             const resultado = await apiService.post(`/recibos/${reciboId}/enviar-email`, {
                 email,
                 nome
             });
-            console.log('✅ EmailService: Recibo enviado:', resultado);
+            Logger.debug('EmailService: Recibo enviado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao enviar recibo:', error);
+            Logger.error('EmailService: Erro ao enviar recibo:', { erro: error });
             throw error;
         }
     },
@@ -61,16 +62,16 @@ export const emailService = {
     // Enviar notificação de vencimento
     async enviarNotificacaoVencimento(email, nome, contas) {
         try {
-            console.log('⚠️ EmailService: Enviando notificação de vencimento...');
+            Logger.info('EmailService: Enviando notificação de vencimento...', {info: 'emailService.enviarNotificacaoVencimento', email, nome, contas});
             const resultado = await apiService.post('/email/notificacao-vencimento', {
                 email,
                 nome,
                 contas
             });
-            console.log('✅ EmailService: Notificação enviada:', resultado);
+            Logger.debug('EmailService: Notificação enviada:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao enviar notificação:', error);
+            Logger.error('EmailService: Erro ao enviar notificação:', { erro: error });
             throw error;
         }
     },
@@ -78,17 +79,17 @@ export const emailService = {
     // Enviar relatório por email
     async enviarRelatorio(emailDestino, tipoRelatorio, dadosRelatorio, periodo = null) {
         try {
-            console.log('📊 EmailService: Enviando relatório...');
+            Logger.info('EmailService: Enviando relatório...', {info: 'emailService.enviarRelatorio', emailDestino, tipoRelatorio});
             const resultado = await apiService.post('/email/relatorio', {
                 email: emailDestino,
                 tipo: tipoRelatorio,
                 dados: dadosRelatorio,
                 periodo
             });
-            console.log('✅ EmailService: Relatório enviado:', resultado);
+            Logger.debug('EmailService: Relatório enviado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao enviar relatório:', error);
+            Logger.error('EmailService: Erro ao enviar relatório:', { erro: error });
             throw error;
         }
     },
@@ -106,12 +107,12 @@ export const emailService = {
     // Listar templates de email disponíveis
     async listarTemplates() {
         try {
-            console.log('📧 EmailService: Listando templates...');
+            Logger.info('EmailService: Listando templates...', {info: 'emailService.listarTemplates'});
             const resultado = await apiService.get('/email/templates');
-            console.log('📋 EmailService: Templates:', resultado);
+            Logger.debug('EmailService: Templates:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao listar templates:', error);
+            Logger.error('EmailService: Erro ao listar templates:', { erro: error });
             throw error;
         }
     },
@@ -119,17 +120,17 @@ export const emailService = {
     // Salvar template personalizado
     async salvarTemplate(nome, assunto, corpo, tipo = 'custom') {
         try {
-            console.log('💾 EmailService: Salvando template...');
+            Logger.info('EmailService: Salvando template...', {info: 'emailService.salvarTemplate', nome, assunto, corpo, tipo});
             const resultado = await apiService.post('/email/templates', {
                 nome,
                 assunto,
                 corpo,
                 tipo
             });
-            console.log('✅ EmailService: Template salvo:', resultado);
+            Logger.debug('EmailService: Template salvo:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao salvar template:', error);
+            Logger.error('EmailService: Erro ao salvar template:', { erro: error });
             throw error;
         }
     },
@@ -137,17 +138,17 @@ export const emailService = {
     // Enviar email personalizado
     async enviarPersonalizado(destinatarios, assunto, corpo, anexos = []) {
         try {
-            console.log('📧 EmailService: Enviando email personalizado...');
+            Logger.info('EmailService: Enviando email personalizado...', {info: 'emailService.enviarPersonalizado', destinatarios, assunto, corpo, anexos});
             const resultado = await apiService.post('/email/enviar', {
                 destinatarios,
                 assunto,
                 corpo,
                 anexos
             });
-            console.log('✅ EmailService: Email enviado:', resultado);
+            Logger.debug('EmailService: Email enviado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao enviar email:', error);
+            Logger.error('EmailService: Erro ao enviar email:', { erro: error });
             throw error;
         }
     },
@@ -155,7 +156,7 @@ export const emailService = {
     // Histórico de emails enviados
     async historico(filtros = {}) {
         try {
-            console.log('📧 EmailService: Carregando histórico...');
+            Logger.info('EmailService: Carregando histórico...', {info: 'emailService.historico'});
             const params = new URLSearchParams();
 
             Object.keys(filtros).forEach(key => {
@@ -166,10 +167,10 @@ export const emailService = {
 
             const url = `/email/historico${params.toString() ? `?${params.toString()}` : ''}`;
             const resultado = await apiService.get(url);
-            console.log('📋 EmailService: Histórico:', resultado);
+            Logger.debug('EmailService: Histórico:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ EmailService: Erro ao carregar histórico:', error);
+            Logger.error('EmailService: Erro ao carregar histórico:', { erro: error });
             throw error;
         }
     }

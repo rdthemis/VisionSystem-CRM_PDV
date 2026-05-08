@@ -22,25 +22,26 @@ class EmailService
     private function carregarConfiguracoes()
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Criar tabela se não existir
+            {/*}
             $pdo->exec("
                 CREATE TABLE IF NOT EXISTS configuracoes_email (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     smtp_host VARCHAR(255) NOT NULL,
                     smtp_port INT NOT NULL DEFAULT 587,
-                    smtp_user VARCHAR(255) NOT NULL,
-                    smtp_pass VARCHAR(255) NOT NULL,
+                    smtp_username VARCHAR(255) NOT NULL,
+                    smtp_password VARCHAR(255) NOT NULL,
                     smtp_secure VARCHAR(10) DEFAULT 'tls',
-                    from_email VARCHAR(255),
-                    from_name VARCHAR(255) DEFAULT 'Sistema CRM',
+                    from_address VARCHAR(255),
+                    from_name VARCHAR(255) DEFAULT 'GelattoApp',
                     ativo BOOLEAN DEFAULT TRUE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )
             ");
-
+            */}
             $stmt = $pdo->query('
                 SELECT * FROM configuracoes_email 
                 WHERE ativo = 1 
@@ -54,11 +55,11 @@ class EmailService
                 $this->configuracoes = [
                     'smtp_host' => $config['smtp_host'],
                     'smtp_port' => $config['smtp_port'],
-                    'smtp_user' => $config['smtp_user'],
-                    'smtp_pass' => $config['smtp_pass'],
+                    'smtp_username' => $config['smtp_username'],
+                    'smtp_password' => $config['smtp_password'],
                     'smtp_secure' => $config['smtp_secure'],
-                    'from_email' => $config['from_email'] ?: $config['smtp_user'],
-                    'from_name' => $config['from_name'] ?: 'Sistema CRM',
+                    'from_address' => $config['from_address'] ?: $config['smtp_username'],
+                    'from_name' => $config['from_name'] ?: 'GelattoApp',
                 ];
 
                 error_log('📧 Configurações de email carregadas: '.$config['smtp_host']);
@@ -86,7 +87,7 @@ class EmailService
     public function salvarConfiguracoes($dados)
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Desativar configurações antigas
             $pdo->exec('UPDATE configuracoes_email SET ativo = 0');
@@ -94,19 +95,19 @@ class EmailService
             // Inserir nova configuração
             $stmt = $pdo->prepare('
                 INSERT INTO configuracoes_email (
-                    smtp_host, smtp_port, smtp_user, smtp_pass, 
-                    smtp_secure, from_email, from_name, ativo
+                    smtp_host, smtp_port, smtp_username, smtp_password, 
+                    smtp_secure, from_address, from_name, ativo
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
             ');
 
             $stmt->execute([
                 $dados['smtp_host'],
                 $dados['smtp_port'] ?: 587,
-                $dados['smtp_user'],
-                $dados['smtp_pass'],
+                $dados['smtp_username'],
+                $dados['smtp_password'],
                 $dados['smtp_secure'] ?: 'tls',
-                $dados['from_email'] ?: $dados['smtp_user'],
-                $dados['from_name'] ?: 'Sistema CRM',
+                $dados['from_address'] ?: $dados['smtp_username'],
+                $dados['from_name'] ?: 'GelattoApp',
             ]);
 
             // Recarregar configurações
@@ -146,8 +147,8 @@ class EmailService
             $mail->isSMTP();
             $mail->Host = $this->configuracoes['smtp_host'];
             $mail->SMTPAuth = true;
-            $mail->Username = $this->configuracoes['smtp_user'];
-            $mail->Password = $this->configuracoes['smtp_pass'];
+            $mail->Username = $this->configuracoes['smtp_username'];
+            $mail->Password = $this->configuracoes['smtp_password'];
             $mail->SMTPSecure = $this->configuracoes['smtp_secure'];
             $mail->Port = $this->configuracoes['smtp_port'];
             $mail->CharSet = 'UTF-8';
@@ -163,7 +164,7 @@ class EmailService
 
             // Remetente
             $mail->setFrom(
-                $this->configuracoes['from_email'],
+                $this->configuracoes['from_address'],
                 $this->configuracoes['from_name']
             );
 
@@ -213,9 +214,9 @@ class EmailService
                 throw new Exception('Configure o email primeiro antes de testar.');
             }
 
-            $emailDestino = $emailTeste ?: $this->configuracoes['smtp_user'];
+            $emailDestino = $emailTeste ?: $this->configuracoes['smtp_username'];
 
-            $assunto = '✅ Teste de Configuração - Sistema CRM';
+            $assunto = '✅ Teste de Configuração - GelattoApp';
             $corpo = $this->getTemplateTesteEmail();
 
             error_log('🧪 Testando email para: '.$emailDestino);
@@ -453,7 +454,7 @@ class EmailService
                 </div>
                 
                 <div class='footer'>
-                    <p style='margin: 0;'>Este é um email automático do <strong>Sistema CRM</strong></p>
+                    <p style='margin: 0;'>Este é um email automático do <strong>GelattoApp</strong></p>
                     <p style='margin: 5px 0 0 0; opacity: 0.8;'>
                         Em caso de dúvidas, entre em contato conosco
                     </p>
@@ -545,7 +546,7 @@ class EmailService
                         <p><strong>📅 Data/Hora:</strong> ".date('d/m/Y H:i:s')."</p>
                         <p><strong>🖥️ Servidor:</strong> {$this->configuracoes['smtp_host']}</p>
                         <p><strong>🔌 Porta:</strong> {$this->configuracoes['smtp_port']}</p>
-                        <p><strong>👤 Usuário:</strong> {$this->configuracoes['smtp_user']}</p>
+                        <p><strong>👤 Usuário:</strong> {$this->configuracoes['smtp_username']}</p>
                         <p><strong>🔒 Segurança:</strong> {$this->configuracoes['smtp_secure']}</p>
                     </div>
                     
@@ -560,12 +561,12 @@ class EmailService
                     </div>
                     
                     <p style='color: #666; font-size: 14px; margin-top: 30px;'>
-                        Este foi um teste automático do Sistema CRM. Suas configurações estão funcionando corretamente!
+                        Este foi um teste automático do GelattoApp. Suas configurações estão funcionando corretamente!
                     </p>
                 </div>
                 
                 <div class='footer'>
-                    <p style='margin: 0;'>Sistema CRM - Teste de Configuração</p>
+                    <p style='margin: 0;'>GelattoApp - Teste de Configuração</p>
                     <p style='margin: 5px 0 0 0; opacity: 0.8;'>
                         Configuração realizada com sucesso!
                     </p>
@@ -589,11 +590,11 @@ class EmailService
                     'ativo' => false,
                     'smtp_host' => '',
                     'smtp_port' => 587,
-                    'smtp_user' => '',
-                    'smtp_pass' => '',
+                    'smtp_username' => '',
+                    'smtp_password' => '',
                     'smtp_secure' => 'tls',
-                    'from_email' => '',
-                    'from_name' => 'Sistema CRM',
+                    'from_address' => '',
+                    'from_name' => 'GelattoApp',
                 ],
             ];
         }
@@ -604,10 +605,10 @@ class EmailService
                 'ativo' => true,
                 'smtp_host' => $this->configuracoes['smtp_host'],
                 'smtp_port' => $this->configuracoes['smtp_port'],
-                'smtp_user' => $this->configuracoes['smtp_user'],
-                'smtp_pass' => '', // Não retornar senha por segurança
+                'smtp_username' => $this->configuracoes['smtp_username'],
+                'smtp_password' => '', // Não retornar senha por segurança
                 'smtp_secure' => $this->configuracoes['smtp_secure'],
-                'from_email' => $this->configuracoes['from_email'],
+                'from_address' => $this->configuracoes['from_address'],
                 'from_name' => $this->configuracoes['from_name'],
             ],
         ];

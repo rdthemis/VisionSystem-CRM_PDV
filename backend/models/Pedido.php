@@ -87,7 +87,6 @@ class Pedido
     }
 
     // Buscar itens de um pedido específico
-    // Buscar itens de um pedido específico
     public function buscarItensPedido($pedido_id)
     {
         // ✅ CORRIGIDO: Agora busca adicionais e observacoes também
@@ -109,7 +108,7 @@ class Pedido
               ORDER BY pi.id';
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':pedido_id', $pedido_id);
+        $stmt->bindParam(':pedido_id', $pedido_id, PDO::PARAM_INT);
         $stmt->execute();
 
         $itens = $stmt->fetchAll();
@@ -171,7 +170,8 @@ class Pedido
             }
             // Se não tem nem ID nem nome, erro
             else {
-                throw new Exception('Nome do cliente é obrigatório');
+                Logger::warn('Nome do cliente é obrigatório');
+                // throw new Exception('Nome do cliente é obrigatório');
             }
 
             // Inserir pedido com dados do cliente
@@ -180,8 +180,8 @@ class Pedido
                   VALUES (:numero_pedido, :cliente_id, :cliente_nome, :tipo_cliente, :total, :status, :forma_pagamento)';
 
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':numero_pedido', $this->numero_pedido);
-            $stmt->bindParam(':cliente_id', $cliente_id);
+            $stmt->bindParam(':numero_pedido', $this->numero_pedido, PDO::PARAM_INT);
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
             $stmt->bindParam(':cliente_nome', $cliente_nome);
             $stmt->bindParam(':tipo_cliente', $tipo_cliente);
             $stmt->bindParam(':total', $this->total);
@@ -195,7 +195,8 @@ class Pedido
                 if (!empty($this->itens)) {
                     foreach ($this->itens as $item) {
                         if (!$this->adicionarItem($item)) {
-                            throw new Exception('Erro ao adicionar item do pedido');
+                            Logger::warn('Erro ao adicionar item do pedido');
+                            // throw new Exception('Erro ao adicionar item do pedido');
                         }
                     }
                 }
@@ -207,68 +208,27 @@ class Pedido
 
                 // Confirmar transação
                 $this->conn->commit();
-
-                error_log("✅ Pedido criado: ID {$this->id}, Cliente: {$cliente_nome} ({$tipo_cliente})");
+                Logger::info('Conta a Receber', [
+                    'Pedido criado ID ' => $this->id,
+                    'Cliente: ' => $cliente_nome,
+                    'tipo cliente ' => $tipo_cliente,
+                ]);
 
                 return true;
             }
-
-            throw new Exception('Erro ao criar pedido');
+            Logger::error('Erro ao criar pedido', [
+                'erro ' => throw new Exception('Erro ao criar pedido'),
+            ]);
         } catch (Exception $e) {
             // Reverter transação em caso de erro
             $this->conn->rollback();
-            error_log('❌ Erro ao criar pedido: '.$e->getMessage());
+            Logger::error('Erro ao criar pedido', [
+                'erro ' => $e->getMessage(),
+            ]);
 
             return false;
         }
     }
-
-    /* public function criar()
-    {
-        try {
-            // Iniciar transação
-            $this->conn->beginTransaction();
-
-            // Gerar número do pedido
-            $this->numero_pedido = $this->gerarNumeroPedido();
-
-            // Inserir pedido
-            $query = 'INSERT INTO '.$this->table_pedidos.'
-                      (numero_pedido, total, status)
-                      VALUES (:numero_pedido, :total, :status)';
-
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':numero_pedido', $this->numero_pedido);
-            $stmt->bindParam(':total', $this->total);
-            $stmt->bindParam(':status', $this->status);
-
-            if ($stmt->execute()) {
-                $this->id = $this->conn->lastInsertId();
-
-                // Inserir itens do pedido
-                if (!empty($this->itens)) {
-                    foreach ($this->itens as $item) {
-                        if (!$this->adicionarItem($item)) {
-                            throw new Exception('Erro ao adicionar item do pedido');
-                        }
-                    }
-                }
-
-                // Confirmar transação
-                $this->conn->commit();
-
-                return true;
-            }
-
-            throw new Exception('Erro ao criar pedido');
-        } catch (Exception $e) {
-            // Reverter transação em caso de erro
-            $this->conn->rollback();
-            error_log('Erro ao criar pedido: '.$e->getMessage());
-
-            return false;
-        }
-    } */
 
     // Adicionar item ao pedido
     private function adicionarItem($item)
@@ -279,7 +239,7 @@ class Pedido
                 VALUES (:pedido_id, :produto_id, :quantidade, :preco_unitario, :subtotal, :adicionais, :observacoes)';
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':pedido_id', $this->id);
+        $stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
         $stmt->bindParam(':produto_id', $item['produto_id']);
         $stmt->bindParam(':quantidade', $item['quantidade']);
         $stmt->bindParam(':preco_unitario', $item['preco_unitario']);
@@ -302,10 +262,11 @@ class Pedido
     public function atualizarStatus($status, $forma_pagamento = null)
     {
         try {
-            error_log('🔄 Model - atualizarStatus chamado:');
-            error_log("   - ID: {$this->id}");
-            error_log("   - Status: {$status}");
-            error_log('   - Forma pagamento: '.($forma_pagamento ?: 'NULL'));
+            Logger::info('Atualizar Status do pedido', [
+                'ID ' => $this->id,
+                'Status' => $status,
+                'Forma pagamento:' => $forma_pagamento ?: 'NULL',
+            ]);
 
             $query = 'UPDATE '.$this->table_pedidos.' 
                   SET status = :status';
@@ -316,11 +277,9 @@ class Pedido
 
             $query .= ', updated_at = NOW() WHERE id = :id';
 
-            error_log("🔍 SQL: {$query}");
-
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':status', $status);
-            $stmt->bindParam(':id', $this->id);
+            $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
             if ($forma_pagamento) {
                 $stmt->bindParam(':forma_pagamento', $forma_pagamento);
@@ -329,17 +288,18 @@ class Pedido
             $resultado = $stmt->execute();
             $linhasAfetadas = $stmt->rowCount();
 
-            error_log('📊 Resultado execute(): '.($resultado ? 'true' : 'false'));
-            error_log("📊 Linhas afetadas: {$linhasAfetadas}");
-
             if (!$resultado) {
                 $errorInfo = $stmt->errorInfo();
-                error_log('❌ Erro SQL: '.implode(' - ', $errorInfo));
+                Logger::warn('Erro ao executar SQL', [
+                    'erro' => implode(' - ', $errorInfo),
+                ]);
             }
 
             return $resultado && $linhasAfetadas > 0;
         } catch (Exception $e) {
-            error_log('❌ Exceção em atualizarStatus: '.$e->getMessage());
+            Logger::error('Erro ao atualizar status do pedido', [
+                'erro' => $e->getMessage(),
+            ]);
 
             return false;
         }
@@ -366,7 +326,7 @@ class Pedido
                       WHERE pedido_id = :pedido_id AND produto_id = :produto_id';
 
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':pedido_id', $this->id);
+            $stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
             $stmt->bindParam(':produto_id', $produto_id);
             $stmt->execute();
 
@@ -396,7 +356,7 @@ class Pedido
                                  VALUES (:pedido_id, :produto_id, :quantidade, :preco_unitario, :subtotal)';
 
                 $insert_stmt = $this->conn->prepare($insert_query);
-                $insert_stmt->bindParam(':pedido_id', $this->id);
+                $insert_stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
                 $insert_stmt->bindParam(':produto_id', $produto_id);
                 $insert_stmt->bindParam(':quantidade', $quantidade);
                 $insert_stmt->bindParam(':preco_unitario', $preco_unitario);
@@ -412,7 +372,9 @@ class Pedido
 
             return $resultado;
         } catch (Exception $e) {
-            error_log('Erro ao adicionar item: '.$e->getMessage());
+            Logger::error('Erro ao adicionar item', [
+                'erro' => $e->getMessage(),
+            ]);
 
             return false;
         }
@@ -449,8 +411,8 @@ class Pedido
                   WHERE id = :id AND pedido_id = :pedido_id';
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $item_id);
-        $stmt->bindParam(':pedido_id', $this->id);
+        $stmt->bindParam(':id', $item_id, PDO::PARAM_INT);
+        $stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
         $stmt->execute();
 
         $item = $stmt->fetch();
@@ -499,7 +461,7 @@ class Pedido
 
         $update_stmt = $this->conn->prepare($update_query);
         $update_stmt->bindParam(':total', $novo_total);
-        $update_stmt->bindParam(':id', $this->id);
+        $update_stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $update_stmt->execute();
     }
@@ -530,7 +492,9 @@ class Pedido
             $stmt->execute([$this->id]);
 
             if ($stmt->fetch()) {
-                error_log("⚠️ Conta a receber já existe para pedido {$this->id}");
+                Logger::warn('Conta a receber já existe para pedido', [
+                    'pedido_id' => $this->id,
+                ]);
 
                 return true; // Já existe, não criar duplicata
             }
@@ -554,16 +518,23 @@ class Pedido
 
             if ($resultado) {
                 $conta_id = $this->conn->lastInsertId();
-                error_log("✅ Conta a receber criada: ID {$conta_id} para pedido {$this->id}");
+                Logger::info('Conta a Receber', [
+                    'Conta ID' => $conta_id,
+                    'Pedido' => $this->id,
+                ]);
 
                 return true;
             } else {
-                error_log("❌ Erro ao criar conta a receber para pedido {$this->id}");
+                Logger::info('Erro ao criar Conta a Receber', [
+                    'Pedido' => $this->id,
+                ]);
 
                 return false;
             }
         } catch (Exception $e) {
-            error_log('❌ Erro ao gerar conta a receber: '.$e->getMessage());
+            Logger::error('Erro ao gerar conta a receber', [
+                'Erro ' => $e->getMessage(),
+            ]);
 
             return false;
         }

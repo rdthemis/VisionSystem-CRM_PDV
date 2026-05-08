@@ -3,8 +3,9 @@
 // controllers/AuthController.php
 // 🔐 CONTROLLER DE AUTENTICAÇÃO COM SEGURANÇA
 
-require_once __DIR__.'/../config/Security.php';
 require_once __DIR__.'/../models/Usuario.php';
+require_once __DIR__.'/../config/Database.php';
+require_once __DIR__.'/../config/Security.php';
 
 class AuthController
 {
@@ -14,23 +15,28 @@ class AuthController
     public function __construct($database)
     {
         $this->database = $database;
-        $this->security = new Security($database->conectar());
+        $this->security = new Security($database->getConnection());
     }
 
     /**
-     * 🔐 LOGIN com bcrypt e tokens seguros
+     * 🔐 LOGIN com bcrypt e tokens seguros.
      */
     public function login($dados)
     {
         try {
-            // Validações básicas
-            if (empty($dados['email']) || empty($dados['senha'])) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Email e senha são obrigatórios'
-                ]);
-                return;
+            // 1. VALIDAR CAMPOS OBRIGATÓRIOS
+            $validation = InputValidator::validateRequired($dados, ['email', 'senha']);
+            if (!$validation['valid']) {
+                sendErrorResponse($validation['message'], 400);
+            }
+
+            // 2. SANITIZAR INPUTS
+            $email = InputValidator::sanitizeEmail($dados['email']);
+            $senha = $dados['senha']; // Senha não sanitiza (vai pro bcrypt)
+
+            // 3. VALIDAR EMAIL
+            if (!InputValidator::validateEmail($email)) {
+                sendErrorResponse('Email inválido', 400);
             }
 
             $email = $this->security->sanitize($dados['email']);
@@ -42,8 +48,9 @@ class AuthController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Email inválido'
+                    'message' => 'Email inválido',
                 ]);
+
                 return;
             }
 
@@ -52,13 +59,14 @@ class AuthController
                 http_response_code(429);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Muitas tentativas de login. Tente novamente em alguns minutos.'
+                    'message' => 'Muitas tentativas de login. Tente novamente em alguns minutos.',
                 ]);
+
                 return;
             }
 
             // 2️⃣ BUSCAR USUÁRIO
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             $dadosUsuario = $usuario->buscarPorEmail($email);
 
             if (!$dadosUsuario) {
@@ -68,8 +76,9 @@ class AuthController
                 http_response_code(401);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Credenciais inválidas'
+                    'message' => 'Credenciais inválidas',
                 ]);
+
                 return;
             }
 
@@ -78,8 +87,9 @@ class AuthController
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Usuário bloqueado temporariamente devido a múltiplas tentativas falhas. Tente novamente em 15 minutos.'
+                    'message' => 'Usuário bloqueado temporariamente devido a múltiplas tentativas falhas. Tente novamente em 15 minutos.',
                 ]);
+
                 return;
             }
 
@@ -97,7 +107,7 @@ class AuthController
             }
             // Fallback para MD5 (sistema antigo) - MIGRAR PARA BCRYPT
             elseif (!empty($dadosUsuario['senha'])) {
-                if (md5($senha) === $dadosUsuario['senha']) {
+                if (hash_equals($dadosUsuario['senha'], md5($senha))) {
                     $senhaValida = true;
                     // MIGRAR PARA BCRYPT AUTOMATICAMENTE
                     $this->migrarSenhaParaBcrypt($dadosUsuario['id'], $senha);
@@ -112,8 +122,9 @@ class AuthController
                 http_response_code(401);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Credenciais inválidas'
+                    'message' => 'Credenciais inválidas',
                 ]);
+
                 return;
             }
 
@@ -163,26 +174,23 @@ class AuthController
                         'id' => $dadosUsuario['id'],
                         'nome' => $dadosUsuario['nome'],
                         'email' => $dadosUsuario['email'],
-                        'tipo' => $dadosUsuario['tipo']
-                    ]
-                ]
+                        'tipo' => $dadosUsuario['tipo'],
+                    ],
+                ],
             ]);
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro no login: ' . $e->getMessage());
-
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Erro interno no servidor'
+            logError('Erro no login: '.$e->getMessage(), [
+                'email' => $email ?? null,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
             ]);
-            return;
+            sendErrorResponse('Erro interno no servidor', 500);
         }
     }
 
     /**
-     * 🔄 REFRESH TOKEN - Renovar access token
+     * 🔄 REFRESH TOKEN - Renovar access token.
      */
     public function refresh($dados)
     {
@@ -191,8 +199,9 @@ class AuthController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Refresh token não fornecido'
+                    'message' => 'Refresh token não fornecido',
                 ]);
+
                 return;
             }
 
@@ -205,8 +214,9 @@ class AuthController
                 http_response_code(401);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Refresh token inválido ou expirado'
+                    'message' => 'Refresh token inválido ou expirado',
                 ]);
+
                 return;
             }
 
@@ -229,25 +239,26 @@ class AuthController
                 'success' => true,
                 'data' => [
                     'accessToken' => $accessToken,
-                    'expiresIn' => Security::ACCESS_TOKEN_EXPIRY
-                ]
+                    'expiresIn' => Security::ACCESS_TOKEN_EXPIRY,
+                ],
             ]);
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao renovar token: ' . $e->getMessage());
+            error_log('❌ Erro ao renovar token: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao renovar token'
+                'message' => 'Erro ao renovar token',
             ]);
+
             return;
         }
     }
 
     /**
-     * 🚪 LOGOUT - Revogar tokens
+     * 🚪 LOGOUT - Revogar tokens.
      */
     public function logout($dados)
     {
@@ -256,8 +267,9 @@ class AuthController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Refresh token não fornecido'
+                    'message' => 'Refresh token não fornecido',
                 ]);
+
                 return;
             }
 
@@ -281,24 +293,25 @@ class AuthController
             http_response_code(200);
             echo json_encode([
                 'success' => true,
-                'message' => 'Logout realizado com sucesso'
+                'message' => 'Logout realizado com sucesso',
             ]);
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro no logout: ' . $e->getMessage());
+            error_log('❌ Erro no logout: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao fazer logout'
+                'message' => 'Erro ao fazer logout',
             ]);
+
             return;
         }
     }
 
     /**
-     * 🔐 ALTERAR SENHA
+     * 🔐 ALTERAR SENHA.
      */
     public function alterarSenha($dados, $userId)
     {
@@ -307,8 +320,9 @@ class AuthController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Senha atual e nova senha são obrigatórias'
+                    'message' => 'Senha atual e nova senha são obrigatórias',
                 ]);
+
                 return;
             }
 
@@ -317,21 +331,23 @@ class AuthController
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Senha deve ter no mínimo 8 caracteres, incluindo maiúsculas, minúsculas e números'
+                    'message' => 'Senha deve ter no mínimo 8 caracteres, incluindo maiúsculas, minúsculas e números',
                 ]);
+
                 return;
             }
 
             // Buscar usuário
-            $usuario = new Usuario($this->database->conectar());
+            $usuario = new Usuario($this->database->getConnection());
             $dadosUsuario = $usuario->buscarPorId($userId);
 
             if (!$dadosUsuario) {
                 http_response_code(404);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Usuário não encontrado'
+                    'message' => 'Usuário não encontrado',
                 ]);
+
                 return;
             }
 
@@ -351,8 +367,9 @@ class AuthController
                 http_response_code(401);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Senha atual incorreta'
+                    'message' => 'Senha atual incorreta',
                 ]);
+
                 return;
             }
 
@@ -373,18 +390,19 @@ class AuthController
             http_response_code(200);
             echo json_encode([
                 'success' => true,
-                'message' => 'Senha alterada com sucesso. Faça login novamente.'
+                'message' => 'Senha alterada com sucesso. Faça login novamente.',
             ]);
-            return;
 
+            return;
         } catch (Exception $e) {
-            error_log('❌ Erro ao alterar senha: ' . $e->getMessage());
+            error_log('❌ Erro ao alterar senha: '.$e->getMessage());
 
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao alterar senha'
+                'message' => 'Erro ao alterar senha',
             ]);
+
             return;
         }
     }
@@ -394,61 +412,58 @@ class AuthController
     // ==========================================
 
     /**
-     * Migrar senha de MD5 para bcrypt
+     * Migrar senha de MD5 para bcrypt.
      */
     private function migrarSenhaParaBcrypt($userId, $senhaTexto)
     {
         try {
             $novoHash = $this->security->hashPassword($senhaTexto);
 
-            $sql = "UPDATE usuarios 
+            $sql = 'UPDATE usuarios 
                     SET password_hash = ?, 
                         senha = NULL 
-                    WHERE id = ?";
+                    WHERE id = ?';
 
-            $stmt = $this->database->conectar()->prepare($sql);
+            $stmt = $this->database->getConnection()->prepare($sql);
             $stmt->execute([$novoHash, $userId]);
 
             error_log("✅ Senha migrada para bcrypt - Usuário ID: {$userId}");
-
         } catch (Exception $e) {
-            error_log('❌ Erro ao migrar senha: ' . $e->getMessage());
+            error_log('❌ Erro ao migrar senha: '.$e->getMessage());
         }
     }
 
     /**
-     * Atualizar hash da senha
+     * Atualizar hash da senha.
      */
     private function atualizarHashSenha($userId, $senhaTexto)
     {
         try {
             $novoHash = $this->security->hashPassword($senhaTexto);
 
-            $sql = "UPDATE usuarios SET password_hash = ? WHERE id = ?";
-            $stmt = $this->database->conectar()->prepare($sql);
+            $sql = 'UPDATE usuarios SET password_hash = ? WHERE id = ?';
+            $stmt = $this->database->getConnection()->prepare($sql);
             $stmt->execute([$novoHash, $userId]);
-
         } catch (Exception $e) {
-            error_log('❌ Erro ao atualizar hash: ' . $e->getMessage());
+            error_log('❌ Erro ao atualizar hash: '.$e->getMessage());
         }
     }
 
     /**
-     * Atualizar último login
+     * Atualizar último login.
      */
     private function atualizarUltimoLogin($userId, $ipAddress)
     {
         try {
-            $sql = "UPDATE usuarios 
+            $sql = 'UPDATE usuarios 
                     SET ultimo_login = NOW(), 
                         ip_ultimo_login = ? 
-                    WHERE id = ?";
+                    WHERE id = ?';
 
-            $stmt = $this->database->conectar()->prepare($sql);
+            $stmt = $this->database->getConnection()->prepare($sql);
             $stmt->execute([$ipAddress, $userId]);
-
         } catch (Exception $e) {
-            error_log('❌ Erro ao atualizar último login: ' . $e->getMessage());
+            error_log('❌ Erro ao atualizar último login: '.$e->getMessage());
         }
     }
 }

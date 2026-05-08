@@ -37,7 +37,7 @@ class BackupSimples
     public function gerarBackup()
     {
         try {
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Nome do arquivo
             $timestamp = date('Y-m-d_H-i-s');
@@ -258,7 +258,7 @@ class BackupSimples
 
             error_log("🔄 Iniciando restore do backup: {$filename}");
 
-            $pdo = $this->db->conectar();
+            $pdo = $this->db->getConnection();
 
             // Ler arquivo SQL
             $sql = file_get_contents($filepath);

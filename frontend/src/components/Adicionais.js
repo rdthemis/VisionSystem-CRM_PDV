@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import adicionalService from '../services/adicionaisService';
 import categoriaService from '../services/categoriasService';
 import './Adicionais.css';
+import Logger from '../utils/Logger';
 
 const Adicionais = () => {
     // Estados do componente
@@ -45,7 +46,7 @@ const Adicionais = () => {
             setError('');
         } catch (err) {
             setError('Erro ao carregar dados');
-            console.error(err);
+            Logger.error('Erro ao carregar dados', {erro: err});
         } finally {
             setLoading(false);
         }
@@ -67,7 +68,7 @@ const Adicionais = () => {
             setError('');
         } catch (err) {
             setError('Erro ao filtrar adicionais');
-            console.error(err);
+            Logger.error('Erro ao filtrar adicionais', {erro: err});
         } finally {
             setLoading(false);
         }
@@ -134,7 +135,7 @@ const Adicionais = () => {
 
         } catch (err) {
             alert('Erro ao salvar adicional: ' + err.message);
-            console.error('Erro detalhado:', err);
+            Logger.error('Erro detalhado:',{erro: err});
         }
     };
 

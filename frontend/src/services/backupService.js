@@ -1,16 +1,17 @@
 // src/services/backupService.js
 import { apiService } from './apiService';
+import Logger from '../utils/Logger';
 
 export const backupService = {
     // Listar backups disponíveis
     async listar() {
         try {
-            console.log('🔍 BackupService: Listando backups...');
+            Logger.info('BackupService: Listando backups...', {info: 'Iniciando requisição para listar backups'});
             const resultado = await apiService.get('/backup/listar');
-            console.log('📋 BackupService: Resultado:', resultado);
+            Logger.debug('BackupService: Resultado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro ao listar backups:', error);
+            Logger.error('BackupService: Erro ao listar backups:', {erro: error});
             throw error;
         }
     },
@@ -18,12 +19,12 @@ export const backupService = {
     // Gerar novo backup
     async gerar() {
         try {
-            console.log('🔄 BackupService: Gerando backup...');
+            Logger.info('BackupService: Gerando backup...', {info: 'Iniciando requisição para gerar backup'});
             const resultado = await apiService.post('/backup/gerar', {});
-            console.log('✅ BackupService: Backup gerado:', resultado);
+            Logger.debug('BackupService: Backup gerado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro ao gerar backup:', error);
+            Logger.error('BackupService: Erro ao gerar backup:', {erro: error});
             throw error;
         }
     },
@@ -31,12 +32,12 @@ export const backupService = {
     // Restaurar backup
     async restaurar(arquivo) {
         try {
-            console.log('🔄 BackupService: Restaurando backup:', arquivo);
+            Logger.info('BackupService: Restaurando backup:', {info: arquivo});
             const resultado = await apiService.post('/backup/restaurar', { arquivo });
-            console.log('✅ BackupService: Backup restaurado:', resultado);
+            Logger.debug('BackupService: Backup restaurado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro ao restaurar backup:', error);
+            Logger.error('BackupService: Erro ao restaurar backup:', {erro: error});
             throw error;
         }
     },
@@ -44,12 +45,12 @@ export const backupService = {
     // Deletar backup
     async deletar(arquivo) {
         try {
-            console.log('🗑️ BackupService: Deletando backup:', arquivo);
+            Logger.info('BackupService: Deletando backup:', {info: arquivo});
             const resultado = await apiService.post('/backup/deletar', { arquivo });
-            console.log('✅ BackupService: Backup deletado:', resultado);
+            Logger.debug('BackupService: Backup deletado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro ao deletar backup:', error);
+            Logger.error('BackupService: Erro ao deletar backup:', {erro: error});
             throw error;
         }
     },
@@ -57,7 +58,7 @@ export const backupService = {
     // Download de backup
     baixar(arquivo) {
         try {
-            console.log('📥 BackupService: Iniciando download:', arquivo);
+            Logger.info('BackupService: Iniciando download:', {info: arquivo});
 
             const token = localStorage.getItem('token');
             if (!token) {
@@ -75,7 +76,7 @@ export const backupService = {
                 message: 'Download iniciado!'
             };
         } catch (error) {
-            console.error('❌ BackupService: Erro no download:', error);
+            Logger.error('BackupService: Erro no download:', {erro: error});
             return {
                 success: false,
                 message: 'Erro ao iniciar download: ' + error.message
@@ -86,12 +87,12 @@ export const backupService = {
     // Limpeza de backups antigos
     async limparAntigos(diasParaManter = 30) {
         try {
-            console.log('🧹 BackupService: Limpando backups antigos...');
+            Logger.info('BackupService: Limpando backups antigos...', {info: diasParaManter});
             const resultado = await apiService.post('/backup/limpar', { dias: diasParaManter });
-            console.log('✅ BackupService: Limpeza concluída:', resultado);
+            Logger.debug('BackupService: Limpeza concluída:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro na limpeza:', error);
+            Logger.error('BackupService: Erro na limpeza:', {erro: error});
             throw error;
         }
     },
@@ -99,12 +100,12 @@ export const backupService = {
     // Agendar backup automático
     async agendarAutomatico(config) {
         try {
-            console.log('⏰ BackupService: Agendando backup automático...');
+            Logger.info('BackupService: Agendando backup automático...', {info: config});
             const resultado = await apiService.post('/backup/agendar', config);
-            console.log('✅ BackupService: Agendamento configurado:', resultado);
+            Logger.debug('BackupService: Agendamento configurado:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro no agendamento:', error);
+            Logger.error('BackupService: Erro no agendamento:', {erro: error});
             throw error;
         }
     },
@@ -112,12 +113,12 @@ export const backupService = {
     // Verificar status do backup automático
     async statusAutomatico() {
         try {
-            console.log('📊 BackupService: Verificando status automático...');
+            Logger.info('BackupService: Verificando status automático...', {info: 'Iniciando requisição para verificar status do backup automático'});
             const resultado = await apiService.get('/backup/status-automatico');
-            console.log('📋 BackupService: Status:', resultado);
+            Logger.debug('BackupService: Status:', {debug: resultado});
             return resultado;
         } catch (error) {
-            console.error('❌ BackupService: Erro ao verificar status:', error);
+            Logger.error('BackupService: Erro ao verificar status:', {erro: error});
             throw error;
         }
     }
