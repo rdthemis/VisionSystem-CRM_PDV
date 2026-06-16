@@ -162,15 +162,14 @@ class ComandaBuilder
         $tipo = strtolower($pedido['tipo_pedido'] ?? $pedido['tipo'] ?? 'CONSUMO LOCAL');
 
         $labels = [
-            'delivery' => 'DELIVERY',
-            'drive_thru' => 'DRIVE-THRU',
-            'local' => 'CONSUMO LOCAL',
-            'entrega_gratis' => 'DELIVERY',
-            'centro' => 'DELIVERY',
-            'bairro_proximo' => 'DELIVERY',
-            'bairro_distante' => 'DELIVERY',
-            'zona_rural' => 'DELIVERY',
-            'mesa' => 'MESA',
+            // 'delivery' => 'DELIVERY',
+            'Retirada' => 'RETIRADA',
+            'Entrega Gratis' => 'ENTREGA',
+            'Centro' => 'ENTREGA',
+            'Bairro Próximo' => 'ENTREGA',
+            'Bairro Distante' => 'ENTREGA',
+            'Zona Rural' => 'ENTREGA',
+            // 'mesa' => 'MESA',
         ];
 
         $label = $labels[$tipo] ?? strtoupper($tipo);

@@ -1,4 +1,5 @@
 <?php
+
 // models/Adicional.php
 
 class Adicional
@@ -107,18 +108,19 @@ class Adicional
         $this->nome = trim($this->nome);
         $this->descricao = trim($this->descricao);
         $this->preco = floatval($this->preco);
-        $this->categoria_id = trim($this->categoria_id);
+        $this->categoria_id = intval($this->categoria_id);
         $this->ativo = $this->ativo ? 1 : 0;
 
         // Fazer o bind dos parâmetros
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
-        $stmt->bindParam(':categoria_id', $this->categoria_id, PDO:PARAM_INT);
-        $stmt->bindParam(':ativo', $this->ativo, PDO:: PARAM_INT);
+        $stmt->bindParam(':categoria_id', $this->categoria_id, PDO::PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
+
             return true;
         }
 
@@ -151,8 +153,8 @@ class Adicional
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
         $stmt->bindParam(':categoria_id', $this->categoria_id, PDO::PARAM_INT);
-        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
-        $stmt->bindParam(':id', $this->id, PDO:: PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo);
+        $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }

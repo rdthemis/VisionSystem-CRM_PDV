@@ -1,34 +1,22 @@
-// src/components/Pedidos/components/GridProdutos.jsx
-// 🍕 COMPONENTE: Grade de produtos com categorias e busca
+// src/components/pedidos/components/GridProdutos.jsx
+// 🍕 COMPONENTE: Grade de produtos com imagens, categorias e busca
 
 import React from 'react';
+import produtoService from '../../../services/produtosService';
 
-/**
- * Componente que exibe os produtos disponíveis
- * Permite filtrar por categoria e buscar por nome/código
- * 
- * @param {Object} props - Propriedades do componente
- */
 const GridProdutos = ({
-  produtos,              // Lista de produtos
-  categorias,            // Lista de categorias
-  categoriaAtiva,        // Categoria selecionada
-  busca,                 // Termo de busca
-  codigoBusca,           // Código para buscar
-  onCategoriaChange,     // Mudar categoria
-  onBuscaChange,         // Mudar busca
-  onCodigoChange,        // Mudar código
-  onBuscarPorCodigo,     // Buscar por código
-  onProdutoClick         // Quando clica em um produto
+  produtos,
+  categorias,
+  categoriaAtiva,
+  busca,
+  codigoBusca,
+  onCategoriaChange,
+  onBuscaChange,
+  onCodigoChange,
+  onBuscarPorCodigo,
+  onProdutoClick
 }) => {
 
-  // ========================================
-  // 🔧 FUNÇÕES AUXILIARES
-  // ========================================
-
-  /**
-   * Formata valor em reais
-   */
   const formatarPreco = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -36,9 +24,6 @@ const GridProdutos = ({
     }).format(valor || 0);
   };
 
-  /**
-   * Filtra produtos baseado em categoria, busca e código
-   */
   const produtosFiltrados = produtos.filter((produto) => {
     const matchCategoria = !categoriaAtiva || produto.categoria_nome === categoriaAtiva;
     const matchBusca = !busca || produto.nome.toLowerCase().includes(busca.toLowerCase());
@@ -46,25 +31,16 @@ const GridProdutos = ({
     return matchCategoria && matchBusca && matchCodigo;
   });
 
-  /**
-   * Handler para Enter na busca por código
-   */
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       onBuscarPorCodigo();
     }
   };
 
-  // ========================================
-  // 🎨 RENDERIZAÇÃO
-  // ========================================
-
   return (
     <div className="produtos-area">
       
-      {/* ========================================
-          ABAS DE CATEGORIAS
-      ======================================== */}
+      {/* ── ABAS DE CATEGORIAS ── */}
       <div className="categorias-tabs">
         <button
           className={`categoria-tab ${categoriaAtiva === "" ? "active" : ""}`}
@@ -84,13 +60,9 @@ const GridProdutos = ({
         ))}
       </div>
 
-      {/* ========================================
-          BARRA DE BUSCA
-      ======================================== */}
+      {/* ── BARRA DE BUSCA ── */}
       <div className="busca-produtos">
         <div className="busca-controls">
-          
-          {/* Busca por nome */}
           <div className="busca-input-group">
             <i className="fas fa-search busca-icon"></i>
             <input
@@ -102,7 +74,6 @@ const GridProdutos = ({
             />
           </div>
           
-          {/* Busca por código */}
           <input
             type="text"
             placeholder="Código"
@@ -112,42 +83,60 @@ const GridProdutos = ({
             className="codigo-input"
           />
           
-          <button 
-            className="btn-busca" 
-            onClick={onBuscarPorCodigo}
-          >
+          <button className="btn-busca" onClick={onBuscarPorCodigo}>
             Buscar
           </button>
         </div>
       </div>
 
-      {/* ========================================
-          GRID DE PRODUTOS
-      ======================================== */}
+      {/* ── GRID DE PRODUTOS ── */}
       <div className="produtos-scroll-area">
         <div className="produtos-grid">
           
           {produtosFiltrados.length === 0 ? (
-            // Mensagem quando não encontra produtos
             <div className="sem-produtos">
               <i className="fas fa-search"></i>
               <p>Nenhum produto encontrado</p>
               <small>Tente buscar com outro termo</small>
             </div>
           ) : (
-            // Lista de produtos
-            produtosFiltrados.map((produto) => (
-              <div
-                key={produto.id}
-                className="produto-item"
-                onClick={() => onProdutoClick(produto)}
-              >
-                <div className="produto-nome">{produto.nome}</div>
-                <div className="produto-preco">
-                  {formatarPreco(produto.preco)}
+            produtosFiltrados.map((produto) => {
+              const thumbUrl = produtoService.getThumbUrl(produto.imagem);
+              
+              return (
+                <div
+                  key={produto.id}
+                  className={`produto-item ${thumbUrl? 'com-imagem' : ''}`}
+                  onClick={() => onProdutoClick(produto)}
+                >
+                  {/* 📸 Thumbnail do produto */}
+                  {thumbUrl? (
+                    <div className="produto-item-thumb">
+                      <img
+                        src={thumbUrl}
+                        alt={produto.nome}
+                        loading="lazy"
+                        onError={(e) => {
+                          // Se a imagem falhar, esconde e mostra só texto
+                          e.target.parentElement.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="produto-item-icon">
+                      <i className="fas fa-ice-cream"></i>
+                    </div>
+                  )}
+
+                  <div className="produto-item-info">
+                    <div className="produto-nome">{produto.nome}</div>
+                    <div className="produto-preco">
+                      {formatarPreco(produto.preco)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

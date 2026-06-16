@@ -3,18 +3,13 @@
 import axios from 'axios';
 import Logger from '../utils/Logger';
 
-// Configuração da API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-// Criar instância do axios com configurações padrão
 const api = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
 });
 
-// Interceptor para tratar erros
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -23,7 +18,6 @@ api.interceptors.response.use(
     }
 );
 
-// Função para fazer requisições autenticadas
 const fetchWithAuth = async (url, options = {}) => {
     const token = localStorage.getItem('token');
 
@@ -39,7 +33,6 @@ const fetchWithAuth = async (url, options = {}) => {
     try {
         const response = await fetch(`${API_BASE_URL}${url}`, config);
 
-        // Se token expirou, redirecionar para login
         if (response.status === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -47,8 +40,14 @@ const fetchWithAuth = async (url, options = {}) => {
             return null;
         }
 
-        const data = await response.json();
-        return data;
+        const text = await response.text();
+        if (!text) return { success: true, data: null };
+
+        try {
+            return JSON.parse(text);
+        } catch {
+            return { success: true, data: text };
+        }
 
     } catch (error) {
         Logger.error('Erro na requisição:', { erro: error });
@@ -56,21 +55,23 @@ const fetchWithAuth = async (url, options = {}) => {
     }
 };
 
-// CORREÇÃO: Removemos o 'new' e exportamos o objeto diretamente
 const produtosService = {
-    // Buscar todos os produtos
+
+    // ══════════════════════════════════════════════════════════════
+    // CRUD DE PRODUTOS
+    // ══════════════════════════════════════════════════════════════
+
     buscarTodos: async () => {
         try {
             const response = await fetchWithAuth('/produtos');
 
-            // 🔧 CORREÇÃO: Extrair apenas o array de dados
             if (response && response.success && Array.isArray(response.data)) {
-                return response.data; // Retorna apenas o array
+                return response.data;
             } else if (Array.isArray(response)) {
-                return response; // Se já é um array, retorna direto
+                return response;
             } else {
                 Logger.error('Resposta inesperada da API:', { erro: response });
-                return []; // Retorna array vazio em caso de erro
+                return [];
             }
         } catch (error) {
             Logger.error("Erro ao buscar todos os produtos:", { erro: error });
@@ -78,22 +79,15 @@ const produtosService = {
         }
     },
 
-    // Buscar produto por ID
     buscarPorId: async (id) => {
         try {
-            const response = await fetchWithAuth('/produtos', {
-                method: 'GET',
-                body: JSON.stringify(`/produtos?id=${id}`)
-            });
+            const response = await fetchWithAuth(`/produtos?id=${id}`);
 
-            // 🔧 CORREÇÃO: Extrair apenas o array de dados
-            if (response && response.success && Array.isArray(response.data)) {
-                return response.data; // Retorna apenas o array
-            } else if (Array.isArray(response)) {
-                return response; // Se já é um array, retorna direto
+            if (response && response.success) {
+                return response.data;
             } else {
                 Logger.error('Resposta inesperada da API:', { erro: response });
-                return []; // Retorna array vazio em caso de erro
+                return null;
             }
         } catch (error) {
             Logger.error("Erro ao buscar produto por ID:", { erro: error });
@@ -101,19 +95,17 @@ const produtosService = {
         }
     },
 
-    // Buscar produtos por categoria
     buscarPorCategoria: async (categoriaId) => {
         try {
             const data = await fetchWithAuth(`/produtos?categoria_id=${categoriaId}`);
-            
-            // CORREÇÃO: Extrair apenas o array de dados
+
             if (data && data.success) {
-                return data.data; // Retorna apenas o array
+                return data.data;
             } else if (Array.isArray(data)) {
-                return data; // Se já é um array, retorna direto
+                return data;
             } else {
                 Logger.error('Resposta inesperada da API:', { erro: data });
-                return []; // Retorna array vazio em caso de erro
+                return [];
             }
         } catch (error) {
             Logger.error("Erro ao buscar produtos por categoria:", { erro: error });
@@ -121,7 +113,6 @@ const produtosService = {
         }
     },
 
-    // Criar novo produto
     criar: async (produto) => {
         try {
             const response = await fetchWithAuth('/produtos', {
@@ -129,14 +120,11 @@ const produtosService = {
                 body: JSON.stringify(produto)
             });
 
-            // 🔧 CORREÇÃO: Extrair apenas o array de dados
-            if (response && response.success && Array.isArray(response.data)) {
-                return response.data; // Retorna apenas o array
-            } else if (Array.isArray(response)) {
-                return response; // Se já é um array, retorna direto
+            if (response && response.success) {
+                return response;
             } else {
                 Logger.error('Resposta inesperada da API:', { erro: response });
-                return []; // Retorna array vazio em caso de erro
+                return response || { success: false };
             }
         } catch (error) {
             Logger.error("Erro ao criar novo produto:", { erro: error });
@@ -144,7 +132,6 @@ const produtosService = {
         }
     },
 
-    // Atualizar produto
     atualizar: async (produto) => {
         Logger.info("Atualizando produto:", { info: 'produtosService.atualizar', produto });
         try {
@@ -153,14 +140,11 @@ const produtosService = {
                 body: JSON.stringify(produto)
             });
 
-            // 🔧 CORREÇÃO: Extrair apenas o array de dados
-            if (response && response.success && Array.isArray(response.data)) {
-                return response.data; // Retorna apenas o array
-            } else if (Array.isArray(response)) {
-                return response; // Se já é um array, retorna direto
+            if (response && response.success) {
+                return response;
             } else {
                 Logger.error('Resposta inesperada da API:', { erro: response });
-                return []; // Retorna array vazio em caso de erro
+                return response || { success: false };
             }
         } catch (error) {
             Logger.error('Erro ao atualizar produto:', { erro: error });
@@ -168,7 +152,6 @@ const produtosService = {
         }
     },
 
-    // Deletar produto
     deletar: async (id) => {
         try {
             const response = await api.delete('/produtos', { data: { id } });
@@ -179,7 +162,6 @@ const produtosService = {
         }
     },
 
-    // Buscar produtos mais vendidos
     buscarMaisVendidos: async (limite = 10) => {
         try {
             const response = await api.get(`/produtos?mais_vendidos=1&limite=${limite}`);
@@ -189,39 +171,116 @@ const produtosService = {
         }
     },
 
-    // Formatar moeda brasileira
-    formatarMoeda(valor) {
-        if (!valor) return 'R$ 0,00';
+    // ══════════════════════════════════════════════════════════════
+    // 📸 IMAGENS DE PRODUTOS
+    // ══════════════════════════════════════════════════════════════
 
-        const numero = parseFloat(valor);
-        return numero.toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
+    /**
+     * Upload de imagem para um produto existente
+     * @param {number} produtoId
+     * @param {File} arquivo - do input[type="file"]
+     */
+    uploadImagem: async (produtoId, arquivo) => {
+        try {
+            const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!tiposPermitidos.includes(arquivo.type)) {
+                return { success: false, message: 'Use JPG, PNG ou WebP.' };
+            }
+
+            if (arquivo.size > 5 * 1024 * 1024) {
+                return { success: false, message: 'Máximo 5MB.' };
+            }
+
+            const base64 = await produtosService._fileToBase64(arquivo);
+
+            return await fetchWithAuth('/produtos/imagem', {
+                method: 'POST',
+                body: JSON.stringify({
+                    produto_id: produtoId,
+                    imagem_base64: base64,
+                }),
+            });
+
+        } catch (error) {
+            Logger.error('Erro no upload de imagem:', { erro: error });
+            return { success: false, message: `Erro: ${error.message}` };
+        }
+    },
+
+    /**
+     * Remove imagem do produto (sem deletar o produto)
+     * @param {number} produtoId
+     */
+    async remover(produtoId) {
+        try {
+            return await fetchWithAuth('/produtos/imagem', {
+                method: 'DELETE',
+                body: JSON.stringify({
+                    produto_id: produtoId
+                }),
+            });
+
+        } catch (error) {
+            console.error('Erro ao remover imagem:', error);
+            return { success: false, message: `Erro: ${error.message}` };
+        }
+    },
+
+    /**
+     * URL do thumbnail (200x200) - para grid de produtos
+     * @param {string|null} nomeArquivo - campo "imagem" do produto
+     */
+    getThumbUrl(nomeArquivo) {
+        if (!nomeArquivo) return null;
+        return `${API_BASE_URL}/uploads/produtos/thumbs/${nomeArquivo}`;
+    },
+
+    /**
+     * URL da imagem principal (600px)
+     * @param {string|null} nomeArquivo
+     */
+    getImagemUrl(nomeArquivo) {
+        if (!nomeArquivo) return null;return `${API_BASE_URL}/uploads/produtos/${nomeArquivo}`;
+    },
+
+    /**
+     * Converte File para base64
+     * @param {File} file
+     */
+    /** @private */
+    _fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(file);
         });
     },
 
-    // Limpar formatação e manter apenas números
+    // ══════════════════════════════════════════════════════════════
+    // UTILITÁRIOS
+    // ══════════════════════════════════════════════════════════════
+
+    formatarMoeda(valor) {
+        if (!valor) return 'R$ 0,00';
+        const numero = parseFloat(valor);
+        return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    },
+
     limparNumeros(texto) {
         return texto.replace(/\D/g, '');
     },
 
-    // Formatar data para exibição
     formatarData(data) {
         if (!data) return '-';
-
-        const dataObj = new Date(data);
-        return dataObj.toLocaleDateString('pt-BR');
+        return new Date(data).toLocaleDateString('pt-BR');
     },
 
-    // Formatar data e hora para exibição
     formatarDataHora(data) {
         if (!data) return '-';
-
-        const dataObj = new Date(data);
-        return dataObj.toLocaleString('pt-BR');
+        return new Date(data).toLocaleString('pt-BR');
     }
 };
 
-// Exportações
 export { produtosService };
 export default produtosService;

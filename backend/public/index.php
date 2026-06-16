@@ -14,8 +14,30 @@ require_once __DIR__.'/../config/environment.php';
 require_once __DIR__.'/../config/SecurityHeaders.php';
 require_once __DIR__.'/../config/InputValidator.php';
 
-// 3. Aplicar headers de segurança
+// 3. Aplicar headers de segurança base (sem Content-Type: json ainda)
 SecurityHeaders::apply(IS_PRODUCTION);
+
+// 3b. Servir arquivos estáticos (uploads) ANTES de aplicar headers de API JSON
+//     Imagens não precisam de Content-Type: application/json
+$_staticUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$_staticUri = '/' . ltrim($_staticUri, '/');
+if (preg_match('#^/uploads/(.+)$#', $_staticUri, $_staticMatches)) {
+    $filePath = __DIR__ . '/uploads/' . $_staticMatches[1];
+    if (file_exists($filePath) && is_file($filePath)) {
+        $mime = mime_content_type($filePath) ?: 'application/octet-stream';
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: public, max-age=86400');
+        header('X-Content-Type-Options: nosniff');
+        readfile($filePath);
+        exit;
+    }
+    http_response_code(404);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'message' => 'Arquivo não encontrado']);
+    exit;
+}
+
+// 3c. Aplicar headers específicos de API JSON para as demais rotas
 SecurityHeaders::applyForAPI();
 
 // 4. Carregar outras dependências
@@ -95,37 +117,17 @@ register_shutdown_function(function () {
     }
 });
 
-// Handler de erro que mantém CORS
+// Handler de erro: registra warnings/notices sem encerrar a requisição.
+// E_ERROR/E_CORE_ERROR não chegam aqui — são capturados pelo register_shutdown_function.
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    // Garantir CORS mesmo em erro
-    if (!headers_sent()) {
-        @header('Access-Control-Allow-Origin: http://localhost:3000');
-        @header('Access-Control-Allow-Credentials: true');
-        @header('Content-Type: application/json; charset=utf-8');
-    }
-
-    $error = error_get_last();
-    if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        Logger::error('Fatal error', [
-            'erro' => $error['message'],
-            'arquivo' => $error['file'],
-            'linha' => $error['line'],
-        ]);
-
-        http_response_code(500);
-        $response = ['success' => false, 'message' => 'Erro interno do servidor'];
-
-        if (!IS_PRODUCTION) {
-            $response['debug'] = [
-                'error' => $error['message'],
-                'file' => basename($error['file']),
-                'line' => $error['line'],
-            ];
-        }
-
-        echo json_encode($response);
-    }
-    exit;
+    Logger::error('PHP Error', [
+        'errno'   => $errno,
+        'errstr'  => $errstr,
+        'errfile' => $errfile,
+        'errline' => $errline,
+    ]);
+    // Retorna false: PHP aplica comportamento padrão (display_errors=0 → silencia)
+    return false;
 });
 
 try {
@@ -170,6 +172,30 @@ try {
             exit;
         }
 }
+// ==========================================
+// ROTAS DE IMAGEM DO PRODUTO (upload/remover avulso)
+// POST   /produtos/imagem  → Upload de imagem
+// DELETE /produtos/imagem  → Remover imagem
+// ==========================================
+if (preg_match('#^/produtos/imagem$#', $uri)) {
+    $authResult = verificarAuth($database);
+    $produtoController = new ProdutoController($database);
+
+    if ($method === 'POST') {
+        $produtoController->uploadImagem();
+        exit;
+    }
+
+    if ($method === 'DELETE') {
+        $produtoController->removerImagem();
+        exit;
+    }
+
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+    exit;
+}
+
 
     // ==========================================
     // ROTAS DE AUTENTICAÇÃO
@@ -479,7 +505,7 @@ try {
     if ($method === 'GET' && $uri === '/categorias') {
         $authResult = verificarAuth($database);
 
-        $categorias = new CategoriaController($database);
+        $categorias = new CategoriaController();
 
         $categorias->listar();
 
@@ -501,7 +527,7 @@ try {
             exit;
         }
 
-        $categorias = new CategoriaController($database);
+        $categorias = new CategoriaController();
         $categorias->criar($input);
         exit;
     }
@@ -521,7 +547,7 @@ try {
             exit;
         }
 
-        $categorias = new CategoriaController($database);
+        $categorias = new CategoriaController();
         $resultado = $categorias->atualizar($input);
 
         exit;
@@ -542,7 +568,7 @@ try {
             exit;
         }
 
-        $categorias = new CategoriaController($database);
+        $categorias = new CategoriaController();
         $resultado = $categorias->deletar($input['id']);
 
         exit;

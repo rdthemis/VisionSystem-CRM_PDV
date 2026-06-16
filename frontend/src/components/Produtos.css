@@ -314,6 +314,173 @@
     border: 1px solid #f5c6cb;
 }
 
+/* ── Upload area no formulário ── */
+.imagem-upload-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.imagem-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 180px;
+    height: 180px;
+    border: 2px dashed #444;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #888;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.imagem-placeholder:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.imagem-placeholder i {
+    font-size: 32px;
+}
+
+.imagem-placeholder span {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.imagem-placeholder small {
+    font-size: 11px;
+    opacity: 0.6;
+}
+
+/* ── Preview da imagem ── */
+.imagem-preview-container {
+    position: relative;
+    display: inline-block;
+}
+
+.imagem-preview {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid #333;
+}
+
+.btn-remover-imagem {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s;
+}
+
+.btn-remover-imagem:hover {
+    transform: scale(1.1);
+}
+
+.btn-trocar-imagem {
+    padding: 6px 14px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-trocar-imagem:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+/* ── Thumbnail no card da lista ── */
+.produto-card {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.produto-thumb {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.produto-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.produto-thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-size: 24px;
+}
+
+/* ── Botões de imagem na lista ── */
+.btn-upload-avulso {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+}
+
+.btn-upload-avulso:hover {
+    background: rgba(59, 130, 246, 0.25);
+}
+
+.btn-remove-img {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+}
+
+.btn-remove-img:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .produtos-header {

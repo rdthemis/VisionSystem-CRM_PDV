@@ -64,10 +64,11 @@ const ModalEntrega = ({
       return;
     }
 
-    if (!endereco.trim()) {
+    if(zonaSelecionada !== "Retirada")
+      if (!endereco.trim()) {
       setErro('Informe o endereço de entrega');
       return;
-    }
+    } 
 
     // Buscar dados da zona selecionada
     const zona = zonas.find(z => z.id === parseInt(zonaSelecionada));

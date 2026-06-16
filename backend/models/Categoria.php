@@ -64,7 +64,7 @@ class Categoria
         // Fazer o bind dos parâmetros
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':descricao', $this->descricao);
-        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo);
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
@@ -88,7 +88,7 @@ class Categoria
         $this->nome = trim($this->nome);
         $this->descricao = trim($this->descricao);
         $this->ativo = $this->ativo ? 1 : 0;
-        $this->id = trim($this->id);
+        $this->id = intVal($this->id);
 
         // Fazer o bind dos parâmetros
         $stmt->bindParam(':nome', $this->nome);
@@ -107,7 +107,7 @@ class Categoria
                   WHERE id = :id';
 
         $stmt = $this->conn->prepare($query);
-        $this->id = trim($this->id, PDO::PARAM_INT);
+        $this->id = intVal($this->id, PDO::PARAM_INT);
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();

@@ -200,7 +200,6 @@ const ZonasEntrega = () => {
                   value={valor}
                   onChange={(e) => setValor(e.target.value)}
                   placeholder="0,00"
-                  required
                 />
               </div>
             </div>

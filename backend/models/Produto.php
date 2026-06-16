@@ -13,7 +13,8 @@ class Produto
     public $descricao;
     public $preco;
     public $categoria_id;
-    public $categoria_nome; // Para joins
+    public $categoria_nome;
+    public $imagem;          // 📸 Campo de imagem
     public $ativo;
     public $created_at;
     public $updated_at;
@@ -27,7 +28,7 @@ class Produto
     public function buscarTodos()
     {
         $query = 'SELECT 
-                    p.id, p.nome, p.descricao, p.preco, 
+                    p.id, p.nome, p.descricao, p.preco, p.imagem,
                     p.categoria_id, p.ativo, p.created_at, p.updated_at,
                     c.nome as categoria_nome
                   FROM '.$this->table_name.' p
@@ -45,7 +46,7 @@ class Produto
     public function buscarPorCategoria($categoria_id)
     {
         $query = 'SELECT 
-                    p.id, p.nome, p.descricao, p.preco, 
+                    p.id, p.nome, p.descricao, p.preco, p.imagem,
                     p.categoria_id, p.ativo, p.created_at, p.updated_at,
                     c.nome as categoria_nome
                   FROM '.$this->table_name.' p
@@ -64,7 +65,7 @@ class Produto
     public function buscarPorId($id)
     {
         $query = 'SELECT 
-                    p.id, p.nome, p.descricao, p.preco, 
+                    p.id, p.nome, p.descricao, p.preco, p.imagem,
                     p.categoria_id, p.ativo, p.created_at, p.updated_at,
                     c.nome as categoria_nome
                   FROM '.$this->table_name.' p
@@ -82,8 +83,8 @@ class Produto
     public function criar()
     {
         $query = 'INSERT INTO '.$this->table_name.' 
-                  (nome, descricao, preco, categoria_id, ativo) 
-                  VALUES (:nome, :descricao, :preco, :categoria_id, :ativo)';
+                  (nome, descricao, preco, categoria_id, imagem, ativo) 
+                  VALUES (:nome, :descricao, :preco, :categoria_id, :imagem, :ativo)';
 
         $stmt = $this->conn->prepare($query);
 
@@ -98,8 +99,9 @@ class Produto
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
-        $stmt->bindParam(':categoria_id', $this->categoria_id);
-        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':categoria_id', $this->categoria_id, PDO::PARAM_INT);
+        $stmt->bindParam(':imagem', $this->imagem);
+        $stmt->bindParam(':ativo', $this->ativo);
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
@@ -115,7 +117,7 @@ class Produto
     {
         $query = 'UPDATE '.$this->table_name.' 
                   SET nome = :nome, descricao = :descricao, preco = :preco, 
-                      categoria_id = :categoria_id, ativo = :ativo 
+                      categoria_id = :categoria_id, imagem = :imagem, ativo = :ativo 
                   WHERE id = :id';
 
         $stmt = $this->conn->prepare($query);
@@ -132,9 +134,37 @@ class Produto
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':descricao', $this->descricao);
         $stmt->bindParam(':preco', $this->preco);
-        $stmt->bindParam(':categoria_id', $this->categoria_id);
+        $stmt->bindParam(':categoria_id', $this->categoria_id, PDO::PARAM_INT);
+        $stmt->bindParam(':imagem', $this->imagem);
         $stmt->bindParam(':ativo', $this->ativo);
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // 📸 Atualizar apenas a imagem de um produto
+    public function atualizarImagem($id, $nomeImagem)
+    {
+        $query = 'UPDATE '.$this->table_name.' 
+                  SET imagem = :imagem 
+                  WHERE id = :id';
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':imagem', $nomeImagem);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    // 📸 Remover imagem de um produto
+    public function removerImagem($id)
+    {
+        $query = 'UPDATE '.$this->table_name.' 
+                  SET imagem = NULL 
+                  WHERE id = :id';
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
         return $stmt->execute();
     }
@@ -164,18 +194,18 @@ class Produto
         return $stmt->fetch() !== false;
     }
 
-    // Buscar produtos mais vendidos (para relatórios futuros)
+    // Buscar produtos mais vendidos
     public function buscarMaisVendidos($limite = 10)
     {
         $query = 'SELECT 
-                    p.id, p.nome, p.preco,
+                    p.id, p.nome, p.preco, p.imagem,
                     c.nome as categoria_nome,
                     COALESCE(SUM(pi.quantidade), 0) as total_vendido
                   FROM '.$this->table_name.' p
                   LEFT JOIN categorias c ON p.categoria_id = c.id
                   LEFT JOIN pedido_itens pi ON p.id = pi.produto_id
                   WHERE p.ativo = 1
-                  GROUP BY p.id, p.nome, p.preco, c.nome
+                  GROUP BY p.id, p.nome, p.preco, p.imagem, c.nome
                   ORDER BY total_vendido DESC
                   LIMIT :limite';
 

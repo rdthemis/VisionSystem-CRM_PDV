@@ -82,7 +82,7 @@ class ZonaEntrega
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':valor', $this->valor);
         $stmt->bindParam(':descricao', $this->descricao);
-        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo);
 
         return $stmt->execute();
     }
@@ -112,7 +112,7 @@ class ZonaEntrega
         $stmt->bindParam(':nome', $this->nome);
         $stmt->bindParam(':valor', $this->valor);
         $stmt->bindParam(':descricao', $this->descricao);
-        $stmt->bindParam(':ativo', $this->ativo, PDO::PARAM_INT);
+        $stmt->bindParam(':ativo', $this->ativo);
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
 
         return $stmt->execute();

@@ -327,7 +327,7 @@ class Pedido
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
-            $stmt->bindParam(':produto_id', $produto_id);
+            $stmt->bindParam(':produto_id', $produto_id, PDO::PARAM_INT);
             $stmt->execute();
 
             $item_existente = $stmt->fetch();
@@ -344,7 +344,7 @@ class Pedido
                 $update_stmt = $this->conn->prepare($update_query);
                 $update_stmt->bindParam(':quantidade', $nova_quantidade);
                 $update_stmt->bindParam(':subtotal', $novo_subtotal);
-                $update_stmt->bindParam(':id', $item_existente['id']);
+                $update_stmt->bindParam(':id', $item_existente['id'], PDO::PARAM_INT);
 
                 $resultado = $update_stmt->execute();
             } else {
@@ -357,7 +357,7 @@ class Pedido
 
                 $insert_stmt = $this->conn->prepare($insert_query);
                 $insert_stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
-                $insert_stmt->bindParam(':produto_id', $produto_id);
+                $insert_stmt->bindParam(':produto_id', $produto_id, PDO::PARAM_INT);
                 $insert_stmt->bindParam(':quantidade', $quantidade);
                 $insert_stmt->bindParam(':preco_unitario', $preco_unitario);
                 $insert_stmt->bindParam(':subtotal', $subtotal);
@@ -387,8 +387,8 @@ class Pedido
                   WHERE id = :id AND pedido_id = :pedido_id';
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $item_id);
-        $stmt->bindParam(':pedido_id', $this->id);
+        $stmt->bindParam(':id', $item_id, PDO::PARAM_INT);
+        $stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             $this->recalcularTotal();
@@ -427,8 +427,8 @@ class Pedido
             $update_stmt = $this->conn->prepare($update_query);
             $update_stmt->bindParam(':quantidade', $nova_quantidade);
             $update_stmt->bindParam(':subtotal', $novo_subtotal);
-            $update_stmt->bindParam(':id', $item_id);
-            $update_stmt->bindParam(':pedido_id', $this->id);
+            $update_stmt->bindParam(':id', $item_id, PDO::PARAM_INT);
+            $update_stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
 
             if ($update_stmt->execute()) {
                 $this->recalcularTotal();
@@ -448,7 +448,7 @@ class Pedido
                   WHERE pedido_id = :pedido_id';
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':pedido_id', $this->id);
+        $stmt->bindParam(':pedido_id', $this->id, PDO::PARAM_INT);
         $stmt->execute();
 
         $resultado = $stmt->fetch();

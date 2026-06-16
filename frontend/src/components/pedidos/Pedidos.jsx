@@ -27,6 +27,16 @@ import Logger from '../../utils/Logger';
 // CSS
 import './Pedidos.css';
 
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO CENTRALIZADA DA EMPRESA
+// Ideal: futuramente ler do .env ou de um endpoint /config
+// ══════════════════════════════════════════════════════════════════
+const EMPRESA_CONFIG = {
+  nome_empresa: 'SORVETES GELATTO MANNIA',
+  endereco: 'Rua Guarani 191, Corumbataí do Sul - PR',
+  telefone: '(44) 9.9826-4006',
+};
+
 const Pedidos = ({ onRefresh }) => {
   
   // ========================================
@@ -51,9 +61,8 @@ const Pedidos = ({ onRefresh }) => {
   // Cliente
   const [clientePedido, setClientePedido] = useState('');
   const [clienteCadastrado, setClienteCadastrado] = useState(null);
-  
 
-  //Show Comandas - Preview
+  // Show Comandas - Preview
   const [showComanda, setShowComanda] = useState(false);
   
   // Pedido atual
@@ -87,8 +96,8 @@ const Pedidos = ({ onRefresh }) => {
     removerItem,
     atualizarItem,
     atualizarQuantidade,
-    incrementarQuantidade,      // ADICIONAR
-    decrementarQuantidade,      // ADICIONAR
+    incrementarQuantidade,
+    decrementarQuantidade,
     limparCarrinho,
     calcularTotais,
     iniciarEdicao,
@@ -99,15 +108,58 @@ const Pedidos = ({ onRefresh }) => {
   } = useCarrinho();
 
   // ========================================
+  // HELPER: Monta dados padronizados da comanda
+  // Usado tanto no botão "Imprimir" quanto no "Conta"
+  // ========================================
+  const montarDadosComanda = (tipoImpressao = 'producao') => {
+    const totais = calcularTotais();
+    
+    return {
+      numero: pedidoAtual?.id || `Comanda-${Date.now()}`,
+      cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
+      telefone: clienteCadastrado?.telefone || '',
+      mesa: pedidoAtual?.mesa || '',
+
+      // Tipo de pedido / entrega
+      tipo_pedido: dadosEntrega?.tipo_pedido || 'local',
+      endereco_entrega: dadosEntrega?.endereco_entrega || null,
+      zona_entrega: dadosEntrega?.zona_nome || null,
+      taxa_entrega: dadosEntrega?.taxa_entrega || 0,
+
+      // Itens (formato padronizado)
+      itens: carrinho.map(item => ({
+        quantidade: item.quantidade,
+        nome: item.produto_nome,
+        preco: parseFloat(item.preco_unitario || item.preco_produto),
+        observacao: item.observacoes || '',
+
+      //  adicionais: (item.adicionais || []).map(add => ({
+        //  descricao: add.nome || add.descricao || '',
+          //valor: parseFloat(add.preco || add.valor || 0),
+        //})),
+      //})),
+        adicionais: item.adicionais || []
+      })),
+      // Totais
+      subtotal: totais.totalItens,
+      total: totais.totalPagar + (dadosEntrega?.taxa_entrega || 0),
+
+      observacao: pedidoAtual?.observacoes || '',
+      tipo_impressao: tipoImpressao,
+      data: new Date(),
+    };
+  };
+
+  // ========================================
   // EFEITOS
   // ========================================
 
   useEffect(() => {
-  if (dadosComanda && dadosComanda.itens?.length > 0) {
-    Logger.debug('dadosComanda atualizado:', { debug: dadosComanda });
-    setShowComanda(true); // Mostrar preview quando dadosComanda for atualizado
-  }
-}, [dadosComanda]);
+    if (dadosComanda && dadosComanda.itens?.length > 0) {
+      Logger.debug('dadosComanda atualizado:', { debug: dadosComanda });
+      setShowComanda(true);
+    }
+  }, [dadosComanda]);
   
   useEffect(() => {
     carregarDados();
@@ -115,10 +167,6 @@ const Pedidos = ({ onRefresh }) => {
 
   // AUTO-SAVE: Salva automaticamente quando carrinho muda
   useEffect(() => {
-    // Só salva se:
-    // 1. Já existe um pedido criado
-    // 2. Não está salvando no momento
-    // 3. Tem pelo menos um cliente
     if (pedidoAtual?.id && !salvandoAutomaticamente && (clientePedido || clienteCadastrado)) {
       Logger.debug('Auto-save disparado após mudança no carrinho');
       Logger.debug('   - Pedido ID:', { debug: pedidoAtual.id });
@@ -127,7 +175,7 @@ const Pedidos = ({ onRefresh }) => {
 
       const timer = setTimeout(() => {
         salvarAutomaticamente();
-      }, 1000); // Aguarda 1 segundo após última mudança
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
@@ -152,9 +200,6 @@ const Pedidos = ({ onRefresh }) => {
   // FUNÇÕES DE API
   // ========================================
   
-  /**
-   * Carrega produtos e pedidos do backend
-   */
   const carregarDados = async () => {
     try {
       setLoading(true);
@@ -167,7 +212,6 @@ const Pedidos = ({ onRefresh }) => {
       setPedidos(pedidosData);
       setProdutos(produtosData);
       
-      // Extrair categorias únicas
       const categoriasUnicas = [...new Set(produtosData.map(p => p.categoria_nome))];
       setCategorias(categoriasUnicas);
       
@@ -179,38 +223,21 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  /**
-   * CRIAR PEDIDO VAZIO (só com cliente)
-   * Chamado automaticamente ao selecionar cliente
-   */
   const criarPedidoVazio = async (cliente) => {
     try {
       setSalvandoAutomaticamente(true);
       
-      // LOG DETALHADO para debug
       Logger.debug('Criando pedido vazio');
       Logger.debug('Cliente recebido:', { debug: cliente });
-      Logger.debug('   - ID:', { debug: cliente.id });
-      Logger.debug('   - Nome:', { debug: cliente.nome });
       
       const dadosPedido = {
         total: 0,
         numero_pedido: `Pedido ${Date.now()}`,
         status: 'aberto',
-        
-        // 🔧 CORRIGIDO: Garantir que usa os dados corretos
         ...(cliente.id 
-          ? { 
-              cliente_id: parseInt(cliente.id), 
-              cliente_nome: cliente.nome 
-            }
-          : { 
-              cliente_id: null,
-              cliente_nome: cliente.nome || 'Balcão' 
-            }
+          ? { cliente_id: parseInt(cliente.id), cliente_nome: cliente.nome }
+          : { cliente_id: null, cliente_nome: cliente.nome || 'Balcão' }
         ),
-        
-        // Sem itens ainda
         itens: []
       };
 
@@ -221,7 +248,6 @@ const Pedidos = ({ onRefresh }) => {
       if (resultado?.success) {
         Logger.debug('Pedido criado:', { debug: resultado.data });
         
-        // 🔧 IMPORTANTE: Armazenar os dados do cliente no pedidoAtual
         const pedidoCompleto = {
           ...resultado.data,
           cliente_id: cliente.id || null,
@@ -245,31 +271,21 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  /**
-   * SALVAR AUTOMATICAMENTE
-   * Atualiza o pedido com os itens atuais do carrinho
-   */
   const salvarAutomaticamente = async () => {
     if (!pedidoAtual?.id) return;
     
     try {
       setSalvandoAutomaticamente(true);
-      Logger.info('Salvando automaticamente...', {info: { pedidoId: pedidoAtual.id, clienteId: clienteCadastrado?.id, clienteNome: clientePedido } });
+      Logger.info('Salvando automaticamente...', { info: { pedidoId: pedidoAtual.id, clienteId: clienteCadastrado?.id, clienteNome: clientePedido } });
       
       const totais = calcularTotais();
       
-      // 🔧 CORRIGIDO: Usar dados do pedidoAtual que já tem o cliente correto
       const dadosAtualizacao = {
         id: pedidoAtual.id,
         total: totais.totalPagar,
         status: 'aberto',
-        
-        // 🔧 IMPORTANTE: Usar os dados do pedidoAtual (que foi criado com cliente correto)
-        // Só sobrescrever se mudou manualmente
         cliente_id: clienteCadastrado?.id || pedidoAtual.cliente_id || null,
         cliente_nome: clientePedido || pedidoAtual.cliente_nome || 'Balcão',
-        
-        // Itens
         itens: carrinho.map(item => ({
           produto_id: parseInt(item.produto_id),
           quantidade: parseFloat(item.quantidade),
@@ -280,14 +296,10 @@ const Pedidos = ({ onRefresh }) => {
         }))
       };
 
-      Logger.info('Auto-save - Cliente ID:', { info: dadosAtualizacao.cliente_id });
-      Logger.info('Auto-save - Cliente Nome:', { info: dadosAtualizacao.cliente_nome });
-      Logger.info('Auto-save - Valor item:', { info: dadosAtualizacao.preco_produto });
-
       const resultado = await pedidoService.atualizar(dadosAtualizacao);
 
       if (resultado?.success) {
-        Logger.info('Salvo automaticamente', { info: { pedidoId: pedidoAtual.id, clienteId: dadosAtualizacao.cliente_id, clienteNome: dadosAtualizacao.cliente_nome } });
+        Logger.info('Salvo automaticamente', { info: { pedidoId: pedidoAtual.id } });
         setUltimoSalvamento(new Date());
       }
       
@@ -298,11 +310,10 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  /**
-   * Processa pagamento do pedido
-   */
-  // MODIFICAR: processarPagamento (incluir dados de entrega)
-  // Dentro da função processarPagamento, onde monta dadosPedido, adicionar:
+  // ========================================
+  // PROCESSAMENTO DE PAGAMENTO
+  // ========================================
+
   const processarPagamento = async (dadosPagamento) => {
     try {
       const totais = calcularTotais();
@@ -313,20 +324,18 @@ const Pedidos = ({ onRefresh }) => {
         formaPagamento: dadosPagamento.formaPagamento
       };
 
-      // Calcular total final (com taxa de entrega se houver)
       const totalFinal = totais.totalPagar + (dadosEntrega?.taxa_entrega || 0);
       
       const dadosPedido = {
         id: pedidoAtual.id,
         id_venda: pedidoAtual.numero_pedido,
-        total: totalFinal, // Total com taxa de entrega
+        total: totalFinal,
         status: 'finalizado',
         forma_pagamento: dadosPagamento.formaPagamento,
         
         cliente_id: pedidoAtual.cliente_id || clienteCadastrado?.id || null,
         cliente_nome: pedidoAtual.cliente_nome || clientePedido || 'Balcão',
         
-        // DADOS DE ENTREGA (se houver)
         tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
         endereco_entrega: dadosEntrega?.endereco_entrega || null,
         taxa_entrega: dadosEntrega?.taxa_entrega || 0,
@@ -334,7 +343,7 @@ const Pedidos = ({ onRefresh }) => {
         
         itens: carrinho.map(item => ({
           produto_id: item.produto_id,
-          produto_nome: item.nome,
+          produto_nome: item.produto_nome,
           quantidade: item.quantidade,
           preco_unitario: parseFloat(item.preco),
           preco_produto: parseFloat(item.preco_produto),
@@ -343,10 +352,9 @@ const Pedidos = ({ onRefresh }) => {
         })),
         
         observacoes_pagamento: dadosPagamento.observacoes,
-        dados_pagamento // Incluir dados de pagamento para registro no caixa e impressão
+        dados_pagamento
       };
 
-      // Salvar ou atualizar pedido
       let resultado;
       if (pedidoAtual?.id) {
         dadosPedido.id = pedidoAtual.id;
@@ -363,7 +371,6 @@ const Pedidos = ({ onRefresh }) => {
 
       // Registrar no caixa (se não for a prazo)
       if (dados_pagamento.formaPagamento !== 'prazo') {
-        Logger.info("Valor Venda: ", { info: resultado.valor });
         await registrarNoCaixa(resultado.data, dados_pagamento, totalFinal);
       }
 
@@ -372,7 +379,7 @@ const Pedidos = ({ onRefresh }) => {
         await criarContaReceber(resultado.data, dados_pagamento);
       }
 
-      // Impressão automática
+      // 🔧 FIX: Impressão automática de recibo
       await verificarImpressaoReciboAuto(resultado.data, dados_pagamento);
 
       mostrarMensagem('Pagamento processado com sucesso!', 'success');
@@ -383,34 +390,28 @@ const Pedidos = ({ onRefresh }) => {
       
     } catch (error) {
       Logger.error('Erro no pagamento:', { erro: error });
-      throw error; // Repassar erro para o modal
+      throw error;
     }
   };
 
-  /**
-   * Registra venda no caixa
-   */
   const registrarNoCaixa = async (pedido, dadosPagamento, valorTotal) => {
-  try {
-    const resultado = await caixaService.registrarVendaComCaixa({
-      valor: valorTotal,
-      numero_pedido: pedido.numero_pedido,
-      pedido_id: pedido.id,
-      forma_pagamento: dadosPagamento.formaPagamento
-    });
-    
-    if (!resultado?.success) {
-      Logger.error('Falha ao registrar no caixa:', { erro: resultado?.message });
-      mostrarMensagem(`Aviso: ${resultado?.message}`, 'warning');
+    try {
+      const resultado = await caixaService.registrarVendaComCaixa({
+        valor: valorTotal,
+        numero_pedido: pedido.numero_pedido,
+        pedido_id: pedido.id,
+        forma_pagamento: dadosPagamento.formaPagamento
+      });
+      
+      if (!resultado?.success) {
+        Logger.error('Falha ao registrar no caixa:', { erro: resultado?.message });
+        mostrarMensagem(`Aviso: ${resultado?.message}`, 'warning');
+      }
+    } catch (error) {
+      Logger.warn('Aviso: erro ao registrar no caixa:', { erro: error });
     }
-  } catch (error) {
-    Logger.warn('Aviso: erro ao registrar no caixa:', { erro: error });
-  }
-};
+  };
 
-  /**
-   * Cria conta a receber para pagamento a prazo
-   */
   const criarContaReceber = async (pedido, dadosPagamento) => {
     try {
       const dataVencimento = new Date();
@@ -433,30 +434,22 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
+  // ========================================
+  // IMPRESSÃO
+  // ========================================
+
   /**
-   * Verifica e executa impressão automática de comanda
+   * Impressão automática de comanda (ao criar pedido)
    */
   const verificarImpressaoAutomatica = async (pedido) => {
     const autoImprimir = configService.autoImprimirComanda();
     
     if (autoImprimir) {
       try {
-        const dadosComanda = {
-          numero: pedido.numero_pedido,
-          cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
-          mesa: pedido.mesa || '',
-          itens: carrinho.map(item => ({
-            quantidade: item.quantidade,
-            nome: item.produto_nome,
-            observacoes: item.observacoes || '',
-            adicionais: item.adicionais || []
-          })),
-          observacoes: pedido.observacoes || '',
-          data: new Date()
-        };
-        setDadosComanda(dadosComanda); // Armazenar dados para preview
-        Logger.info('Impressão automática de comanda...', { info: dadosComanda });
-        await printService.imprimirComanda(dadosComanda);
+        const dados = montarDadosComanda('producao');
+        setDadosComanda(dados);
+        Logger.info('Impressão automática de comanda...', { info: dados });
+        await printService.imprimirComanda(dados);
       } catch (error) {
         Logger.warn('Erro na impressão automática:', { erro: error });
       }
@@ -464,14 +457,17 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   /**
-   * Verifica e executa impressão automática de recibo
+   * 🔧 FIX: Lógica corrigida — era `!autoImprimir` (invertida)
+   * Impressão automática de recibo (após pagamento)
    */
   const verificarImpressaoReciboAuto = async (pedido, dadosPagamento) => {
     Logger.info('Pedido enviado para impressão:', { info: pedido });
     Logger.info('Dados de pagamento para impressão:', { info: dadosPagamento });
+    
     const autoImprimir = configService.autoImprimirRecibo();
     
-    if (!autoImprimir) {
+    // 🔧 FIX: Condição era "!autoImprimir" — imprimia quando desabilitado!
+    if (autoImprimir) {
       try {
         const dadosRecibo = {
           numero: dadosPagamento.id_venda || pedido.numero_pedido,
@@ -503,22 +499,15 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   /**
-   * Vincular Comanda a uma mesa.
+   * Handler: Botão "Conta" — abre preview da comanda para o cliente
    */
-
-  const handleContaConsumoFake = () => {
-
-  setShowComanda(true);
-  Logger.info('handleContaConsumoFake EXECUTOU', { info: { showComanda: true } });
-};
-
   const handleContaConsumo = async () => {
     if (carrinho.length === 0) {
       alert('Adicione pelo menos um item antes de imprimir!');
       return;
     }
 
-    // SE NÃO TEM ENTREGA CONFIGURADA, ABRIR MODAL
+    // Perguntar se quer configurar entrega (se ainda não tem)
     if (!dadosEntrega) {
       const desejaConfigurarEntrega = window.confirm(
         'Esta comanda ainda não tem entrega configurada.\n\n' +
@@ -528,102 +517,66 @@ const Pedidos = ({ onRefresh }) => {
 
       if (desejaConfigurarEntrega) {
         abrirModalEntrega();
-        return; // Interrompe impressão até configurar entrega
+        return;
       }
     }
 
     try {
-        const pedido = ({
-        numero: pedidoAtual?.id || `Comanda-${Date.now()}`,
-        cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
-        telefone: clienteCadastrado?.telefone || '',
-        mesa: pedidoAtual?.mesa || '',
-        
-        //DADOS DE ENTREGA (se houver)
-        tipo_entrega: dadosEntrega?.tipo_pedido || 'Local',
-        endereco_entrega: dadosEntrega?.endereco_entrega || null,
-        zona_entrega: dadosEntrega?.zona_nome || null,
-        taxa_entrega: dadosEntrega?.taxa_entrega || 0,
-        
-        
-        itens: carrinho.map(item => ({
-          quantidade: item.quantidade,
-          nome: item.produto_nome,
-          preco: item.preco_produto,
-          total: item.quantidade * item.preco_produto,
-          observacoes: item.observacoes || '',
-          adicionais: item.adicionais || []
-        })),
-        observacoes: pedidoAtual.observacoes || '',
-        data: new Date()
-        });
-      
-      setDadosComanda(pedido); // Atualiza estado para preview
-      
-      Logger.info('Imprimindo conta da comanda:', { info: pedido });
-      setShowComanda(true); // Mostrar preview antes de imprimir
-      mostrarMensagem('Conta da comanda impressa com sucesso!', 'success');
+      // 🔧 FIX: Usa helper padronizado em vez de montar dados manualmente
+      const dados = montarDadosComanda('conta');
+      setDadosComanda(dados);
+
+      Logger.info('Imprimindo conta da comanda:', { info: dados });
+      setShowComanda(true);
+      mostrarMensagem('Conta da comanda gerada!', 'success');
 
     } catch (error) {
-      Logger.error('Erro ao conta comanda:', { erro: error });
-      mostrarMensagem(`Erro ao imprimir conta comanda: ${error.message}`, 'error');
-    }
-  };
-
-    /**
-   * HANDLER: Processa transferência de itens entre comandas
-   */
-  const handleTransferir = async (dadosTransferencia) => {
-    try {
-      Logger.info('Iniciando transferência:', { info: dadosTransferencia });
-
-      // Preparar dados para o backend
-      const payload = {
-        pedidoOrigemId: dadosTransferencia.pedidoOrigemId,
-        tipoDestino: dadosTransferencia.tipoDestino,
-        comandaDestinoId: dadosTransferencia.comandaDestinoId,
-        nomeNovaComanda: dadosTransferencia.nomeNovaComanda,
-        itens: dadosTransferencia.itens.map(item => ({
-          produto_id: item.produto_id,
-          quantidadeTransferir: item.quantidadeTransferir,
-          preco_unitario: item.preco_unitario || item.preco,
-          adicionais: item.adicionais || [],
-          observacoes: item.observacoes || ''
-        }))
-      };
-
-      Logger.info('Enviando para API:', { info: payload });
-
-      // Chamar API de transferência
-      const resultado = await pedidoService.transferir(payload);
-
-      if (resultado?.success) {
-        Logger.info('Transferência concluída:', { info: resultado.data });
-
-        mostrarMensagem(
-          `${resultado.data.itensTransferidos} item(ns) transferido(s) com sucesso!`, 
-          'success'
-        );
-
-        // Recarregar dados e voltar para lista
-        await carregarDados();
-        limparFormulario();
-        setView('comandas');
-        
-        return resultado;
-      } else {
-        throw new Error(resultado?.message || 'Erro ao transferir itens');
-      }
-
-    } catch (error) {
-      Logger.error('Erro na transferência:', { erro: error });
-      mostrarMensagem(`Erro: ${error.message}`, 'error');
-      throw error;
+      Logger.error('Erro ao gerar conta comanda:', { erro: error });
+      mostrarMensagem(`Erro ao gerar conta: ${error.message}`, 'error');
     }
   };
 
   /**
-   * Imprime comanda de um pedido já salvo
+   * Handler: Botão "Imprimir" — envia direto para impressora térmica
+   */
+  const handleImprimirComanda = async () => {
+    if (carrinho.length === 0) {
+      alert('Adicione pelo menos um item antes de imprimir!');
+      return;
+    }
+
+    // Perguntar se quer configurar entrega
+    if (!dadosEntrega) {
+      const desejaConfigurarEntrega = window.confirm(
+        'Esta comanda ainda não tem entrega configurada.\n\n' +
+        'Deseja configurar entrega agora?\n\n' +
+        'Clique em OK para configurar ou Cancelar para imprimir sem entrega.'
+      );
+
+      if (desejaConfigurarEntrega) {
+        abrirModalEntrega();
+        return;
+      }
+    }
+
+    try {
+      // 🔧 FIX: Usa helper padronizado
+      const dadosComandaAtual = montarDadosComanda('producao');
+
+      const resultado = await imprimir(dadosComandaAtual);
+      if (resultado.success) {
+        mostrarMensagem('Comanda impressa com sucesso!', 'success');
+      } else {
+        mostrarMensagem(resultado.message || 'Erro ao imprimir', 'error');
+      }
+    } catch (error) {
+      Logger.error('Erro ao imprimir comanda:', { erro: error });
+      mostrarMensagem(`Erro ao imprimir: ${error.message}`, 'error');
+    }
+  };
+
+  /**
+   * Imprime comanda de um pedido já salvo (da lista)
    */
   const imprimirComandaPedido = async (pedido) => {
     try {
@@ -648,11 +601,57 @@ const Pedidos = ({ onRefresh }) => {
       Logger.error('Erro ao imprimir:', { erro: error });
       mostrarMensagem(`Erro: ${error.message}`, 'error');
     }
-  }; 
+  };
+
+  // ========================================
+  // TRANSFERÊNCIA
+  // ========================================
+
+  const handleTransferir = async (dadosTransferencia) => {
+    try {
+      Logger.info('Iniciando transferência:', { info: dadosTransferencia });
+
+      const payload = {
+        pedidoOrigemId: dadosTransferencia.pedidoOrigemId,
+        tipoDestino: dadosTransferencia.tipoDestino,
+        comandaDestinoId: dadosTransferencia.comandaDestinoId,
+        nomeNovaComanda: dadosTransferencia.nomeNovaComanda,
+        itens: dadosTransferencia.itens.map(item => ({
+          produto_id: item.produto_id,
+          quantidadeTransferir: item.quantidadeTransferir,
+          preco_unitario: item.preco_unitario || item.preco,
+          adicionais: item.adicionais || [],
+          observacoes: item.observacoes || ''
+        }))
+      };
+
+      const resultado = await pedidoService.transferir(payload);
+
+      if (resultado?.success) {
+        Logger.info('Transferência concluída:', { info: resultado.data });
+        mostrarMensagem(
+          `${resultado.data.itensTransferidos} item(ns) transferido(s) com sucesso!`, 
+          'success'
+        );
+        await carregarDados();
+        limparFormulario();
+        setView('comandas');
+        return resultado;
+      } else {
+        throw new Error(resultado?.message || 'Erro ao transferir itens');
+      }
+
+    } catch (error) {
+      Logger.error('Erro na transferência:', { erro: error });
+      mostrarMensagem(`Erro: ${error.message}`, 'error');
+      throw error;
+    }
+  };
+
+  // ========================================
+  // NAVEGAÇÃO E FORMULÁRIO
+  // ========================================
   
-  /**
-   * MODIFICADO: Inicia novo pedido
-   */
   const iniciarNovoPedido = () => {
     Logger.info('Iniciando novo pedido', { info: 'Abrindo seleção de cliente' });
     limparFormulario();
@@ -660,70 +659,55 @@ const Pedidos = ({ onRefresh }) => {
     abrirModalCliente();
   };
 
-  /**
-   * Carrega pedido existente para edição
-   */
   const carregarPedidoParaEdicao = async (pedido) => {
-  try {
-    setLoadingPedido(true);
-    
-    const pedidoCompleto = await pedidoService.buscarPorId(pedido.id);
-    
-    if (!pedidoCompleto) {
-      throw new Error('Erro ao carregar pedido');
+    try {
+      setLoadingPedido(true);
+      
+      const pedidoCompleto = await pedidoService.buscarPorId(pedido.id);
+      
+      if (!pedidoCompleto) {
+        throw new Error('Erro ao carregar pedido');
+      }
+
+      setPedidoAtual(pedidoCompleto);
+      setClientePedido(pedidoCompleto.cliente_nome || '');
+      
+      if (pedidoCompleto.cliente_id) {
+        setClienteCadastrado({
+          id: pedidoCompleto.cliente_id,
+          nome: pedidoCompleto.cliente_nome
+        });
+      }
+
+      limparCarrinho();
+      
+      if (pedidoCompleto.itens?.length > 0) {
+        carregarDePedido(pedidoCompleto.itens);
+      }
+
+      setView('novo-pedido');
+      
+    } catch (error) {
+      Logger.error('Erro ao carregar pedido:', { erro: error });
+      mostrarMensagem('Erro ao carregar pedido', 'error');
+    } finally {
+      setLoadingPedido(false);
     }
+  };
 
-    setPedidoAtual(pedidoCompleto);
-    setClientePedido(pedidoCompleto.cliente_nome || '');
-    
-    if (pedidoCompleto.cliente_id) {
-      setClienteCadastrado({
-        id: pedidoCompleto.cliente_id,
-        nome: pedidoCompleto.cliente_nome
-      });
-    }
-
-    // LIMPAR CARRINHO ANTES DE CARREGAR NOVOS ITENS!
-    limparCarrinho();
-    
-    if (pedidoCompleto.itens?.length > 0) {
-      carregarDePedido(pedidoCompleto.itens);
-    }
-
-    setView('novo-pedido');
-    
-  } catch (error) {
-    Logger.error('Erro ao carregar pedido:', { erro: error });
-    mostrarMensagem('Erro ao carregar pedido', 'error');
-  } finally {
-    setLoadingPedido(false);
-  }
-};
-
-  /**
-   * MODIFICADO: Não é mais necessário - auto-save cuida disso
-   */
   const finalizarPedido = async () => {
-    // Apenas fecha e volta - o pedido já está salvo
     mostrarMensagem('Pedido salvo!', 'success');
     limparFormulario();
     await carregarDados();
     setView('comandas');
   };
 
-  /**
-   * Volta para lista de comandas
-   */
   const voltarParaComandas = async () => {
     await carregarDados();
-    // Não precisa mais perguntar - está tudo salvo automaticamente
     limparFormulario();
     setView('comandas');
   };
 
-  /**
-   * Cancela comanda atual
-   */
   const cancelarComanda = async () => {
     const confirmar = window.confirm('Deseja cancelar esta comanda?');
     if (!confirmar) return;
@@ -731,17 +715,12 @@ const Pedidos = ({ onRefresh }) => {
     try {
       const totais = calcularTotais();
       
-      // 🔧 USAR DADOS DO PEDIDO ATUAL (que já tem cliente correto)
       const dadosPedido = {
-        id: pedidoAtual.id, // Usar pedido já existente
+        id: pedidoAtual.id,
         total: totais.totalPagar,
         status: 'cancelado',
-        
-        // 🔧 PRIORIDADE: pedidoAtual > clienteCadastrado > clientePedido
         cliente_id: pedidoAtual.cliente_id || clienteCadastrado?.id || null,
         cliente_nome: pedidoAtual.cliente_nome || clientePedido || 'Balcão',
-        
-        // Itens
         itens: carrinho.map(item => ({
           produto_id: item.produto_id,
           quantidade: item.quantidade,
@@ -751,7 +730,6 @@ const Pedidos = ({ onRefresh }) => {
         })),
       };
 
-      // Atualizar pedido para finalizado
       const resultado = await pedidoService.atualizar(dadosPedido);
 
       if (!resultado?.success) {
@@ -769,9 +747,6 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  /**
-   * Limpa formulário
-   */
   const limparFormulario = () => {
     setClientePedido('');
     setClienteCadastrado(null);
@@ -781,45 +756,32 @@ const Pedidos = ({ onRefresh }) => {
     setBusca('');
     setCodigoBusca('');
     setUltimoSalvamento(null);
-    limparDadosEntrega(); // ADICIONAR ESTA LINHA
+    limparDadosEntrega();
   };
 
   // ========================================
   // HANDLERS DO CARRINHO
   // ========================================
   
-  /**
-   * Abre modal de produto
-   */
   const abrirModalProduto = (produto) => {
     setProdutoSelecionado(produto);
     setModalProdutoAberto(true);
   };
 
-  /**
-   * Fecha modal de produto
-   */
   const fecharModalProduto = () => {
     setModalProdutoAberto(false);
     setProdutoSelecionado(null);
-    Logger.info('Modal de produto fechado', { info: { itemEditando } });
     if (itemEditando !== null) {
-      Logger.info('Edição cancelada', { info: { itemEditando } });
       cancelarEdicao();
     }
   };
 
-  /**
-   * Confirma adição de produto
-   */
   const handleConfirmarProduto = (itemCompleto) => {
     if (itemEditando !== null) {
-      Logger.info('Atualizando item no índice:', { info: itemEditando });
       atualizarItem(itemEditando, itemCompleto);
       cancelarEdicao();
       mostrarMensagem('Item atualizado!', 'success');
     } else {
-      Logger.info('Adicionando novo item', { info: itemCompleto });
       adicionarItem(itemCompleto);
       mostrarMensagem('Item adicionado!', 'success');
     }
@@ -827,30 +789,29 @@ const Pedidos = ({ onRefresh }) => {
     fecharModalProduto();
   };
 
-  // FUNÇÃO: Abrir modal de entrega
+  // ========================================
+  // HANDLERS DE ENTREGA
+  // ========================================
+
   const abrirModalEntrega = () => {
     setModalEntregaAberto(true);
   };
 
-  // FUNÇÃO: Fechar modal de entrega
   const fecharModalEntrega = () => {
     setModalEntregaAberto(false);
   };
 
-  // FUNÇÃO: Confirmar entrega
   const handleConfirmarEntrega = async (dados) => {
     Logger.info('Dados de entrega:', { info: dados });
     
-    // Armazenar dados de entrega
     setDadosEntrega({
       zona_entrega_id: dados.zonaId,
       zona_nome: dados.zonaNome,
       taxa_entrega: dados.taxa,
       endereco_entrega: dados.endereco,
-      tipo_pedido: dados.zonaNome !== null ? dados.zonaNome : 'local' // Definir tipo de pedido com base na presença de zona de entrega
+      tipo_pedido: dados.zonaNome !== null ? dados.zonaNome : 'local'
     });
 
-    // Se já existe pedido, atualizar com dados de entrega
     if (pedidoAtual?.id) {
       try {
         const totais = calcularTotais();
@@ -861,7 +822,7 @@ const Pedidos = ({ onRefresh }) => {
           endereco_entrega: dados.endereco,
           taxa_entrega: dados.taxa,
           zona_entrega_id: dados.zonaId,
-          total: totais.totalPagar + dados.taxa, // Adiciona taxa ao total
+          total: totais.totalPagar + dados.taxa,
           itens: carrinho.map(item => ({
             produto_id: parseInt(item.produto_id),
             quantidade: parseFloat(item.quantidade),
@@ -889,15 +850,10 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  // FUNÇÃO: Limpar dados de entrega
   const limparDadosEntrega = () => {
     setDadosEntrega(null);
   };
 
-
-  /**
-   * Busca produto por código
-   */
   const buscarPorCodigo = () => {
     if (!codigoBusca) return;
 
@@ -915,9 +871,6 @@ const Pedidos = ({ onRefresh }) => {
   // HANDLERS DE CLIENTE
   // ========================================
   
-  /**
-   * Muda nome do cliente
-   */
   const handleClienteChange = (novoValor) => {
     setClientePedido(novoValor);
     
@@ -926,16 +879,10 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  /**
-   * Abre modal de busca de cliente
-   */
   const abrirModalCliente = () => {
     setModalClienteAberto(true);
   };
 
-  /**
-   * Fecha modal de cliente
-   */
   const fecharModalCliente = () => {
     setModalClienteAberto(false);
 
@@ -945,15 +892,9 @@ const Pedidos = ({ onRefresh }) => {
     }
   };
 
-  /**
-   * MODIFICADO: Seleciona cliente e cria pedido automaticamente
-   */
   const selecionarClienteModal = async (cliente) => {
     Logger.info('Cliente selecionado do modal:', { info: cliente });
-    Logger.info('   - ID:', { info: cliente.id });
-    Logger.info('   - Nome:', { info: cliente.nome });
     
-    // 🔧 IMPORTANTE: Atualizar states ANTES de criar pedido
     const clienteData = cliente.id ? {
       id: cliente.id,
       nome: cliente.nome
@@ -963,61 +904,45 @@ const Pedidos = ({ onRefresh }) => {
     setClientePedido(cliente.nome);
     
     fecharModalCliente();
-  
     mostrarMensagem(`Cliente ${cliente.nome} selecionado!`, 'success');
   
-    // CRIAR PEDIDO AUTOMATICAMENTE
     if (aguardandoCliente) {
-      limparCarrinho(); //Garantir carrinho vazio     
-      // 🔧 Passar o cliente completo para a função
+      limparCarrinho();
       const pedidoCriado = await criarPedidoVazio(cliente);
       try {
         if (pedidoCriado) {
-        Logger.info('✅ Pedido criado com sucesso', { info: { id: pedidoCriado.id, cliente_id: pedidoCriado.cliente_id, cliente_nome: pedidoCriado.cliente_nome } });
-        setAguardandoCliente(false);
-        setView('novo-pedido');
-        mostrarMensagem('Comanda aberta! Adicione os itens.', 'success');
-      } 
-        
+          Logger.info('Pedido criado com sucesso', { info: { id: pedidoCriado.id, cliente_nome: pedidoCriado.cliente_nome } });
+          setAguardandoCliente(false);
+          setView('novo-pedido');
+          mostrarMensagem('Comanda aberta! Adicione os itens.', 'success');
+        }
       } catch (error) {
         Logger.error('Falha ao criar pedido', { erro: error });
         setAguardandoCliente(false);
-        
       }
     }
   };
 
-  /**
-   * MODIFICADO: Pula cliente e cria pedido "Balcão"
-   */
   const pularSelecaoCliente = async () => {
-    Logger.info('Pulando seleção de cliente - criando pedido Balcão', { info: { cliente: 'Balcão' } });
+    Logger.info('Criando pedido Balcão', { info: { cliente: 'Balcão' } });
     
-    const clienteBalcao = {
-      id: null,
-      nome: 'Balcão'
-    };
+    const clienteBalcao = { id: null, nome: 'Balcão' };
     
     setClientePedido('Balcão');
     setClienteCadastrado(null);
     fecharModalCliente();
     
     if (aguardandoCliente) {
-      limparCarrinho(); // Garantir carrinho vazio
-      
-      // Criar pedido com cliente "Balcão"
+      limparCarrinho();
       const pedidoCriado = await criarPedidoVazio(clienteBalcao);
       
       try {
-
         if (pedidoCriado) {
-        Logger.info('Pedido Balcão criado', { info: { id: pedidoCriado.id, cliente_nome: pedidoCriado.cliente_nome } });
-        
-        setAguardandoCliente(false);
-        setView('novo-pedido');
-        mostrarMensagem('Comanda aberta para Balcão!', 'success');
-      }
-        
+          Logger.info('Pedido Balcão criado', { info: { id: pedidoCriado.id } });
+          setAguardandoCliente(false);
+          setView('novo-pedido');
+          mostrarMensagem('Comanda aberta para Balcão!', 'success');
+        }
       } catch (error) {
         Logger.error('Falha ao criar pedido Balcão', { erro: error });
         setAguardandoCliente(false);
@@ -1029,78 +954,17 @@ const Pedidos = ({ onRefresh }) => {
   // HANDLERS DE PAGAMENTO
   // ========================================
   
-  /**
-   * Abre modal de pagamento
-   */
   const abrirModalPagamento = () => {
     if (carrinho.length === 0) {
       alert('Adicione pelo menos um item!');
       return;
     }
-
     setModalPagamentoAberto(true);
   };
 
-  /**
-   * Fecha modal de pagamento
-   */
   const fecharModalPagamento = () => {
     setModalPagamentoAberto(false);
   };
-
-  // Handler de impressão
-  const handleImprimirComanda = async () => {
-  
-    if (carrinho.length === 0) {
-      alert('Adicione pelo menos um item antes de imprimir!');
-      return;
-    }
-
-    //SE NÃO TEM ENTREGA CONFIGURADA, ABRIR MODAL
-    if (!dadosEntrega) {
-      const desejaConfigurarEntrega = window.confirm(
-        'Esta comanda ainda não tem entrega configurada.\n\n' +
-        'Deseja configurar entrega agora?\n\n' +
-        'Clique em OK para configurar ou Cancelar para imprimir sem entrega.'
-      );
-
-      if (desejaConfigurarEntrega) {
-        abrirModalEntrega();
-        return; // Interrompe impressão até configurar entrega
-      }
-    }
-
-    try {
-  // Monta os dados da comanda igual você faz no preview
-  const dadosComandaAtual = {
-    numero: pedidoAtual?.id || `Comanda-${Date.now()}`,
-    cliente: clientePedido || 'Balcão',
-    mesa: pedidoAtual?.mesa || '',
-    tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
-    endereco_entrega: dadosEntrega?.endereco_entrega || null,
-    taxa_entrega: dadosEntrega?.taxa_entrega || 0,
-    itens: carrinho.map(item => ({
-      qtd: item.quantidade,
-      descricao: item.produto_nome,
-      valor_unit: item.preco_unitario,
-      observacao: item.observacoes || '',
-      adicionais: item.adicionais || []
-    })),
-    observacao: pedidoAtual?.observacoes || '',
-    tipo_impressao: 'producao',
-  };
-
-  const resultado = await imprimir(dadosComandaAtual);
-  if (resultado.success) {
-    mostrarMensagem('Comanda impressa com sucesso!', 'success');
-  } else {
-    mostrarMensagem(resultado.message || 'Erro ao imprimir', 'error');
-    }
-    } catch (error) {
-      Logger.error('Erro ao imprimir comanda:', { erro: error });
-      mostrarMensagem(`Erro ao imprimir: ${error.message}`, 'error');
-    }
-};
 
   // ========================================
   // MENSAGENS
@@ -1140,7 +1004,7 @@ const Pedidos = ({ onRefresh }) => {
         </div>
       )}
 
-      {/*Indicador de auto-save */}
+      {/* Indicador de auto-save */}
       {salvandoAutomaticamente && (
         <div className="auto-save-indicator">
           <i className="fas fa-spinner fa-spin"></i>
@@ -1184,46 +1048,37 @@ const Pedidos = ({ onRefresh }) => {
             onEditarItem={iniciarEdicao}
             onRemoverItem={removerItem}
             onAlterarQuantidade={atualizarQuantidade}
-            onIncrementarQuantidade={incrementarQuantidade}    // ADICIONAR
-            onDecrementarQuantidade={decrementarQuantidade}    // ADICIONAR
+            onIncrementarQuantidade={incrementarQuantidade}
+            onDecrementarQuantidade={decrementarQuantidade}
             onVoltar={voltarParaComandas}
             onCancelar={cancelarComanda}
-            onImprimir={handleImprimirComanda} // ADICIONAR HANDLER DE IMPRESSÃO
-            onContaConsumo={handleContaConsumo} // ADICIONAR HANDLER DE CONTA CONSUMO
+            onImprimir={handleImprimirComanda}
+            onContaConsumo={handleContaConsumo}
             onFinalizar={finalizarPedido}
             onPagar={abrirModalPagamento}
-            //onVincular={handleVincular}
-            buscarPedidos={() => pedidoService.buscarTodos('aberto')}  // ✅ ADICIONAR
+            buscarPedidos={() => pedidoService.buscarTodos('aberto')}
             onTransferir={handleTransferir}
-            dadosEntrega={dadosEntrega}              // ADICIONAR
-            onAbrirEntrega={abrirModalEntrega}       // ADICIONAR
-            onLimparEntrega={limparDadosEntrega}     // ADICIONAR
+            dadosEntrega={dadosEntrega}
+            onAbrirEntrega={abrirModalEntrega}
+            onLimparEntrega={limparDadosEntrega}
           />
         )}
       </div>
 
+      {/* ── MODAIS ── */}
 
-
-      {/* Modais */}
-
-      <div>
+      {/* Preview da Comanda */}
       {showComanda && (
-          <ComandaPreview
-            pedido = {dadosComanda}
-                    onPrint={ (pedido) => {
-                      Logger.info('Comanda impressa:', { info: { numero: pedido.numero } });
-                      // Aqui você pode salvar no banco, atualizar status, etc.
-                      mostrarMensagem('Comanda impressa com sucesso!', 'success');
-                    }}
-                    onClose={() => setShowComanda(false)}
-                    config={{
-                        nome_empresa: 'SORVETES GELATTO MANNIA',
-                        endereco: 'Rua Guarani 191, Corumbataí do Sul - PR',
-                        telefone: '(44) 9.9826-4006',
-                    }}
-                />
-        )}
-        </div>
+        <ComandaPreview
+          pedido={dadosComanda}
+          onPrint={(pedido) => {
+            Logger.info('Comanda impressa:', { info: { numero: pedido.numero } });
+            mostrarMensagem('Comanda impressa com sucesso!', 'success');
+          }}
+          onClose={() => setShowComanda(false)}
+          config={EMPRESA_CONFIG}
+        />
+      )}
 
       <ModalProduto
         isOpen={modalProdutoAberto}
@@ -1241,7 +1096,7 @@ const Pedidos = ({ onRefresh }) => {
         clientePedido={clientePedido}
         clienteCadastrado={clienteCadastrado}
         carrinho={carrinho}
-        totalPedido={calcularTotais().totalPagar + (dadosEntrega?.taxa_entrega || 0)} // Incluir taxa de entrega no total
+        totalPedido={calcularTotais().totalPagar + (dadosEntrega?.taxa_entrega || 0)}
         onProcessar={processarPagamento}
       />
 
@@ -1254,7 +1109,6 @@ const Pedidos = ({ onRefresh }) => {
         clienteService={clienteService}
       />
 
-      {/* MODAL DE ENTREGA - ADICIONAR AQUI */}
       <ModalEntrega
         visible={modalEntregaAberto}
         onFechar={fecharModalEntrega}
