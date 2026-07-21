@@ -1,4 +1,5 @@
 <?php
+
 /**
  * ComandaBuilder - Monta o layout da comanda para impressão térmica.
  *
@@ -16,7 +17,7 @@
  * @version 1.0.0
  */
 
-require_once __DIR__.'/BematechPrinter.php';
+require_once __DIR__ . '/BematechPrinter.php';
 
 class ComandaBuilder
 {
@@ -122,19 +123,17 @@ class ComandaBuilder
     {
         $this->printer->alignCenter();
 
-        // Nome da empresa em destaque
-        $this->printer->doubleWidth();
-        $this->printer->normal();
+        // Nome da empresa em destaque (apenas negrito, sem esticar a fonte)
+        $this->printer->bold(true);
         $this->printer->line($this->config['nome_empresa']);
-        $this->printer->normal();
-        $this->printer->bold(false);
+        $this->resetFormat();
 
         // Dados da empresa
         if (!empty($this->config['endereco'])) {
             $this->printer->line($this->config['endereco']);
         }
         if (!empty($this->config['telefone'])) {
-            $this->printer->line('Fone: '.$this->config['telefone']);
+            $this->printer->line('Fone: ' . $this->config['telefone']);
         }
         // if (!empty($this->config['cnpj'])) {
         //    $this->printer->line('CNPJ: '.$this->config['cnpj']);
@@ -142,13 +141,11 @@ class ComandaBuilder
 
         $this->printer->doubleSeparator();
 
-        // Número da comanda
-        $this->printer->doubleHeight();
-        $this->printer->bold(on: true);
+        // Número da comanda (negrito, tamanho normal - só o essencial em destaque)
+        $this->printer->bold(true);
         $numero = $pedido['numero'] ?? '---';
         $this->printer->line("COMANDA {$numero}");
-        $this->printer->normal();
-        $this->printer->bold(on: false);
+        $this->resetFormat();
 
         // Data e hora
         $this->printer->line(date('d/m/Y H:i:s'));
@@ -159,7 +156,7 @@ class ComandaBuilder
     private function imprimirTipoPedido(array $pedido): void
     {
         // Aceita 'tipo' OU 'tipo_pedido' (compatibilidade com frontend)
-        $tipo = strtolower($pedido['tipo_pedido'] ?? $pedido['tipo'] ?? 'CONSUMO LOCAL');
+        $tipo = strtolower($pedido['tipo_pedido'] ?? $pedido['tipo'] ?? 'ENTREGA');
 
         $labels = [
             // 'delivery' => 'DELIVERY',
@@ -175,25 +172,27 @@ class ComandaBuilder
         $label = $labels[$tipo] ?? strtoupper($tipo);
 
         if ($tipo === 'mesa' && !empty($pedido['mesa'])) {
-            $label .= ' '.$pedido['mesa'];
+            $label .= ' ' . $pedido['mesa'];
         }
 
         $this->printer->feed(1);
         $this->printer->alignCenter();
-        $this->printer->bold(on: true);
-        // texto invertido branco no preto
-        // $this->printer->highlight($label);
-        // texto normal
+
         if (strtolower($tipo) === 'local' || strtolower($tipo) === 'mesa') {
+            $this->printer->bold(true);
             $this->printer->line('*** CONSUMO LOCAL ***');
+            $this->printer->bold(false);
         } elseif (strtolower($tipo) === 'drive_thru') {
+            $this->printer->bold(true);
             $this->printer->line('*** RETIRADA ***');
+            $this->printer->bold(false);
         } else {
-            $this->printer->line('Tipo Pedido: '.$label || 'ENTREGA');
-            $this->printer->line('Endereço: '.$pedido['endereco_entrega'] ?? $pedido['endereco'] ?? '---');
+            $endereco = $pedido['endereco_entrega'] ?? $pedido['endereco'] ?? '---';
+            $this->printer->line('Tipo Pedido: ' . ($label ?: 'ENTREGA'));
+            $this->printer->line('Endereço: ' . $endereco);
         }
+
         $this->printer->alignLeft();
-        $this->printer->bold(on: false);
     }
 
     private function imprimirCliente(array $pedido): void
@@ -201,18 +200,16 @@ class ComandaBuilder
         $this->printer->separator();
 
         if (!empty($pedido['cliente'])) {
-            // Nome do cliente em destaque (altura dupla)
+            // Nome do cliente em destaque (apenas negrito, sem esticar a fonte)
             $this->printer->alignCenter();
-            $this->printer->doubleHeight();
-            $this->printer->bold();
-            $this->printer->line('Cliente: '.$pedido['cliente']);
-            $this->printer->bold(false);
-            $this->printer->normal();
+            $this->printer->bold(true);
+            $this->printer->line('Cliente: ' . $pedido['cliente']);
+            $this->resetFormat();
             $this->printer->alignLeft();
         }
 
         if (!empty($pedido['telefone'])) {
-            $this->printer->line('Fone: '.$pedido['telefone']);
+            $this->printer->line('Fone: ' . $pedido['telefone']);
         }
 
         if (
@@ -220,7 +217,7 @@ class ComandaBuilder
             && !empty($pedido['endereco_entrega'] ?? $pedido['endereco'] ?? '')
         ) {
             $endereco = $pedido['endereco_entrega'] ?? $pedido['endereco'];
-            $this->printer->line('Entrega: '.$endereco);
+            $this->printer->line('Entrega: ' . $endereco);
         }
 
         $this->printer->separator();
@@ -229,7 +226,7 @@ class ComandaBuilder
     private function imprimirItens(array $itens, string $tipoImpressao = 'producao'): void
     {
         $this->printer->feed(1);
-        $this->printer->bold();
+        $this->printer->bold(true);
 
         if ($tipoImpressao === 'conta') {
             $this->printer->threeColumns('QTD', 'DESCRICAO', 'VALOR');
@@ -240,28 +237,34 @@ class ComandaBuilder
         $this->printer->bold(false);
         $this->printer->separator();
 
-        foreach ($itens as $item) {
+        $total = count($itens);
+
+        foreach ($itens as $index => $item) {
             $qtd = $item['qtd'] ?? $item['quantidade'] ?? 1;
             $descricao = $item['descricao'] ?? $item['nome'] ?? 'Item';
             // Aceita ambos os nomes (valor_unit do PHP docs OU preco do frontend)
             $valorUnit = floatval($item['valor_unit'] ?? $item['preco'] ?? 0);
             $subtotal = $qtd * $valorUnit;
 
-            $this->printer->bold();
+            // Item principal em negrito + altura dupla: única linha em destaque do
+            // bloco, para contrastar com os adicionais (sem negrito e recuados) logo
+            // abaixo. Tamanho antes do negrito (ver resetFormat()).
+            $this->printer->doubleHeight();
+            $this->printer->bold(true);
 
             if ($tipoImpressao === 'conta') {
                 $this->printer->threeColumns(
-                    $qtd.'x',
+                    $qtd . ' x ',
                     $descricao,
                     $this->formatarValor($subtotal)
                 );
             } else {
-                $this->printer->line($qtd.' x  '.$descricao);
+                $this->printer->line($qtd . ' x  ' . $descricao);
             }
 
-            $this->printer->bold(false);
+            $this->resetFormat();
 
-            // Adicionais
+            // Adicionais (recuados, sem negrito, para não competir com o item)
             if (!empty($item['adicionais'])) {
                 foreach ($item['adicionais'] as $adicional) {
                     $descAdd = $adicional['descricao'] ?? $adicional['nome'] ?? '';
@@ -274,11 +277,11 @@ class ComandaBuilder
                     if ($tipoImpressao === 'conta') {
                         $this->printer->threeColumns(
                             '',
-                            '  + '.$descAdd,
+                            '   - ' . $descAdd,
                             $valorAdd > 0 ? $this->formatarValor($valorAdd * $qtd) : ''
                         );
                     } else {
-                        $this->printer->line('     + '.$descAdd);
+                        $this->printer->line('      - ' . $descAdd);
                     }
                 }
             }
@@ -286,8 +289,13 @@ class ComandaBuilder
             $obs = $item['observacao'] ?? $item['observacoes'] ?? '';
             if (!empty($obs)) {
                 $this->printer->tightSpacing();
-                $this->printer->line('     OBS: '.$obs);
+                $this->printer->line('      OBS: ' . $obs);
                 $this->printer->defaultSpacing();
+            }
+
+            // Espaço entre itens para não confundir onde um termina e o outro começa
+            if ($index < $total - 1) {
+                $this->printer->feed(1);
             }
         }
 
@@ -323,15 +331,16 @@ class ComandaBuilder
         }
 
         if ($desconto > 0) {
-            $this->printer->twoColumns('DESCONTO:', '-'.$this->formatarValor($desconto));
+            $this->printer->twoColumns('DESCONTO:', '-' . $this->formatarValor($desconto));
         }
 
         $this->printer->doubleSeparator();
-        $this->printer->bold();
+        // Ordem importa: tamanho primeiro, negrito por último, para o negrito não ser
+        // sobrescrito pelo comando de tamanho na impressora.
         $this->printer->doubleHeight();
+        $this->printer->bold(true);
         $this->printer->twoColumns('TOTAL:', $this->formatarValor($total));
-        $this->printer->normal();
-        $this->printer->bold(false);
+        $this->resetFormat();
         $this->printer->doubleSeparator();
     }
 
@@ -388,13 +397,24 @@ class ComandaBuilder
         $this->printer->line($this->config['nome_empresa']);
         $this->printer->feed(1);
         $this->printer->alignLeft();
+        $this->printer->CUT(true);  // Avança 2 linhas para cortar a comanda sem rasgar o texto
     }
 
     // ── Helpers ───────────────────────────────────────────────────
 
+    /**
+     * Reseta negrito e tamanho de fonte, sempre na mesma ordem,
+     * evitando que um formato "vaze" para o texto seguinte.
+     */
+    private function resetFormat(): void
+    {
+        $this->printer->bold(false);
+        $this->printer->normal();
+    }
+
     private function formatarValor(float $valor): string
     {
-        return 'R$ '.number_format($valor, 2, ',', '.');
+        return 'R$ ' . number_format($valor, 2, ',', '.');
     }
 
     private function calcularTotal(array $pedido): float

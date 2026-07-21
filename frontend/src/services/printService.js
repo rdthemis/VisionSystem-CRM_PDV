@@ -286,7 +286,7 @@ const printService = {
         Cliente: ${dados.cliente || 'Balcão'}
         ${dados.mesa ? `Mesa: ${dados.mesa}` : ''}
         
-        ${dados.tipo_pedido === 'entrega' ? '🚚 ENTREGA' : '📍 BALCÃO'}
+        ${dados.tipo_pedido === 'entrega' ? 'ENTREGA' : 'BALCÃO'}
         `;
 
         // ADICIONAR DADOS DE ENTREGA SE HOUVER

@@ -9,6 +9,7 @@ import SimpleResetPassword from './components/SimpleResetPassword';
 import Clientes from './components/Clientes';
 import ContasReceber from './components/ContasReceber';
 import Relatorios from './components/Relatorios';
+import RelatoriosProdutos from './components/RelatoriosProdutos';
 import Recibos from './components/Recibos';
 import Configuracoes from './components/Configuracoes';
 import ModuloPdv from "./components/ModuloPdv";
@@ -286,6 +287,54 @@ function App() {
                     <Relatorios />
                 </div>
             )}
+
+            {/* TELA DE RELATÓRIOS DE PRODUTOS */}
+            {logado && telaAtual === "relatoriosProdutos" && (
+                <div style={{ minHeight: "100vh", background: "#f8f9fa" }}>
+                    <div
+                        style={{
+                            padding: "10px 20px",
+                            background: "#fff",
+                            borderBottom: "1px solid #eee",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        }}
+                    >
+                        <button
+                            onClick={handleVoltarDashboard}
+                            style={{
+                                background: "none",
+                                border: "1px solid #e9f71d",
+                                color: "#e9f71d",
+                                cursor: "pointer",
+                                fontSize: "14px",
+                                padding: "8px 16px",
+                                borderRadius: "6px",
+                            }}
+                        >
+                            ← Voltar ao Dashboard
+                        </button>
+                        <h2 style={{ margin: 0, color: "#333" }}>📊 Relatórios de Produtos</h2>
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                background: "#e53e3e",
+                                color: "white",
+                                border: "none",
+                                padding: "8px 16px",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            🚪 Sair
+                        </button>
+                    </div>
+                    <RelatoriosProdutos />
+                </div>
+            )}
+
 
             {/* TELA DE RECIBOS */}
             {logado && telaAtual === "recibos" && (

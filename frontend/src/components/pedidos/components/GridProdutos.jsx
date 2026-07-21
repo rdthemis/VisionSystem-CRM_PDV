@@ -101,19 +101,19 @@ const GridProdutos = ({
             </div>
           ) : (
             produtosFiltrados.map((produto) => {
-              const thumbUrl = produtoService.getThumbUrl(produto.imagem);
+              const imagemUrl = produtoService.getImagemUrl(produto.imagem);
               
               return (
                 <div
                   key={produto.id}
-                  className={`produto-item ${thumbUrl? 'com-imagem' : ''}`}
+                  className={`produto-item ${imagemUrl? 'com-imagem' : ''}`}
                   onClick={() => onProdutoClick(produto)}
                 >
                   {/* 📸 Thumbnail do produto */}
-                  {thumbUrl? (
+                  {imagemUrl? (
                     <div className="produto-item-thumb">
                       <img
-                        src={thumbUrl}
+                        src={imagemUrl}
                         alt={produto.nome}
                         loading="lazy"
                         onError={(e) => {

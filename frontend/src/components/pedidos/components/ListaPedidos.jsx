@@ -84,11 +84,23 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
     });
   };
 
+  const STATUS_LABELS = {
+    aberto: 'Aberto',
+    'em-preparo': 'Em preparo',
+    finalizado: 'Finalizado',
+    cancelado: 'Cancelado',
+    balcao: 'Balcão'
+  };
+
   /**
    * Retorna a classe CSS baseada no status
    */
   const getClasseStatus = (status) => {
-    return `pedido-status ${status.toLowerCase().replace(' ', '-')}`;
+    return `pedido-status ${String(status || 'aberto').toLowerCase().replace(/\s+/g, '-')}`;
+  };
+
+  const getStatusLabel = (status) => {
+    return STATUS_LABELS[String(status || 'aberto').toLowerCase()] || String(status || 'Aberto');
   };
 
   /**
@@ -192,15 +204,19 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
 
       {/* LISTA DE PEDIDOS */}
       <div className="lista-pedidos-finalizados">
-        <h3>
-          Pedidos Finalizados ({pedidosFiltrados.length})
-          {termoBusca && pedidosFiltrados.length !== pedidos.length && (
-            <span style={{ color: '#999', fontSize: '14px', marginLeft: '10px' }}>
-              de {pedidos.length} total
-            </span>
-          )}
-        </h3>
-        
+        <div className="lista-pedidos-topbar">
+          <h3>Comandas Abertas</h3>
+          <span className="comandas-count">
+            {pedidosFiltrados.length} {pedidosFiltrados.length === 1 ? 'comanda' : 'comandas'}
+          </span>
+        </div>
+
+        {termoBusca && pedidosFiltrados.length !== pedidos.length && (
+          <div className="busca-status">
+            Mostrando {pedidosFiltrados.length} de {pedidos.length} comandas
+          </div>
+        )}
+
         {pedidosFiltrados.length === 0 ? (
           // Mensagem quando não há resultados
           <div className="sem-pedidos">
@@ -255,9 +271,9 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
                         termoBusca
                       )}
                     </span>
-                    <span className={getClasseStatus(pedido.status)}>
-                      {pedido.status}
-                    </span>
+                    <div className="pedido-status-label">
+                      {getStatusLabel(pedido.status)}
+                    </div>
                   </div>
                 
                   {/* Informações do Pedido */}
@@ -269,48 +285,29 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
                         termoBusca
                       )}
                     </div>
+
                     {/*
-                  <div className="pedido-itens-count">
-                    <i className="fas fa-shopping-bag"></i> 
-                    {pedido.itens?.length || 0} {(pedido.itens?.length || 0) === 1 ? 'item' : 'itens'}
+                    <div className="pedido-card-summary">
+                      <span>
+                        <strong>{pedido.itens?.length || 0}</strong> {pedido.itens?.length === 1 ? 'item' : 'itens'}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        <strong>{pedido.total ? `R$ ${Number(pedido.total).toFixed(2)}` : 'R$ 0,00'}</strong>
+                      </span>
+                    </div>
+                    */}
+                    <div className="pedido-data">
+                      <i className="fas fa-clock"></i>
+                      {formatarData(pedido.data || pedido.created_at)}
+                    </div>
                     
-                    {/* Mostrar produtos se tiver busca 
-                    {termoBusca && pedido.itens?.length > 0 && (
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#666',
-                        marginTop: '5px',
-                        fontStyle: 'italic'
-                      }}>
-                        {pedido.itens.slice(0, 2).map((item, idx) => (
-                          <div key={idx}>
-                            • {destacarTexto(item.produto_nome || item.nome || '', termoBusca)}
-                          </div>
-                        ))}
-                        {pedido.itens.length > 2 && (
-                          <div>• e mais {pedido.itens.length - 2}...</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  */}
-                  <div className="pedido-data">
-                    <i className="fas fa-clock"></i>
-                    {formatarData(pedido.data || pedido.created_at)}
+                    <div className="pedido-card-footer">
+                      <div className="pedido-total">R$ {pedido.total ? Number(pedido.total).toFixed(2) : '0,00'}</div>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Total */}
-                <div className="pedido-card-footer">
-                  <span className="pedido-total">
-                    Total: R$ {destacarTexto(
-                      pedido.total?.toString() || '0',
-                      termoBusca
-                    )}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>

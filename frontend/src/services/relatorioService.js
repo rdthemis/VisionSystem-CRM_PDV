@@ -97,6 +97,40 @@ export const relatoriosService = {
         return await fetchWithAuth(url);
     },
 
+    // Relatório de vendas por período (dia/semana/mês/ano)
+    async relatorioVendasPeriodo(dataInicio, dataFim, granularidade = 'dia') {
+        const params = new URLSearchParams({
+            data_inicio: dataInicio,
+            data_fim: dataFim,
+            granularidade
+        });
+
+        const url = `/relatorios/vendas-periodo?${params.toString()}`;
+        return await fetchWithAuth(url);
+    },
+
+    // Relatório de vendas por cliente
+    async relatorioVendasCliente(dataInicio, dataFim) {
+        const params = new URLSearchParams({
+            data_inicio: dataInicio,
+            data_fim: dataFim
+        });
+
+        const url = `/relatorios/vendas-cliente?${params.toString()}`;
+        return await fetchWithAuth(url);
+    },
+
+    // Relatório de fechamento de caixa (conferência por forma de pagamento)
+    async relatorioFechamentoCaixa(dataInicio, dataFim) {
+        const params = new URLSearchParams({
+            data_inicio: dataInicio,
+            data_fim: dataFim
+        });
+
+        const url = `/relatorios/fechamento-caixa?${params.toString()}`;
+        return await fetchWithAuth(url);
+    },
+
     // Função para exportar dados como CSV
     exportarCSV(dados, tipoRelatorio) {
         let csvContent = '';
@@ -122,6 +156,18 @@ export const relatoriosService = {
             case 'recibos':
                 csvContent = this.gerarCSVRecibos(dados);
                 filename = 'relatorio_recibos.csv';
+                break;
+            case 'vendas_periodo':
+                csvContent = this.gerarCSVVendasPeriodo(dados);
+                filename = 'relatorio_vendas_periodo.csv';
+                break;
+            case 'vendas_cliente':
+                csvContent = this.gerarCSVVendasCliente(dados);
+                filename = 'relatorio_vendas_cliente.csv';
+                break;
+            case 'fechamento_caixa':
+                csvContent = this.gerarCSVFechamentoCaixa(dados);
+                filename = 'relatorio_fechamento_caixa.csv';
                 break;
             default:
                 throw new Error('Tipo de relatório não suportado para exportação');
@@ -213,6 +259,57 @@ export const relatoriosService = {
                 this.escaparCSV(recibo.cliente_nome || ''),
                 recibo.valor || 0,
                 this.escaparCSV(recibo.forma_pagamento || '')
+            ].join(',');
+            csv += linha + '\n';
+        });
+
+        return csv;
+    },
+
+    // Gerar CSV para vendas por período
+    gerarCSVVendasPeriodo(dados) {
+        let csv = 'Período,Total Pedidos,Valor Total,Ticket Médio\n';
+
+        dados.serie?.forEach(linha => {
+            const csvLinha = [
+                this.escaparCSV(linha.periodo_label || ''),
+                linha.total_pedidos || 0,
+                linha.valor_total || 0,
+                linha.ticket_medio || 0
+            ].join(',');
+            csv += csvLinha + '\n';
+        });
+
+        return csv;
+    },
+
+    // Gerar CSV para vendas por cliente
+    gerarCSVVendasCliente(dados) {
+        let csv = 'Cliente,Tipo,Total Pedidos,Valor Total,Ticket Médio\n';
+
+        dados.clientes?.forEach(cliente => {
+            const linha = [
+                this.escaparCSV(cliente.cliente_nome || ''),
+                this.escaparCSV(cliente.tipo_cliente || ''),
+                cliente.total_pedidos || 0,
+                cliente.valor_total || 0,
+                cliente.ticket_medio || 0
+            ].join(',');
+            csv += linha + '\n';
+        });
+
+        return csv;
+    },
+
+    // Gerar CSV para fechamento de caixa
+    gerarCSVFechamentoCaixa(dados) {
+        let csv = 'Forma de Pagamento,Quantidade,Valor Total\n';
+
+        dados.por_forma_pagamento?.forEach(forma => {
+            const linha = [
+                this.escaparCSV(forma.forma_pagamento || ''),
+                forma.quantidade || 0,
+                forma.valor_total || 0
             ].join(',');
             csv += linha + '\n';
         });

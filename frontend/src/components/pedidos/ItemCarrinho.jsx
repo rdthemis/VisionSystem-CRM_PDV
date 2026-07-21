@@ -62,8 +62,9 @@ const ItemCarrinho = ({
    * Handler para quando o usuário digita no input de quantidade
    */
   const handleQuantidadeChange = (e) => {
-    const valor = e.target.value;
-    
+    // Aceita vírgula como separador decimal e converte para ponto
+    const valor = e.target.value.replace(',', '.');
+
     // Permite digitar (inclusive string vazia para poder apagar)
     setQuantidadeTemp(valor);
   };
@@ -74,15 +75,19 @@ const ItemCarrinho = ({
    */
   const handleQuantidadeBlur = () => {
     let novaQuantidade = parseFloat(quantidadeTemp);
-    
+    const decimalPermitido = permiteDecimal();
+    const minimo = decimalPermitido ? 0.001 : 1;
+
     // Validações
-    if (isNaN(novaQuantidade) || novaQuantidade < 0.01) {
-      novaQuantidade = 0.01; // Quantidade mínima
+    if (isNaN(novaQuantidade) || novaQuantidade < minimo) {
+      novaQuantidade = minimo;
     }
-    
-    // Arredonda para 2 casas decimais (para peso)
-    novaQuantidade = Math.round(novaQuantidade * 100) / 100;
-    
+
+    // Produtos por peso (sorvete/açaí) aceitam 2 casas decimais, os demais são sempre inteiros
+    novaQuantidade = decimalPermitido
+      ? Math.round(novaQuantidade * 100) / 100
+      : Math.round(novaQuantidade);
+
     setQuantidadeTemp(novaQuantidade);
     onAlterarQuantidade(index, novaQuantidade);
   };
@@ -101,13 +106,12 @@ const ItemCarrinho = ({
    */
   const permiteDecimal = () => {
     // Ajuste essas condições conforme suas categorias
-    const categoriasComPeso = ['sorvete', 'sorvetes', 'açaí'];
-    return categoriasComPeso.some(cat => 
-      item.categoria_nome?.toLowerCase().includes(cat)
-    );
+    const categoriasComPeso = ['Sobremesas', 'sorvetes', 'Sobremsa', 'sobremasas'];
+    const categoria = item.categoria_nome || '';
+    return categoriasComPeso.some(cat => categoria.includes(cat));
   };
 
-  // ========================================
+  // ========================================s
   // 🎨 RENDERIZAÇÃO
   // ========================================
 
@@ -130,10 +134,10 @@ const ItemCarrinho = ({
           -
         </button>
         
-        {/* ✅ INPUT EDITÁVEL DE QUANTIDADE */}
+        {/* ✅ INPUT DE QUANTIDADE — só é editável por digitação para produtos vendidos por peso (sorvete/açaí) */}
         <input
           type="text"
-          className="quantidade-input"
+          className={`quantidade-input${permiteDecimal() ? '' : ' quantidade-input-readonly'}`}
           value={quantidadeTemp}
           onChange={handleQuantidadeChange}
           onBlur={handleQuantidadeBlur}
@@ -143,7 +147,8 @@ const ItemCarrinho = ({
             pararPropagacao(e);
             e.target.select(); // Seleciona todo o texto ao focar
           }}
-          title={permiteDecimal() ? "Digite a quantidade (kg/unidades)" : "Digite a quantidade"}
+          readOnly={!permiteDecimal()}
+          title={permiteDecimal() ? "Digite a quantidade (kg/unidades)" : "Use os botões + e - para alterar a quantidade"}
         />
         
         <button

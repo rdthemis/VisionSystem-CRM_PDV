@@ -43,7 +43,7 @@ const PainelCarrinho = ({
   // 🔧 FUNÇÕES AUXILIARES
   // ----------------------------------------
   const formatarPreco = (valor) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(valor).replace(',', '.')) || 0);
 
   const totalComEntrega = totais.totalPagar + (dadosEntrega?.taxa_entrega || 0);
 
@@ -56,7 +56,12 @@ const PainelCarrinho = ({
       {/* ── CABEÇALHO ── */}
       <div className="pedido-header">
         <div className="pedido-info">
-          <h3>Pedido: {pedidoAtual?.id || 'Novo Pedido'}</h3>
+          <h3>Pedido: {pedidoAtual?.numero_pedido || pedidoAtual?.id || 'Novo Pedido'}</h3>
+          {pedidoAtual?.status && (
+            <span className={`pedido-status ${String(pedidoAtual.status).toLowerCase().replace(/\s+/g, '-')}`}>
+              {pedidoAtual.status}
+            </span>
+          )}
         </div>
         <div className="pedido-actions">
           <button className="btn-icon" title="Buscar Cliente" onClick={onBuscarCliente} disabled={loadingPedido}>
@@ -83,6 +88,19 @@ const PainelCarrinho = ({
             disabled={loadingPedido}
           />
         </div>
+
+        {dadosEntrega ? (
+          <div className="pedido-entrega-info">
+            <span>Entrega:</span>
+            <strong>{formatarPreco(dadosEntrega.taxa_entrega)}</strong>
+            <span>{dadosEntrega.endereco_entrega || 'Sem endereço'}</span>
+          </div>
+        ) : (
+          <div className="pedido-entrega-hint">
+            <i className="fas fa-info-circle"></i>
+            Sem entrega configurada
+          </div>
+        )}
       </div>
 
       {/* ── ITENS DO CARRINHO ── */}

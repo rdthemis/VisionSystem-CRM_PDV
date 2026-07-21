@@ -13,7 +13,8 @@ const Relatorios = () => {
         tipo_pessoa: '',
         cidade: '',
         uf: '',
-        dias_atraso: 30
+        dias_atraso: 30,
+        granularidade: 'dia'
     });
 
     const tiposRelatorio = [
@@ -22,7 +23,10 @@ const Relatorios = () => {
         { value: 'financeiro', label: '💰 Relatório Financeiro' },
         { value: 'inadimplencia', label: '⚠️ Relatório de Inadimplência' },
         { value: 'fluxo_caixa', label: '📊 Fluxo de Caixa' },
-        { value: 'recibos', label: '🧾 Relatório de Recibos' }
+        { value: 'recibos', label: '🧾 Relatório de Recibos' },
+        { value: 'vendas_periodo', label: '📈 Vendas por Período' },
+        { value: 'vendas_cliente', label: '🧑‍🤝‍🧑 Vendas por Cliente' },
+        { value: 'fechamento_caixa', label: '🧮 Fechamento de Caixa' }
     ];
 
     const ufs = [
@@ -65,6 +69,25 @@ const Relatorios = () => {
                     break;
                 case 'recibos':
                     resultado = await relatoriosService.relatorioRecibos(
+                        filtros.data_inicio,
+                        filtros.data_fim
+                    );
+                    break;
+                case 'vendas_periodo':
+                    resultado = await relatoriosService.relatorioVendasPeriodo(
+                        filtros.data_inicio,
+                        filtros.data_fim,
+                        filtros.granularidade
+                    );
+                    break;
+                case 'vendas_cliente':
+                    resultado = await relatoriosService.relatorioVendasCliente(
+                        filtros.data_inicio,
+                        filtros.data_fim
+                    );
+                    break;
+                case 'fechamento_caixa':
+                    resultado = await relatoriosService.relatorioFechamentoCaixa(
                         filtros.data_inicio,
                         filtros.data_fim
                     );
@@ -174,6 +197,24 @@ const Relatorios = () => {
                     </div>
                 );
 
+            case 'vendas_periodo':
+                return (
+                    <div className="filtros-especificos">
+                        <div className="campo">
+                            <label>Agrupar por:</label>
+                            <select
+                                value={filtros.granularidade}
+                                onChange={(e) => setFiltros(prev => ({ ...prev, granularidade: e.target.value }))}
+                            >
+                                <option value="dia">Dia</option>
+                                <option value="semana">Semana</option>
+                                <option value="mes">Mês</option>
+                                <option value="ano">Ano</option>
+                            </select>
+                        </div>
+                    </div>
+                );
+
             default:
                 return null;
         }
@@ -193,6 +234,12 @@ const Relatorios = () => {
                 return <RelatorioFluxoCaixa dados={dadosRelatorio} />;
             case 'recibos':
                 return <RelatorioRecibos dados={dadosRelatorio} />;
+            case 'vendas_periodo':
+                return <RelatorioVendasPeriodo dados={dadosRelatorio} />;
+            case 'vendas_cliente':
+                return <RelatorioVendasCliente dados={dadosRelatorio} />;
+            case 'fechamento_caixa':
+                return <RelatorioFechamentoCaixa dados={dadosRelatorio} />;
             default:
                 return null;
         }
@@ -251,7 +298,8 @@ const Relatorios = () => {
                         </select>
                     </div>
 
-                    {(tipoRelatorio === 'financeiro' || tipoRelatorio === 'fluxo_caixa' || tipoRelatorio === 'recibos') && (
+                    {(tipoRelatorio === 'financeiro' || tipoRelatorio === 'fluxo_caixa' || tipoRelatorio === 'recibos' ||
+                      tipoRelatorio === 'vendas_periodo' || tipoRelatorio === 'vendas_cliente' || tipoRelatorio === 'fechamento_caixa') && (
                         <>
                             <div className="campo">
                                 <label>Data Início:</label>
@@ -740,6 +788,218 @@ const RelatorioRecibos = ({ dados }) => {
         <div className="resultado-relatorio">
             <h3>🧾 Relatório de Recibos</h3>
             {/* Implementação específica para recibos */}
+        </div>
+    );
+};
+
+// Componente para Relatório de Vendas por Período
+const RelatorioVendasPeriodo = ({ dados }) => {
+    const formatarMoeda = (valor) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(valor || 0);
+    };
+
+    return (
+        <div className="resultado-relatorio">
+            <h3>📈 Vendas por Período</h3>
+            <p>Período: {dados.periodo?.inicio} a {dados.periodo?.fim}</p>
+
+            <div className="resumo-cards">
+                <div className="resumo-card">
+                    <div className="card-value">{dados.resumo?.total_pedidos || 0}</div>
+                    <div className="card-label">Total de Pedidos</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.valor_total)}</div>
+                    <div className="card-label">Valor Total</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.ticket_medio)}</div>
+                    <div className="card-label">Ticket Médio</div>
+                </div>
+            </div>
+
+            <div className="tabela-container">
+                <table className="tabela-relatorio">
+                    <thead>
+                        <tr>
+                            <th>Período</th>
+                            <th>Total de Pedidos</th>
+                            <th>Valor Total</th>
+                            <th>Ticket Médio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {dados.serie?.map((linha, index) => (
+                            <tr key={index}>
+                                <td>{linha.periodo_label}</td>
+                                <td>{linha.total_pedidos}</td>
+                                <td>{formatarMoeda(linha.valor_total)}</td>
+                                <td>{formatarMoeda(linha.ticket_medio)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// Componente para Relatório de Vendas por Cliente
+const RelatorioVendasCliente = ({ dados }) => {
+    const formatarMoeda = (valor) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(valor || 0);
+    };
+
+    return (
+        <div className="resultado-relatorio">
+            <h3>🧑‍🤝‍🧑 Vendas por Cliente</h3>
+            <p>Período: {dados.periodo?.inicio} a {dados.periodo?.fim}</p>
+
+            <div className="resumo-cards">
+                <div className="resumo-card">
+                    <div className="card-value">{dados.resumo?.total_clientes || 0}</div>
+                    <div className="card-label">Total de Clientes</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{dados.resumo?.total_pedidos || 0}</div>
+                    <div className="card-label">Total de Pedidos</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.valor_total)}</div>
+                    <div className="card-label">Valor Total</div>
+                </div>
+            </div>
+
+            <div className="tabela-container">
+                <table className="tabela-relatorio">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Tipo</th>
+                            <th>Total de Pedidos</th>
+                            <th>Valor Total</th>
+                            <th>Ticket Médio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {dados.clientes?.map((cliente) => (
+                            <tr key={cliente.cliente_id ?? cliente.cliente_nome}>
+                                <td>{cliente.cliente_nome}</td>
+                                <td>{cliente.tipo_cliente === 'cadastrado' ? 'Cadastrado' : 'Avulso'}</td>
+                                <td>{cliente.total_pedidos}</td>
+                                <td>{formatarMoeda(cliente.valor_total)}</td>
+                                <td>{formatarMoeda(cliente.ticket_medio)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// Rótulos das formas de pagamento (mesma nomenclatura usada no PDV, em ModalPagamento.jsx)
+const ROTULOS_FORMA_PAGAMENTO = {
+    dinheiro: 'Dinheiro',
+    cartao_credito: 'Cartão de Crédito',
+    cartao_debito: 'Cartão de Débito',
+    pix: 'PIX',
+    prazo: 'A Prazo'
+};
+
+// Componente para Relatório de Fechamento de Caixa
+const RelatorioFechamentoCaixa = ({ dados }) => {
+    const formatarMoeda = (valor) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(valor || 0);
+    };
+
+    return (
+        <div className="resultado-relatorio">
+            <h3>🧮 Fechamento de Caixa</h3>
+            <p>Período: {dados.periodo?.inicio} a {dados.periodo?.fim}</p>
+
+            <div className="resumo-cards">
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.total_geral)}</div>
+                    <div className="card-label">Total Geral</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.total_avista)}</div>
+                    <div className="card-label">Total à Vista</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.total_aprazo)}</div>
+                    <div className="card-label">Total a Prazo</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.total_saidas)}</div>
+                    <div className="card-label">Total de Saídas</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{dados.resumo?.quantidade_total || 0}</div>
+                    <div className="card-label">Quantidade de Pedidos</div>
+                </div>
+            </div>
+
+            <div className="tabela-container">
+                <table className="tabela-relatorio">
+                    <thead>
+                        <tr>
+                            <th>Forma de Pagamento</th>
+                            <th>Quantidade</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {dados.por_forma_pagamento?.map((forma) => (
+                            <tr key={forma.forma_pagamento}>
+                                <td>{ROTULOS_FORMA_PAGAMENTO[forma.forma_pagamento] || forma.forma_pagamento}</td>
+                                <td>{forma.quantidade}</td>
+                                <td>{formatarMoeda(forma.valor_total)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>Saídas do Caixa</h4>
+            <div className="tabela-container">
+                <table className="tabela-relatorio">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Usuário</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {dados.saidas?.length ? dados.saidas.map((saida) => (
+                            <tr key={saida.id}>
+                                <td>{saida.created_at ? new Date(saida.created_at).toLocaleString('pt-BR') : '-'}</td>
+                                <td>{saida.descricao}</td>
+                                <td>{saida.categoria}</td>
+                                <td>{saida.usuario_nome || '-'}</td>
+                                <td>{formatarMoeda(saida.valor)}</td>
+                            </tr>
+                        )) : (
+                            <tr>
+                                <td colSpan="5">Nenhuma saída registrada no período</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * BematechPrinter - Classe para impressão ESC/POS em impressoras Bematech via USB.
  *
@@ -20,21 +21,21 @@ class BematechPrinter
 
     // ── Comandos ESC/POS ──────────────────────────────────────────
     // Inicialização
-    public const INIT = '\x1B\x40';
+    public const INIT = "\x1B\x40";
     // Controle básico
     public const ESC = "\x1B";
     public const GS = "\x1D";
     public const LF = "\x0A";
-    public const CR = '\x0D';
+    public const CR = "\x0D";
 
     // CORTE DE PAPEL
     public const CUT = "\x1D\x56\x00";      // Corte total
     public const CUT_PARTIAL = "\x1D\x56\x01";      // Corte parcial
-    public const CUT_FEED_CUT = '\x1D\x56\x42\x00';
-    public const CUT_ALTERNATIVE_1 = '\x1D\x56\x30';
-    public const CUT_ALTERNATIVE_2 = '\x1D\x56A\x00';
-    public const CUT_ALTERNATIVE_3 = '\x1B\x69';
-    public const CUT_ALTERNATIVE_4 = '\x1B\x6D';
+    public const CUT_FEED_CUT = "\x1D\x56\x42\x00";
+    public const CUT_ALTERNATIVE_1 = "\x1D\x56\x30";
+    public const CUT_ALTERNATIVE_2 = "\x1D\x56A\x00";
+    public const CUT_ALTERNATIVE_3 = "\x1B\x69";
+    public const CUT_ALTERNATIVE_4 = "\x1B\x6D";
 
     public const BEEP = "\x1B\x28\x41\x04\x00\x01\x64\x03\x0A"; // Bip sonoro
 
@@ -61,25 +62,28 @@ class BematechPrinter
     public const LINE_SPACING_TIGHT = "\x1B\x33\x10";
 
     // TAMANHOS DE FONTE
-    public const FONT_SMALL = '\x1B\x21\x01';
-    public const FONT_NORMAL = '\x1B\x21\x00';
-    public const FONT_LARGE = '\x1B\x21\x08';
-    public const DOUBLE_HEIGHT = '\x1B\x21\x10';
-    public const DOUBLE_WIDTH = '\x1B\x21\x20';
-    public const DOUBLE_SIZE = '\x1B\x21\x30';
+    public const FONT_SMALL = "\x1B\x21\x01";
+    public const FONT_NORMAL = "\x1B\x21\x00";
+    // Nota: bit 0x08 do comando ESC ! é "emphasized" (equivalente ao negrito), não
+    // um tamanho maior de fonte. Os únicos bits deste comando que de fato aumentam
+    // o tamanho são altura dupla (0x10) e largura dupla (0x20), abaixo.
+    public const FONT_LARGE = "\x1B\x21\x08";
+    public const DOUBLE_HEIGHT = "\x1B\x21\x10";
+    public const DOUBLE_WIDTH = "\x1B\x21\x20";
+    public const DOUBLE_SIZE = "\x1B\x21\x30";
 
     // DENSIDADE/INTENSIDADE DA IMPRESSÃO
-    public const DENSITY_LIGHT = '\x1D\x7C\x00';
-    public const DENSITY_NORMAL = '\x1D\x7C\x01';
-    public const DENSITY_DARK = '\x1D\x7C\x02';
+    public const DENSITY_LIGHT = "\x1D\x7C\x00";
+    public const DENSITY_NORMAL = "\x1D\x7C\x01";
+    public const DENSITY_DARK = "\x1D\x7C\x02";
 
     // ALIMENTAÇÃO DE PAPEL
-    public const FEED_LINE = '\x1B\x64\x02';
-    public const FEED_LINES_3 = '\x1B\x64\x03';
-    public const FEED_LINES_5 = '\x1B\x64\x05';
+    public const FEED_LINE = "\x1B\x64\x02";
+    public const FEED_LINES_3 = "\x1B\x64\x03";
+    public const FEED_LINES_5 = "\x1B\x64\x05";
 
     // Abertura da gaveta
-    public const OPEN_DRAWER = '\x1B\x70\x00\x19\xFA';
+    public const OPEN_DRAWER = "\x1B\x70\x00\x19\xFA";
 
     /**
      * @param string $device  Caminho do dispositivo USB ou nome de compartilhamento Windows
@@ -105,7 +109,7 @@ class BematechPrinter
 
     public function initialize(): self
     {
-        $this->buffer .= self::ESC.'@'; // Reset da impressora
+        $this->buffer .= self::ESC . '@'; // Reset da impressora
 
         return $this;
     }
@@ -140,7 +144,7 @@ class BematechPrinter
 
     public function CUT(bool $partial = false): self
     {
-        $this->feed(3);
+        $this->feed(2); // Avança 2 linhas antes do corte
         $this->buffer .= $partial ? self::CUT_PARTIAL : self::CUT;
 
         return $this;
@@ -209,6 +213,20 @@ class BematechPrinter
         return $this;
     }
 
+    public function FontNormal(): self
+    {
+        $this->buffer .= self::FONT_NORMAL;
+
+        return $this;
+    }
+
+    public function fontLarge(): self
+    {
+        $this->buffer .= self::FONT_LARGE;
+
+        return $this;
+    }
+
     public function underline(bool $on = true): self
     {
         $this->buffer .= $on ? self::UNDERLINE_ON : self::UNDERLINE_OFF;
@@ -248,7 +266,7 @@ class BematechPrinter
 
     public function line(string $text = ''): self
     {
-        $this->buffer .= $this->encode($text).self::LF;
+        $this->buffer .= $this->encode($text) . self::LF;
 
         return $this;
     }
@@ -272,7 +290,7 @@ class BematechPrinter
             $this->line($right);
             $this->alignLeft();
         } else {
-            $this->line($left.str_repeat($fill, $space).$right);
+            $this->line($left . str_repeat($fill, $space) . $right);
         }
 
         return $this;
@@ -297,7 +315,7 @@ class BematechPrinter
             : str_pad($col2, $col2Width);
         $col3Pad = str_pad($col3, $col3Width, ' ', STR_PAD_LEFT);
 
-        $this->line($col1Pad.$col2Pad.$col3Pad);
+        $this->line($col1Pad . $col2Pad . $col3Pad);
 
         return $this;
     }
@@ -357,7 +375,7 @@ class BematechPrinter
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Erro: '.$e->getMessage(),
+                'message' => 'Erro: ' . $e->getMessage(),
             ];
         }
     }
@@ -393,12 +411,12 @@ class BematechPrinter
         $sharePath = $this->getWindowsSharePath();
 
         // Envia para a impressora usando copy /b (modo binário)
-        $command = 'copy /b "'.$tempFile.'" "'.$sharePath.'"';
+        $command = 'copy /b "' . $tempFile . '" "' . $sharePath . '"';
 
         // Executa o comando
         $output = [];
         $returnCode = 0;
-        exec($command.' 2>&1', $output, $returnCode);
+        exec($command . ' 2>&1', $output, $returnCode);
 
         // Limpa o arquivo temporário
         @unlink($tempFile);
@@ -415,11 +433,11 @@ class BematechPrinter
             return [
                 'success' => false,
                 'message' => "Erro ao imprimir. Verifique se a impressora '{$this->device}' "
-                    ."está compartilhada e acessível.\n"
-                    ."Caminho usado: {$sharePath}\n"
-                    ."Detalhe: {$errorMsg}\n\n"
-                    ."DICA: Compartilhe a impressora em:\n"
-                    .'Painel de Controle > Impressoras > Botão direito > Propriedades > Compartilhamento',
+                    . "está compartilhada e acessível.\n"
+                    . "Caminho usado: {$sharePath}\n"
+                    . "Detalhe: {$errorMsg}\n\n"
+                    . "DICA: Compartilhe a impressora em:\n"
+                    . 'Painel de Controle > Impressoras > Botão direito > Propriedades > Compartilhamento',
             ];
         }
 
@@ -484,7 +502,7 @@ class BematechPrinter
         }
 
         // Caso contrário, assume que é o nome de compartilhamento
-        return '\\\\localhost\\'.$device;
+        return '\\\\localhost\\' . $device;
     }
 
     /**
@@ -611,11 +629,32 @@ class BematechPrinter
         }
 
         $map = [
-            'á' => 'a', 'à' => 'a', 'ã' => 'a', 'â' => 'a', 'é' => 'e', 'ê' => 'e',
-            'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ü' => 'u',
-            'ç' => 'c', 'Á' => 'A', 'À' => 'A', 'Ã' => 'A', 'Â' => 'A', 'É' => 'E',
-            'Ê' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ô' => 'O', 'Õ' => 'O', 'Ú' => 'U',
-            'Ü' => 'U', 'Ç' => 'C',
+            'á' => 'a',
+            'à' => 'a',
+            'ã' => 'a',
+            'â' => 'a',
+            'é' => 'e',
+            'ê' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ô' => 'o',
+            'õ' => 'o',
+            'ú' => 'u',
+            'ü' => 'u',
+            'ç' => 'c',
+            'Á' => 'A',
+            'À' => 'A',
+            'Ã' => 'A',
+            'Â' => 'A',
+            'É' => 'E',
+            'Ê' => 'E',
+            'Í' => 'I',
+            'Ó' => 'O',
+            'Ô' => 'O',
+            'Õ' => 'O',
+            'Ú' => 'U',
+            'Ü' => 'U',
+            'Ç' => 'C',
         ];
 
         return strtr($text, $map);

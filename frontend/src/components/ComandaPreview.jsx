@@ -33,14 +33,14 @@ const CONFIG_PADRAO = {
 
 // ── Labels dos tipos de pedido ────────────────────────────────────
 const TIPO_LABELS = {
-    delivery        :   {texto: 'DELIVERY' },
+    ENTREG        :   {texto: 'ENTREGA' },
     drive_thru      :   {texto: 'DRIVE-THRU' },
     local           :   {texto: 'CONSUMO LOCAL' },
-    entrega_gratis  :   {texto: 'DELIVERY' },
-    centro          :   {texto: 'DELIVERY' },
-    bairro_proximo  :   {texto: 'DELIVERY' },
-    bairro_distante :   {texto: 'DELIVERY' },
-    zona_rural      :   {texto: 'DELIVERY' },
+    entrega_gratis  :   {texto: 'ENTREGA' },
+    centro          :   {texto: 'ENTREGA' },
+    bairro_proximo  :   {texto: 'ENTREGA' },
+    bairro_distante :   {texto: 'ENTREGA' },
+    zona_rural      :   {texto: 'ENTREGA' },
     mesa            :   {texto: 'MESA' },
 };
 
@@ -179,7 +179,7 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
                                     </div>
 
                                     {/* Valor unitário quando qtd > 1 */}
-                                    {item.quantidade > 1 && (
+                                    {item.quantidade > 0 && (
                                         <div className="comanda-item-detalhe">
                                             (un: {formatarValor(item.preco)})
                                         </div>
@@ -195,8 +195,8 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
                                                 )}
                                             </div>
                                             <div>
-                                                {/* Valor unitário quando qtd adicionais > 1 */}
-                                                {item.quantidade > 1 && (
+                                                {/* Valor unitário quando qtd adicionais > 0 */}
+                                                {item.quantidade > 0 && (
                                                     <span className="comanda-item-detalhe">
                                                         (un: {formatarValor(add.preco)})
                                                     </span>

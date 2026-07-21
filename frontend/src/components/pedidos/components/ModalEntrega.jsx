@@ -28,6 +28,19 @@ const ModalEntrega = ({
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
 
+  const carregarZonas = async () => {
+    try {
+      setLoading(true);
+      const resultado = await buscarZonas(true); // true = apenas ativas
+      setZonas(resultado || []);
+    } catch (err) {
+      Logger.error('Erro ao carregar zonas:', { erro: err });
+      setErro('Erro ao carregar zonas de entrega');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Carregar zonas ao abrir modal
   useEffect(() => {
     if (visible) {
@@ -42,20 +55,8 @@ const ModalEntrega = ({
         setEndereco('');
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, dadosIniciais]);
-
-  const carregarZonas = async () => {
-    try {
-      setLoading(true);
-      const resultado = await buscarZonas(true); // true = apenas ativas
-      setZonas(resultado || []);
-    } catch (err) {
-      Logger.error('Erro ao carregar zonas:', { erro: err });
-      setErro('Erro ao carregar zonas de entrega');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleConfirmar = () => {
     // Validações

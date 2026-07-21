@@ -131,7 +131,7 @@ const ModalPagamento = ({
     
     // Validações
     if (formaSelecionada.requiresValue) {
-      const valorPagoNum = parseFloat(valorPago) || 0;
+      const valorPagoNum = parseFloat(String(valorPago).replace(',', '.')) || 0;
       if (valorPagoNum < totalPedido) {
         alert('Valor pago não pode ser menor que o total');
         return;
@@ -171,11 +171,12 @@ const ModalPagamento = ({
    */
   useEffect(() => {
     if (isOpen) {
+      const total = parseFloat(totalPedido) || 0;
       setFormaPagamento('dinheiro');
-      setValorPago(totalPedido.toFixed(2));
+      setValorPago(total.toFixed(2));
       setValorTroco(0);
       setObservacoes('');
-      setParcelamento({ parcelas: 1, valorParcela: 0 });
+      setParcelamento({ parcelas: 1, valorParcela: total });
     }
   }, [isOpen, totalPedido]);
 

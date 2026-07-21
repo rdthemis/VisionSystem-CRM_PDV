@@ -8,11 +8,11 @@
 use function Laravel\Prompts\error;
 
 // 1. Carregar configurações de ambiente
-require_once __DIR__.'/../config/environment.php';
+require_once __DIR__ . '/../config/environment.php';
 
 // 2. Carregar classes de segurança
-require_once __DIR__.'/../config/SecurityHeaders.php';
-require_once __DIR__.'/../config/InputValidator.php';
+require_once __DIR__ . '/../config/SecurityHeaders.php';
+require_once __DIR__ . '/../config/InputValidator.php';
 
 // 3. Aplicar headers de segurança base (sem Content-Type: json ainda)
 SecurityHeaders::apply(IS_PRODUCTION);
@@ -41,33 +41,33 @@ if (preg_match('#^/uploads/(.+)$#', $_staticUri, $_staticMatches)) {
 SecurityHeaders::applyForAPI();
 
 // 4. Carregar outras dependências
-require_once __DIR__.'/../vendor/autoload.php';
-require_once __DIR__.'/../config/Database.php';
-require_once __DIR__.'/../config/Security.php';
-require_once __DIR__.'/../middleware/AuthMiddleware.php';
-require_once __DIR__.'/../config/Logger.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/../config/Security.php';
+require_once __DIR__ . '/../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../config/Logger.php';
 
 // 5. Conectar ao banco
 $database = new Database();
 
-require_once __DIR__.'/../src/Clientes.php';
-require_once __DIR__.'/../src/ContasReceber.php';
-require_once __DIR__.'/../src/Recibos.php';
-require_once __DIR__.'/../src/Relatorios.php';
-require_once __DIR__.'/../src/Backup.php';
-require_once __DIR__.'/../src/EmailService.php';
-require_once __DIR__.'/../models/Caixa.php';
-require_once __DIR__.'/../models/Adicional.php';
-require_once __DIR__.'/../models/Categoria.php';
-require_once __DIR__.'/../models/Pedido.php';
-require_once __DIR__.'/../models/Produto.php';
-require_once __DIR__.'/../models/Usuario.php';
-require_once __DIR__.'/../models/ZonaEntrega.php';
-require_once __DIR__.'/../controllers/CategoriaController.php';
-require_once __DIR__.'/../controllers/ProdutoController.php';
-require_once __DIR__.'/../controllers/PedidoController.php';
-require_once __DIR__.'/../controllers/AuthController.php';
-require_once __DIR__.'/../controllers/UsuarioController.php';
+require_once __DIR__ . '/../src/Clientes.php';
+require_once __DIR__ . '/../src/ContasReceber.php';
+require_once __DIR__ . '/../src/Recibos.php';
+require_once __DIR__ . '/../src/Relatorios.php';
+require_once __DIR__ . '/../src/Backup.php';
+require_once __DIR__ . '/../src/EmailService.php';
+require_once __DIR__ . '/../models/Caixa.php';
+require_once __DIR__ . '/../models/Adicional.php';
+require_once __DIR__ . '/../models/Categoria.php';
+require_once __DIR__ . '/../models/Pedido.php';
+require_once __DIR__ . '/../models/Produto.php';
+require_once __DIR__ . '/../models/Usuario.php';
+require_once __DIR__ . '/../models/ZonaEntrega.php';
+require_once __DIR__ . '/../controllers/CategoriaController.php';
+require_once __DIR__ . '/../controllers/ProdutoController.php';
+require_once __DIR__ . '/../controllers/PedidoController.php';
+require_once __DIR__ . '/../controllers/AuthController.php';
+require_once __DIR__ . '/../controllers/UsuarioController.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', 0);
@@ -101,10 +101,10 @@ register_shutdown_function(function () {
             'arquivo' => $error['file'],
             'linha' => $error['line']
         ]);
-        
+
         http_response_code(500);
         $response = ['success' => false, 'message' => 'Erro interno do servidor'];
-        
+
         if (!IS_PRODUCTION) {
             $response['debug'] = [
                 'error' => $error['message'],
@@ -112,7 +112,7 @@ register_shutdown_function(function () {
                 'line' => $error['line'],
             ];
         }
-        
+
         echo json_encode($response);
     }
 });
@@ -137,7 +137,7 @@ try {
 
     $method = $_SERVER['REQUEST_METHOD'];
     $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    $uri = '/'.ltrim($uri, '/');
+    $uri = '/' . ltrim($uri, '/');
 
     error_log("📡 {$method} {$uri}");
 
@@ -165,36 +165,36 @@ try {
             echo json_encode($resultado);
             exit;
         }
-    
+
         if ($uri === '/db-tables') {
             $resultado = $database->verificarTabelas();
             echo json_encode($resultado);
             exit;
         }
-}
-// ==========================================
-// ROTAS DE IMAGEM DO PRODUTO (upload/remover avulso)
-// POST   /produtos/imagem  → Upload de imagem
-// DELETE /produtos/imagem  → Remover imagem
-// ==========================================
-if (preg_match('#^/produtos/imagem$#', $uri)) {
-    $authResult = verificarAuth($database);
-    $produtoController = new ProdutoController($database);
+    }
+    // ==========================================
+    // ROTAS DE IMAGEM DO PRODUTO (upload/remover avulso)
+    // POST   /produtos/imagem  → Upload de imagem
+    // DELETE /produtos/imagem  → Remover imagem
+    // ==========================================
+    if (preg_match('#^/produtos/imagem$#', $uri)) {
+        $authResult = verificarAuth($database);
+        $produtoController = new ProdutoController($database);
 
-    if ($method === 'POST') {
-        $produtoController->uploadImagem();
+        if ($method === 'POST') {
+            $produtoController->uploadImagem();
+            exit;
+        }
+
+        if ($method === 'DELETE') {
+            $produtoController->removerImagem();
+            exit;
+        }
+
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Método não permitido']);
         exit;
     }
-
-    if ($method === 'DELETE') {
-        $produtoController->removerImagem();
-        exit;
-    }
-
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Método não permitido']);
-    exit;
-}
 
 
     // ==========================================
@@ -585,7 +585,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     if ($method === 'GET' && $uri === '/adicionais') {
         $authResult = verificarAuth($database);
 
-        require_once __DIR__.'/../controllers/AdicionalController.php';
+        require_once __DIR__ . '/../controllers/AdicionalController.php';
         $adicionaisController = new AdicionalController($database);
 
         // Buscar por ID específico
@@ -615,7 +615,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../controllers/AdicionalController.php';
+        require_once __DIR__ . '/../controllers/AdicionalController.php';
         $adicionaisController = new AdicionalController($database);
         $resultado = $adicionaisController->criar($input);
 
@@ -644,7 +644,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../controllers/AdicionalController.php';
+        require_once __DIR__ . '/../controllers/AdicionalController.php';
         $adicionaisController = new AdicionalController($database);
         $resultado = $adicionaisController->atualizar($input);
 
@@ -673,7 +673,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../controllers/AdicionalController.php';
+        require_once __DIR__ . '/../controllers/AdicionalController.php';
         $adicionaisController = new AdicionalController($database);
         $resultado = $adicionaisController->deletar($input['id']);
 
@@ -815,7 +815,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         }
 
         // DEBUG: Log do resultado
-        error_log('📊 Resultado da consulta: '.json_encode($resultado));
+        error_log('📊 Resultado da consulta: ' . json_encode($resultado));
 
         echo json_encode($resultado);
         exit;
@@ -828,7 +828,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         $input = json_decode(file_get_contents('php://input'), true);
 
         // DEBUG: Log dos dados recebidos
-        error_log('📝 Dados recebidos para criar pedido: '.json_encode($input));
+        error_log('📝 Dados recebidos para criar pedido: ' . json_encode($input));
 
         if (!$input) {
             http_response_code(400);
@@ -844,7 +844,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         $resultado = $pedidosController->criar($input);
 
         // DEBUG: Log do resultado
-        error_log('💾 Resultado da criação: '.json_encode($resultado));
+        error_log('💾 Resultado da criação: ' . json_encode($resultado));
 
         if ($resultado && isset($resultado['success']) && $resultado['success']) {
             http_response_code(201);
@@ -863,7 +863,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         $input = json_decode(file_get_contents('php://input'), true);
 
         foreach ($input as $key => $value) {
-            error_log("📝 Valor do campo $key: ".print_r($value, true));
+            error_log("📝 Valor do campo $key: " . print_r($value, true));
         }
 
         if (!$input || !isset($input['id'])) {
@@ -1003,7 +1003,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     if ($method === 'GET' && $uri === '/zonas-entrega') {
         $authResult = verificarAuth($database);
 
-        require_once __DIR__.'/../controllers/ZonaEntregaController.php';
+        require_once __DIR__ . '/../controllers/ZonaEntregaController.php';
         $zonasController = new ZonaEntregaController($database);
 
         // Verificar se quer apenas ativas
@@ -1037,7 +1037,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../controllers/ZonaEntregaController.php';
+        require_once __DIR__ . '/../controllers/ZonaEntregaController.php';
         $zonasController = new ZonaEntregaController($database);
         $zonasController->criar($input);
         exit;
@@ -1063,7 +1063,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../controllers/ZonaEntregaController.php';
+        require_once __DIR__ . '/../controllers/ZonaEntregaController.php';
         $zonasController = new ZonaEntregaController($database);
         $zonasController->atualizar($input);
         exit;
@@ -1089,7 +1089,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../controllers/ZonaEntregaController.php';
+        require_once __DIR__ . '/../controllers/ZonaEntregaController.php';
         $zonasController = new ZonaEntregaController($database);
         $zonasController->deletar($input['id']);
         exit;
@@ -1422,7 +1422,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     if ($method === 'GET' && $uri === '/caixa') {
         $authResult = verificarAuth($database);
 
-        require_once __DIR__.'/../models/Caixa.php';
+        require_once __DIR__ . '/../models/Caixa.php';
         $caixa = new Caixa($database->getConnection());
 
         try {
@@ -1486,7 +1486,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao buscar dados do caixa: '.$e->getMessage(),
+                'message' => 'Erro ao buscar dados do caixa: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -1498,13 +1498,13 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     // POST /caixa - Abrir caixa (CORRIGIDO)
     if ($method === 'POST' && $uri === '/caixa') {
         error_log('=== DEBUG ABERTURA CAIXA ===');
-        error_log('Method: '.$method);
-        error_log('URI: '.$uri);
+        error_log('Method: ' . $method);
+        error_log('URI: ' . $uri);
 
         try {
             // Verificar autenticação
             $authResult = verificarAuth($database);
-            error_log('Auth result: '.json_encode($authResult));
+            error_log('Auth result: ' . json_encode($authResult));
 
             // 🔧 CORREÇÃO: Verificar a estrutura correta do authResult
             // Baseado nos logs, parece que os dados estão diretamente em $authResult
@@ -1523,20 +1523,20 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             if (isset($authResult['user_id'])) {
                 // Dados estão diretamente no authResult
                 $user_id = $authResult['user_id'];
-                error_log('✅ Usuario ID encontrado diretamente: '.$user_id);
+                error_log('✅ Usuario ID encontrado diretamente: ' . $user_id);
             } elseif (isset($authResult['user']) && isset($authResult['user']['id'])) {
                 // Dados estão em $authResult['usuario']
                 $user_id = $authResult['user']['id'];
-                error_log("✅ Usuario ID encontrado em ['user']: ".$user_id);
+                error_log("✅ Usuario ID encontrado em ['user']: " . $user_id);
             } elseif (isset($authResult['user']) && isset($authResult['user']['user_id'])) {
                 // Dados estão em $authResult['usuario']['user_id']
                 $user_id = $authResult['user']['user_id'];
-                error_log("✅ Usuario ID encontrado em ['user']['user_id']: ".$user_id);
+                error_log("✅ Usuario ID encontrado em ['user']['user_id']: " . $user_id);
             }
 
             if (!$user_id) {
                 error_log('❌ Usuario ID não encontrado na estrutura de auth');
-                error_log('Estrutura completa do authResult: '.print_r($authResult, true));
+                error_log('Estrutura completa do authResult: ' . print_r($authResult, true));
                 echo json_encode([
                     'success' => false,
                     'message' => 'Dados de usuário inválidos',
@@ -1545,38 +1545,38 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 exit;
             }
 
-            error_log('✅ Autenticação OK - Usuario ID: '.$user_id);
+            error_log('✅ Autenticação OK - Usuario ID: ' . $user_id);
 
             // Ler input
             $inputRaw = file_get_contents('php://input');
-            error_log('Input raw: '.$inputRaw);
+            error_log('Input raw: ' . $inputRaw);
 
             $input = json_decode($inputRaw, true);
-            error_log('Input decoded: '.json_encode($input));
+            error_log('Input decoded: ' . json_encode($input));
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log('❌ Erro JSON decode: '.json_last_error_msg());
+                error_log('❌ Erro JSON decode: ' . json_last_error_msg());
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Dados JSON inválidos: '.json_last_error_msg(),
+                    'message' => 'Dados JSON inválidos: ' . json_last_error_msg(),
                 ]);
                 http_response_code(400);
                 exit;
             }
 
-            require_once __DIR__.'/../models/Caixa.php';
+            require_once __DIR__ . '/../models/Caixa.php';
             $caixa = new Caixa($database->getConnection());
 
             // Verificar se já existe caixa aberto
             $caixaAberto = $caixa->verificarCaixaAberto();
-            error_log('Caixa já aberto: '.json_encode($caixaAberto));
+            error_log('Caixa já aberto: ' . json_encode($caixaAberto));
 
             if ($caixaAberto) {
                 error_log('⚠️ Já existe um caixa aberto');
                 echo json_encode([
                     'success' => false,
                     'message' => 'Já existe um caixa aberto',
-                    'debug' => 'Caixa ID: '.$caixaAberto['id'],
+                    'debug' => 'Caixa ID: ' . $caixaAberto['id'],
                 ]);
                 http_response_code(400);
                 exit;
@@ -1586,16 +1586,16 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             $saldoInicial = 0;
             if (isset($input['saldo_inicial'])) {
                 $saldoInicial = floatval($input['saldo_inicial']);
-                error_log('Saldo inicial: '.$saldoInicial);
+                error_log('Saldo inicial: ' . $saldoInicial);
             }
 
             $observacoes = $input['observacoes_abertura'] ?? 'Caixa aberto pelo sistema';
-            error_log('Observações: '.$observacoes);
-            error_log('Usuario ID para abertura: '.$user_id);
+            error_log('Observações: ' . $observacoes);
+            error_log('Usuario ID para abertura: ' . $user_id);
 
             // Tentar abrir o caixa
             $resultado = $caixa->abrirCaixa($saldoInicial, $user_id, $observacoes);
-            error_log('Resultado abertura: '.json_encode($resultado));
+            error_log('Resultado abertura: ' . json_encode($resultado));
 
             if ($resultado['success']) {
                 echo json_encode([
@@ -1613,12 +1613,12 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 http_response_code(400);
             }
         } catch (Exception $e) {
-            error_log('❌ Exception na abertura do caixa: '.$e->getMessage());
-            error_log('Stack trace: '.$e->getTraceAsString());
+            error_log('❌ Exception na abertura do caixa: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
 
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro interno do servidor: '.$e->getMessage(),
+                'message' => 'Erro interno do servidor: ' . $e->getMessage(),
                 'debug' => 'Exception capturada',
             ]);
             http_response_code(500);
@@ -1632,7 +1632,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     // POST /caixa/movimento - Adicionar movimento ao caixa
     if ($method === 'POST' && $uri === '/caixa/movimento') {
         $authResult = verificarAuth($database);
-        error_log('Auth result linha 1586: '.json_encode($authResult));
+        error_log('Auth result linha 1586: ' . json_encode($authResult));
 
         $caixa = new Caixa($database->getConnection());
 
@@ -1662,7 +1662,8 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             }
 
             if (!is_numeric($input['valor']) || $input['valor'] <= 0) {
-                echo json_encode(['success' => false,
+                echo json_encode([
+                    'success' => false,
                     'message' => 'Valor deve ser um número positivo',
                 ]);
                 http_response_code(400);
@@ -1686,20 +1687,20 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             if (isset($authResult['user_id'])) {
                 // Dados estão diretamente no authResult
                 $user_id = $authResult['user_id'];
-                error_log('✅ Usuario ID encontrado diretamente: '.$user_id);
+                error_log('✅ Usuario ID encontrado diretamente: ' . $user_id);
             } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['id'])) {
                 // Dados estão em $authResult['usuario']
                 $user_id = $authResult['usuario']['id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']: ".$user_id);
+                error_log("✅ Usuario ID encontrado em ['usuario']: " . $user_id);
             } elseif (isset($authResult['usuario']) && isset($authResult['usuario']['user_id'])) {
                 // Dados estão em $authResult['usuario']['user_id']
                 $user_id = $authResult['usuario']['user_id'];
-                error_log("✅ Usuario ID encontrado em ['usuario']['user_id']: ".$user_id);
+                error_log("✅ Usuario ID encontrado em ['usuario']['user_id']: " . $user_id);
             }
 
             if (!$user_id) {
                 error_log('❌ Usuario ID não encontrado na estrutura de auth');
-                error_log('Estrutura completa do authResult: '.print_r($authResult, true));
+                error_log('Estrutura completa do authResult: ' . print_r($authResult, true));
                 echo json_encode([
                     'success' => false,
                     'message' => 'Dados de usuário inválidos',
@@ -1708,7 +1709,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 exit;
             }
 
-            error_log('✅ Autenticação OK - Usuario ID: '.$user_id);
+            error_log('✅ Autenticação OK - Usuario ID: ' . $user_id);
 
             $resultado = $caixa->adicionarMovimento(
                 $input['tipo'],
@@ -1729,7 +1730,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao adicionar movimento: '.$e->getMessage(),
+                'message' => 'Erro ao adicionar movimento: ' . $e->getMessage(),
             ]);
             http_response_code(500);
         }
@@ -1754,7 +1755,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             exit;
         }
 
-        require_once __DIR__.'/../models/Caixa.php';
+        require_once __DIR__ . '/../models/Caixa.php';
         $caixa = new Caixa($database->getConnection());
 
         try {
@@ -1774,7 +1775,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao fechar caixa: '.$e->getMessage(),
+                'message' => 'Erro ao fechar caixa: ' . $e->getMessage(),
             ]);
             http_response_code(500);
         }
@@ -2012,7 +2013,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 ],
             ]);
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar estatísticas: '.$e->getMessage());
+            error_log('❌ Erro ao buscar estatísticas: ' . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'success' => false,
@@ -2096,6 +2097,46 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         exit;
     }
 
+    if ($method === 'GET' && $uri === '/relatorios/vendas-periodo') {
+        $authResult = verificarAuth($database);
+
+        $relatorios = new Relatorios($database);
+
+        $dataInicio = $_GET['data_inicio'] ?? date('Y-m-01');
+        $dataFim = $_GET['data_fim'] ?? date('Y-m-t');
+        $granularidade = $_GET['granularidade'] ?? 'dia';
+
+        $resultado = $relatorios->relatorioVendasPeriodo($dataInicio, $dataFim, $granularidade);
+        echo json_encode($resultado);
+        exit;
+    }
+
+    if ($method === 'GET' && $uri === '/relatorios/vendas-cliente') {
+        $authResult = verificarAuth($database);
+
+        $relatorios = new Relatorios($database);
+
+        $dataInicio = $_GET['data_inicio'] ?? date('Y-m-01');
+        $dataFim = $_GET['data_fim'] ?? date('Y-m-t');
+
+        $resultado = $relatorios->relatorioVendasCliente($dataInicio, $dataFim);
+        echo json_encode($resultado);
+        exit;
+    }
+
+    if ($method === 'GET' && $uri === '/relatorios/fechamento-caixa') {
+        $authResult = verificarAuth($database);
+
+        $relatorios = new Relatorios($database);
+
+        $dataInicio = $_GET['data_inicio'] ?? date('Y-m-d');
+        $dataFim = $_GET['data_fim'] ?? date('Y-m-d');
+
+        $resultado = $relatorios->relatorioFechamentoCaixa($dataInicio, $dataFim);
+        echo json_encode($resultado);
+        exit;
+    }
+
     // ==========================================
     // ROTAS DE CONFIGURAÇÕES
     // ==========================================
@@ -2167,7 +2208,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     // ==========================================
 
     // Incluir a classe
-    require_once __DIR__.'/../src/BackupSimples.php';
+    require_once __DIR__ . '/../src/BackupSimples.php';
 
     if ($method === 'POST' && $uri === '/backup/gerar') {
         $authResult = verificarAuth($database);
@@ -2181,13 +2222,13 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             error_log('🔄 Iniciando backup via rota...');
             $backup = new BackupSimples($database);
             $resultado = $backup->gerarBackup();
-            error_log('✅ Resultado: '.json_encode($resultado));
+            error_log('✅ Resultado: ' . json_encode($resultado));
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro na rota: '.$e->getMessage());
+            error_log('❌ Erro na rota: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro: '.$e->getMessage(),
+                'message' => 'Erro: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2206,13 +2247,13 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             error_log('🔍 Listando backups via rota...');
             $backup = new BackupSimples($database);
             $resultado = $backup->listarBackups();
-            error_log('📋 Resultado: '.json_encode($resultado));
+            error_log('📋 Resultado: ' . json_encode($resultado));
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro na listagem: '.$e->getMessage());
+            error_log('❌ Erro na listagem: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro: '.$e->getMessage(),
+                'message' => 'Erro: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2236,7 +2277,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 throw new Exception('Nome do arquivo não fornecido');
             }
 
-            error_log('🔄 Restaurando backup: '.$arquivo." (tipo: {$tipoRestore})");
+            error_log('🔄 Restaurando backup: ' . $arquivo . " (tipo: {$tipoRestore})");
             $backup = new BackupSimples($database);
 
             if ($tipoRestore === 'completo') {
@@ -2247,10 +2288,10 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
 
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro na rota de restore: '.$e->getMessage());
+            error_log('❌ Erro na rota de restore: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro: '.$e->getMessage(),
+                'message' => 'Erro: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2312,7 +2353,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             'success' => true,
             'message' => 'Backup gerado com sucesso!',
             'data' => [
-                'filename' => 'backup_teste_'.date('Y-m-d_H-i-s').'.sql',
+                'filename' => 'backup_teste_' . date('Y-m-d_H-i-s') . '.sql',
                 'size' => '1.2 MB',
                 'tables' => 8,
             ],
@@ -2375,17 +2416,17 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 throw new Exception('Nome do arquivo não fornecido');
             }
 
-            error_log('🗑️ POST delete backup: '.$filename);
+            error_log('🗑️ POST delete backup: ' . $filename);
 
             $backup = new BackupSimples($database);
             $resultado = $backup->deletarBackup($filename);
 
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro: '.$e->getMessage());
+            error_log('❌ Erro: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro: '.$e->getMessage(),
+                'message' => 'Erro: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2396,7 +2437,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
     // ==========================================
 
     // Incluir a classe EmailService
-    require_once __DIR__.'/../src/EmailService.php';
+    require_once __DIR__ . '/../src/EmailService.php';
 
     // Obter configurações de email
     if ($method === 'GET' && $uri === '/integracoes/email') {
@@ -2407,7 +2448,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             $resultado = $emailService->obterConfiguracoes();
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro ao obter config email: '.$e->getMessage());
+            error_log('❌ Erro ao obter config email: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
                 'message' => 'Erro ao carregar configurações',
@@ -2439,10 +2480,10 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             $resultado = $emailService->salvarConfiguracoes($input);
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro ao salvar config email: '.$e->getMessage());
+            error_log('❌ Erro ao salvar config email: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao salvar configurações: '.$e->getMessage(),
+                'message' => 'Erro ao salvar configurações: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2462,10 +2503,10 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
             $resultado = $emailService->testarConfiguracao($emailTeste);
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro no teste de email: '.$e->getMessage());
+            error_log('❌ Erro no teste de email: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro no teste: '.$e->getMessage(),
+                'message' => 'Erro no teste: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2483,7 +2524,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 throw new Exception('Email do destinatário é obrigatório');
             }
 
-            error_log("📧 Enviando recibo ID {$reciboId} para: ".$input['email']);
+            error_log("📧 Enviando recibo ID {$reciboId} para: " . $input['email']);
 
             $emailService = new EmailService($database);
             $resultado = $emailService->enviarRecibo(
@@ -2494,10 +2535,10 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
 
             echo json_encode($resultado);
         } catch (Exception $e) {
-            error_log('❌ Erro ao enviar recibo: '.$e->getMessage());
+            error_log('❌ Erro ao enviar recibo: ' . $e->getMessage());
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao enviar recibo: '.$e->getMessage(),
+                'message' => 'Erro ao enviar recibo: ' . $e->getMessage(),
             ]);
         }
         exit;
@@ -2510,8 +2551,8 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         try {
             $authResult = verificarAuth($database);
 
-            error_log('Auth result completo: '.print_r($authResult, true));
-            error_log('Auth result JSON: '.json_encode($authResult));
+            error_log('Auth result completo: ' . print_r($authResult, true));
+            error_log('Auth result JSON: ' . json_encode($authResult));
 
             // Testar diferentes estruturas
             $possiveisUsuarioIds = [];
@@ -2532,7 +2573,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 $possiveisUsuarioIds['id'] = $authResult['id'];
             }
 
-            error_log('Possíveis userIDs: '.json_encode($possiveisUsuarioIds));
+            error_log('Possíveis userIDs: ' . json_encode($possiveisUsuarioIds));
 
             echo json_encode([
                 'success' => true,
@@ -2545,11 +2586,11 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
                 ],
             ]);
         } catch (Exception $e) {
-            error_log('❌ Exception no debug auth: '.$e->getMessage());
+            error_log('❌ Exception no debug auth: ' . $e->getMessage());
 
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro no debug: '.$e->getMessage(),
+                'message' => 'Erro no debug: ' . $e->getMessage(),
             ]);
             http_response_code(500);
         }
@@ -2573,7 +2614,7 @@ if (preg_match('#^/produtos/imagem$#', $uri)) {
         ],
     ]);
 } catch (Exception $e) {
-    error_log('❌ Erro na API: '.$e->getMessage());
+    error_log('❌ Erro na API: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,

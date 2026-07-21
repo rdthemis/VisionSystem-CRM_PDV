@@ -130,7 +130,7 @@ const Pedidos = ({ onRefresh }) => {
       itens: carrinho.map(item => ({
         quantidade: item.quantidade,
         nome: item.produto_nome,
-        preco: parseFloat(item.preco_unitario || item.preco_produto),
+        preco: parseFloat(item.preco_produto),
         observacao: item.observacoes || '',
 
       //  adicionais: (item.adicionais || []).map(add => ({
@@ -1064,8 +1064,6 @@ const Pedidos = ({ onRefresh }) => {
           />
         )}
       </div>
-
-      {/* ── MODAIS ── */}
 
       {/* Preview da Comanda */}
       {showComanda && (

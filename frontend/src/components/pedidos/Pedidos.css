@@ -366,15 +366,33 @@
 .pedido-card-footer {
     padding-top: var(--spacing-md);
     border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
 }
 
 .pedido-total {
-    font-weight: 600;
-    font-size: 18px;
+    font-weight: 700;
+    font-size: 16px;
     color: var(--success-color);
 }
 
-.pedido-card-actions {
+.pedido-status-label {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #0ea5e9;
+    font-weight: 700;
+}
+
+.pedido-card-summary {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--secondary-color);
+    font-size: 13px;
     margin-top: var(--spacing-md);
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1068,14 +1086,20 @@
     max-width: 95%;
 }
 
+.modal-produto {
+    width: 850px;
+    max-height: 90vh;
+    max-width: 95%;
+}
+
 .modal-pagamento {
-    width: 1200px;
+    width: 680px;
     max-height: 90vh;
     max-width: 95%;
 }
 
 .modal-clientes {
-    width: 1200px;
+    width: 850px;
     max-height: 90vh;
     max-width: 95%;
 }
@@ -1162,6 +1186,29 @@
     background: var(--primary-hover);
 }
 
+.btn-confirmar-pagamento {
+    padding: 12px 24px;
+    background: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+..btn-confirmar-pagamento:hover {
+    background: #059669;
+}
+
+.btn-confirmar-pagamento:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 /* === INFORMAÇÕES DO PRODUTO === */
 .produto-info-modal {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -1231,6 +1278,17 @@
 
 .quantidade-input:hover {
     border-color: var(--primary-hover);
+}
+
+/* Produtos que não são vendidos por peso: quantidade só muda pelos botões +/- */
+.quantidade-input-readonly {
+    cursor: default;
+    background: #f1f3f5;
+    color: var(--text-secondary, #6b7280);
+}
+
+.quantidade-input-readonly:hover {
+    border-color: var(--border-color);
 }
 
 /* Label de unidade de medida */
@@ -3033,7 +3091,7 @@
 
 /* Thumbnail no grid PDV */
 .produto-item-thumb {
-    width: 100%;
+    width: 50%;
     aspect-ratio: 1;
     border-radius: 8px;
     overflow: hidden;

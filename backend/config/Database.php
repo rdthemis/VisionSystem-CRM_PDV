@@ -54,7 +54,7 @@ class Database
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4',
+                \Pdo\Mysql::ATTR_INIT_COMMAND,
             ]);
             // Configurar PDO para mostrar erros e usar UTF-8
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -65,7 +65,7 @@ class Database
             if (($_ENV['APP_ENV'] ?? 'development') !== 'production') {
                 throw $e;
             }
-            error_log('DB Connection Error: '.$e->getMessage());
+            error_log('DB Connection Error: ' . $e->getMessage());
 
             return null;
         }
@@ -84,11 +84,11 @@ class Database
         }
 
         // Caminho do .env na raiz do backend
-        $envFile = __DIR__.'/../.env';
+        $envFile = __DIR__ . '/../.env';
 
         if (!file_exists($envFile)) {
             // Tenta um nível acima (raiz do projeto)
-            $envFile = __DIR__.'/../../.env';
+            $envFile = __DIR__ . '/../../.env';
         }
 
         if (!file_exists($envFile)) {
@@ -158,7 +158,7 @@ class Database
                         $stmt->execute();
                         $resultado[$tabela]['registros'] = $stmt->fetch()['total'];
                     } catch (Exception $e) {
-                        $resultado[$tabela]['registros'] = 'Erro: '.$e->getMessage();
+                        $resultado[$tabela]['registros'] = 'Erro: ' . $e->getMessage();
                     }
                 }
             }
@@ -198,7 +198,7 @@ class Database
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Erro no setup: '.$e->getMessage(),
+                'message' => 'Erro no setup: ' . $e->getMessage(),
             ];
         }
     }

@@ -107,12 +107,19 @@ function Dashboard({ onLogout, onNavigate }) {
             onNavigate('contas-receber');
         }
     };
-
+    
     // NOVA FUNÇÃO: Navegar para relatórios
     const handleRelatoriosClick = () => {
         Logger.info('Navegando para relatórios', {info: "Relatórios"});
         if (onNavigate) {
             onNavigate('relatorios');
+        }
+    };
+
+    const handleRelatoriosProdutosClick = () => {
+        Logger.info('Navegando para relatórios de produtos', {info: "Relatórios de Produtos"});
+        if (onNavigate) {
+            onNavigate('relatoriosProdutos');
         }
     };
 
@@ -391,9 +398,9 @@ function Dashboard({ onLogout, onNavigate }) {
                 </span>
               </div>
 
-              {/* Card Modulo PDV */}
-              {/* <div
-                onClick={handleModuloPdvClick}
+              {/* Card Relatórios Produtos */}
+              <div
+                onClick={handleRelatoriosProdutosClick}
                 style={{
                   background: "#fff",
                   border: "2px solid #e0e0e0",
@@ -407,7 +414,7 @@ function Dashboard({ onLogout, onNavigate }) {
                   e.currentTarget.style.transform = "translateY(-2px)";
                   e.currentTarget.style.boxShadow =
                     "0 8px 25px rgba(0,0,0,0.15)";
-                  e.currentTarget.style.borderColor = "#00ff00";
+                  e.currentTarget.style.borderColor = "#e9f71d";
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
@@ -415,8 +422,10 @@ function Dashboard({ onLogout, onNavigate }) {
                   e.currentTarget.style.borderColor = "#e0e0e0";
                 }}
               >
-                <div style={{ fontSize: "48px", marginBottom: "16px" }}><h2><i className="fas fa-store"></i> <span className="sidebar-text"></span></h2></div>
-                <h3 style={{ margin: "0 0 8px 0", color: "#333" }}>PDV</h3>
+                <div style={{ fontSize: "48px", marginBottom: "16px" }}>📊</div>
+                <h3 style={{ margin: "0 0 8px 0", color: "#333" }}>
+                  Relatórios de Produtos
+                </h3>
                 <p
                   style={{
                     margin: "0 0 16px 0",
@@ -424,11 +433,11 @@ function Dashboard({ onLogout, onNavigate }) {
                     fontSize: "14px",
                   }}
                 >
-                  Modulo PDV.
+                  Produtos e Categorias
                 </p>
                 <span
                   style={{
-                    color: "#00ff00",
+                    color: "#e9f71d",
                     fontWeight: "500",
                     fontSize: "14px",
                   }}
@@ -436,7 +445,8 @@ function Dashboard({ onLogout, onNavigate }) {
                   Acessar →
                 </span>
               </div>
- */}
+
+              
               {/* Card Recibos */}
               <div
                 onClick={handleRecibosClick}

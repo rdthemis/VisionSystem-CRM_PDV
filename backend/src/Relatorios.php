@@ -120,6 +120,9 @@ class Relatorios
             // Clientes que mais pagaram
             $dados['top_clientes'] = $this->getTopClientesPagadores($dataInicio, $dataFim);
 
+            // Tipos de lançamentos
+            $dados['tipo_lancamentos'] = $this->getTipoLancamentos($dataInicio, $dataFim);
+
             return [
                 'success' => true,
                 'data' => [
@@ -307,7 +310,267 @@ class Relatorios
         }
     }
 
+    // Relatório de vendas por período (dia/semana/mês/ano)
+    public function relatorioVendasPeriodo($dataInicio, $dataFim, $granularidade = 'dia')
+    {
+        try {
+            $expressao = $this->getAgrupamentoPeriodo($granularidade);
+
+            $sql = "
+                SELECT
+                    {$expressao} AS periodo,
+                    MIN(DATE(created_at)) AS periodo_data,
+                    COUNT(*) AS total_pedidos,
+                    SUM(total) AS valor_total,
+                    AVG(total) AS ticket_medio
+                FROM pedidos
+                WHERE status = 'finalizado'
+                AND DATE(created_at) BETWEEN ? AND ?
+                GROUP BY periodo
+                ORDER BY periodo
+            ";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$dataInicio, $dataFim]);
+            $serie = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $totalPedidos = 0;
+            $valorTotal = 0;
+
+            foreach ($serie as &$linha) {
+                $linha['periodo_label'] = $this->formatarPeriodoLabel($linha['periodo'], $linha['periodo_data'], $granularidade);
+                $totalPedidos += (int) $linha['total_pedidos'];
+                $valorTotal += (float) $linha['valor_total'];
+            }
+            unset($linha);
+
+            return [
+                'success' => true,
+                'data' => [
+                    'periodo' => [
+                        'inicio' => $dataInicio,
+                        'fim' => $dataFim,
+                        'granularidade' => $granularidade,
+                    ],
+                    'serie' => $serie,
+                    'resumo' => [
+                        'total_pedidos' => $totalPedidos,
+                        'valor_total' => $valorTotal,
+                        'ticket_medio' => $totalPedidos > 0 ? $valorTotal / $totalPedidos : 0,
+                    ],
+                ],
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro no relatório de vendas por período: '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar relatório de vendas por período',
+            ];
+        }
+    }
+
+    // Relatório de vendas por cliente (cadastrados e avulsos)
+    public function relatorioVendasCliente($dataInicio, $dataFim)
+    {
+        try {
+            $sql = "
+                SELECT
+                    MAX(p.cliente_id) AS cliente_id,
+                    CASE WHEN MAX(p.cliente_id) IS NOT NULL THEN MAX(c.nome) ELSE MAX(p.cliente_nome) END AS cliente_nome,
+                    CASE WHEN MAX(p.cliente_id) IS NOT NULL THEN 'cadastrado' ELSE 'avulso' END AS tipo_cliente,
+                    COUNT(*) AS total_pedidos,
+                    SUM(p.total) AS valor_total,
+                    AVG(p.total) AS ticket_medio
+                FROM pedidos p
+                LEFT JOIN clientes c ON p.cliente_id = c.id
+                WHERE p.status = 'finalizado'
+                AND DATE(p.created_at) BETWEEN ? AND ?
+                GROUP BY COALESCE(p.cliente_id, CONCAT('avulso:', p.cliente_nome))
+                ORDER BY valor_total DESC
+            ";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$dataInicio, $dataFim]);
+            $clientes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $totalPedidos = 0;
+            $valorTotal = 0;
+
+            foreach ($clientes as $cliente) {
+                $totalPedidos += (int) $cliente['total_pedidos'];
+                $valorTotal += (float) $cliente['valor_total'];
+            }
+
+            return [
+                'success' => true,
+                'data' => [
+                    'periodo' => [
+                        'inicio' => $dataInicio,
+                        'fim' => $dataFim,
+                    ],
+                    'clientes' => $clientes,
+                    'resumo' => [
+                        'total_clientes' => count($clientes),
+                        'total_pedidos' => $totalPedidos,
+                        'valor_total' => $valorTotal,
+                    ],
+                ],
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro no relatório de vendas por cliente: '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar relatório de vendas por cliente',
+            ];
+        }
+    }
+
+    // Relatório de fechamento de caixa (conferência por forma de pagamento)
+    public function relatorioFechamentoCaixa($dataInicio, $dataFim)
+    {
+        try {
+            $sql = "
+                SELECT
+                    COALESCE(forma_pagamento, 'nao_informado') AS forma_pagamento,
+                    COUNT(*) AS quantidade,
+                    SUM(total) AS valor_total
+                FROM pedidos
+                WHERE status = 'finalizado'
+                AND DATE(created_at) BETWEEN ? AND ?
+                GROUP BY forma_pagamento
+            ";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$dataInicio, $dataFim]);
+            $linhas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $porForma = [];
+            foreach ($linhas as $linha) {
+                $porForma[$linha['forma_pagamento']] = [
+                    'forma_pagamento' => $linha['forma_pagamento'],
+                    'quantidade' => (int) $linha['quantidade'],
+                    'valor_total' => (float) $linha['valor_total'],
+                ];
+            }
+
+            // Garante que as 5 formas sempre apareçam, mesmo sem vendas no período
+            $formasCanonicas = ['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'prazo'];
+            $resultado = [];
+            foreach ($formasCanonicas as $forma) {
+                $resultado[] = $porForma[$forma] ?? [
+                    'forma_pagamento' => $forma,
+                    'quantidade' => 0,
+                    'valor_total' => 0,
+                ];
+                unset($porForma[$forma]);
+            }
+            // Qualquer forma inesperada (ex: nao_informado) vai ao final
+            foreach ($porForma as $extra) {
+                $resultado[] = $extra;
+            }
+
+            $totalGeral = 0;
+            $quantidadeTotal = 0;
+            $totalAPrazo = 0;
+
+            foreach ($resultado as $item) {
+                $totalGeral += $item['valor_total'];
+                $quantidadeTotal += $item['quantidade'];
+                if ($item['forma_pagamento'] === 'prazo') {
+                    $totalAPrazo += $item['valor_total'];
+                }
+            }
+
+            // Saídas registradas no caixa (sangrias, contas pagas, etc.)
+            $sqlSaidas = "
+                SELECT
+                    cm.id,
+                    cm.valor,
+                    cm.descricao,
+                    cm.categoria,
+                    cm.created_at,
+                    u.nome AS usuario_nome
+                FROM caixa_movimentos cm
+                LEFT JOIN usuarios u ON cm.usuario_id = u.id
+                WHERE cm.tipo = 'saida'
+                AND DATE(cm.created_at) BETWEEN ? AND ?
+                ORDER BY cm.created_at DESC
+            ";
+
+            $stmtSaidas = $this->db->prepare($sqlSaidas);
+            $stmtSaidas->execute([$dataInicio, $dataFim]);
+            $saidas = $stmtSaidas->fetchAll(PDO::FETCH_ASSOC);
+
+            $totalSaidas = 0;
+            foreach ($saidas as $saida) {
+                $totalSaidas += (float) $saida['valor'];
+            }
+
+            return [
+                'success' => true,
+                'data' => [
+                    'periodo' => [
+                        'inicio' => $dataInicio,
+                        'fim' => $dataFim,
+                    ],
+                    'por_forma_pagamento' => $resultado,
+                    'saidas' => $saidas,
+                    'resumo' => [
+                        'total_geral' => $totalGeral,
+                        'quantidade_total' => $quantidadeTotal,
+                        'total_avista' => $totalGeral - $totalAPrazo,
+                        'total_aprazo' => $totalAPrazo,
+                        'total_saidas' => $totalSaidas,
+                        'quantidade_saidas' => count($saidas),
+                    ],
+                ],
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro no relatório de fechamento de caixa: '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar relatório de fechamento de caixa',
+            ];
+        }
+    }
+
     // Métodos auxiliares privados
+
+    // Whitelist da expressão SQL de agrupamento por período (nunca interpolar $_GET direto)
+    private function getAgrupamentoPeriodo($granularidade)
+    {
+        switch ($granularidade) {
+            case 'semana':
+                return 'YEARWEEK(created_at, 3)';
+            case 'mes':
+                return "DATE_FORMAT(created_at, '%Y-%m')";
+            case 'ano':
+                return 'YEAR(created_at)';
+            case 'dia':
+            default:
+                return 'DATE(created_at)';
+        }
+    }
+
+    private function formatarPeriodoLabel($periodo, $periodoData, $granularidade)
+    {
+        $data = strtotime($periodoData);
+
+        switch ($granularidade) {
+            case 'semana':
+                return 'Semana de '.date('d/m', $data);
+            case 'mes':
+                return date('m/Y', $data);
+            case 'ano':
+                return (string) $periodo;
+            case 'dia':
+            default:
+                return date('d/m/Y', $data);
+        }
+    }
 
     private function calcularTotaisClientes($clientes)
     {
@@ -436,6 +699,30 @@ class Relatorios
     }
 
     private function getTopClientesPagadores($dataInicio, $dataFim)
+    {
+        $sql = "
+            SELECT 
+                c.id,
+                c.nome,
+                c.cpf_cnpj,
+                COUNT(r.id) as total_recibos,
+                SUM(r.valor_liquido) as valor_total_pago
+            FROM recibos r
+            INNER JOIN clientes c ON r.cliente_id = c.id
+            WHERE r.status = 'ativo'
+            AND r.data_emissao BETWEEN ? AND ?
+            GROUP BY c.id, c.nome, c.cpf_cnpj
+            ORDER BY valor_total_pago DESC
+            LIMIT 10
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$dataInicio, $dataFim]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function getTipoLancamentos($dataInicio, $dataFim)
     {
         $sql = "
             SELECT 
