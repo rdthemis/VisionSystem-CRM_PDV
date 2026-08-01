@@ -18,6 +18,7 @@ class BematechPrinter
     private string $buffer = '';
     private int $columns;
     private bool $isWindows;
+    private string $currentAlign = self::ALIGN_LEFT;
 
     // ── Comandos ESC/POS ──────────────────────────────────────────
     // Inicialização
@@ -45,12 +46,22 @@ class BematechPrinter
     public const ALIGN_RIGHT = "\x1B\x61\x02";
 
     // Formatação de texto
+    // Esta impressora não reconhece o comando GS ! (tamanho de caractere) -
+    // ele foi testado e não teve efeito nenhum. Tamanho e negrito precisam
+    // ser feitos via ESC ! (Select print mode), que é o único comando de
+    // tamanho que ela honra.
     public const BOLD_ON = "\x1B\x45\x01";
     public const BOLD_OFF = "\x1B\x45\x00";
     public const DOUBLE_H_ON = "\x1B\x21\x10";      // Altura dupla
     public const DOUBLE_W_ON = "\x1B\x21\x20";      // Largura dupla
     public const DOUBLE_HW_ON = "\x1B\x21\x30";      // Altura e largura dupla
     public const NORMAL = "\x1B\x21\x00";       // Texto normal
+    // Negrito + altura dupla num ÚNICO comando ESC ! (bit3 + bit4 juntos).
+    // Enviar dois comandos separados (ESC ! para tamanho + ESC E para
+    // negrito) fazia o negrito "vazar" para o texto seguinte em algumas
+    // impressoras Bematech, porque os dois comandos disputam o mesmo byte
+    // de modo de impressão. Um único comando atômico evita essa disputa.
+    public const BOLD_DOUBLE_H_ON = "\x1B\x21\x18";
     public const CONDENSADO = "\x1B\x21\x01";       // Texto condensado
     public const UNDERLINE_ON = "\x1B\x2D\x01";
     public const UNDERLINE_OFF = "\x1B\x2D\x00";
@@ -144,7 +155,7 @@ class BematechPrinter
 
     public function CUT(bool $partial = false): self
     {
-        $this->feed(2); // Avança 2 linhas antes do corte
+        $this->feed(2); // Avança 2 linhas antes do corte, para não rasgar o texto
         $this->buffer .= $partial ? self::CUT_PARTIAL : self::CUT;
 
         return $this;
@@ -159,6 +170,7 @@ class BematechPrinter
 
     public function alignLeft(): self
     {
+        $this->currentAlign = self::ALIGN_LEFT;
         $this->buffer .= self::ALIGN_LEFT;
 
         return $this;
@@ -166,6 +178,7 @@ class BematechPrinter
 
     public function alignCenter(): self
     {
+        $this->currentAlign = self::ALIGN_CENTER;
         $this->buffer .= self::ALIGN_CENTER;
 
         return $this;
@@ -173,7 +186,18 @@ class BematechPrinter
 
     public function alignRight(): self
     {
+        $this->currentAlign = self::ALIGN_RIGHT;
         $this->buffer .= self::ALIGN_RIGHT;
+
+        return $this;
+    }
+
+    /**
+     * Negrito + altura dupla num único comando (ver BOLD_DOUBLE_H_ON).
+     */
+    public function boldDoubleHeight(): self
+    {
+        $this->buffer .= self::BOLD_DOUBLE_H_ON;
 
         return $this;
     }
@@ -266,7 +290,10 @@ class BematechPrinter
 
     public function line(string $text = ''): self
     {
-        $this->buffer .= $this->encode($text) . self::LF;
+        // Reforça o alinhamento atual após cada linha: em algumas impressoras
+        // Bematech, uma linha que ocupa a largura toda do papel (ex: separador)
+        // faz o alinhamento voltar para a esquerda sozinho.
+        $this->buffer .= $this->encode($text) . self::LF . $this->currentAlign;
 
         return $this;
     }
@@ -286,9 +313,7 @@ class BematechPrinter
         if ($space < 1) {
             // Se não cabe, quebra em duas linhas
             $this->line($left);
-            // $this->alignRight();
             $this->line($right);
-            $this->alignLeft();
         } else {
             $this->line($left . str_repeat($fill, $space) . $right);
         }

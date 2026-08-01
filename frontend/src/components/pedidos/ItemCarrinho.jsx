@@ -2,6 +2,7 @@
 // 🛒 COMPONENTE: Exibe um item do carrinho com opções de editar/remover
 
 import React, { useState, useEffect } from 'react'; // ← ADICIONAR useEffect
+import { ehProdutoPorPeso, arredondarQuantidadePeso } from '../../utils/produtoPorPeso';
 
 /**
  * Componente que representa um item individual do carrinho
@@ -83,9 +84,9 @@ const ItemCarrinho = ({
       novaQuantidade = minimo;
     }
 
-    // Produtos por peso (sorvete/açaí) aceitam 2 casas decimais, os demais são sempre inteiros
+    // Produtos por peso (sorvete/açaí) aceitam 3 casas decimais (gramas), os demais são sempre inteiros
     novaQuantidade = decimalPermitido
-      ? Math.round(novaQuantidade * 100) / 100
+      ? arredondarQuantidadePeso(novaQuantidade)
       : Math.round(novaQuantidade);
 
     setQuantidadeTemp(novaQuantidade);
@@ -104,12 +105,7 @@ const ItemCarrinho = ({
   /**
    * Verifica se é categoria que permite quantidade decimal (sorvete)
    */
-  const permiteDecimal = () => {
-    // Ajuste essas condições conforme suas categorias
-    const categoriasComPeso = ['Sobremesas', 'sorvetes', 'Sobremsa', 'sobremasas'];
-    const categoria = item.categoria_nome || '';
-    return categoriasComPeso.some(cat => categoria.includes(cat));
-  };
+  const permiteDecimal = () => ehProdutoPorPeso(item.categoria_nome);
 
   // ========================================s
   // 🎨 RENDERIZAÇÃO
@@ -134,10 +130,11 @@ const ItemCarrinho = ({
           -
         </button>
         
-        {/* ✅ INPUT DE QUANTIDADE — só é editável por digitação para produtos vendidos por peso (sorvete/açaí) */}
+        {/* ✅ INPUT DE QUANTIDADE — editável para todos os produtos; a regra de casas decimais
+            (peso: até 3 decimais / demais: inteiro) é aplicada na validação do blur/Enter */}
         <input
           type="text"
-          className={`quantidade-input${permiteDecimal() ? '' : ' quantidade-input-readonly'}`}
+          className="quantidade-input"
           value={quantidadeTemp}
           onChange={handleQuantidadeChange}
           onBlur={handleQuantidadeBlur}
@@ -147,8 +144,7 @@ const ItemCarrinho = ({
             pararPropagacao(e);
             e.target.select(); // Seleciona todo o texto ao focar
           }}
-          readOnly={!permiteDecimal()}
-          title={permiteDecimal() ? "Digite a quantidade (kg/unidades)" : "Use os botões + e - para alterar a quantidade"}
+          title={permiteDecimal() ? "Digite a quantidade (kg), aceita fracionado (gramas, até 3 casas decimais)" : "Digite a quantidade ou use os botões + e -, valor sempre inteiro"}
         />
         
         <button

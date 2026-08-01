@@ -87,6 +87,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
   const STATUS_LABELS = {
     aberto: 'Aberto',
     'em-preparo': 'Em preparo',
+    parcial: 'Parcial',
     finalizado: 'Finalizado',
     cancelado: 'Cancelado',
     balcao: 'Balcão'
@@ -286,24 +287,34 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
                       )}
                     </div>
 
-                    {/*
-                    <div className="pedido-card-summary">
-                      <span>
-                        <strong>{pedido.itens?.length || 0}</strong> {pedido.itens?.length === 1 ? 'item' : 'itens'}
-                      </span>
-                      <span>•</span>
-                      <span>
-                        <strong>{pedido.total ? `R$ ${Number(pedido.total).toFixed(2)}` : 'R$ 0,00'}</strong>
-                      </span>
-                    </div>
-                    */}
                     <div className="pedido-data">
                       <i className="fas fa-clock"></i>
                       {formatarData(pedido.data || pedido.created_at)}
                     </div>
+                    <div className="pedido-origem">
+                      <i className="fas fa-home"></i>
+                      {pedido.origem || 'PDV'}
+                    </div>
                     
                     <div className="pedido-card-footer">
                       <div className="pedido-total">R$ {pedido.total ? Number(pedido.total).toFixed(2) : '0,00'}</div>
+                      <div>
+                        {pedido.taxa_entrega > 0 &&(
+                          <div className="pedido-saldo-devedor">
+                              Entrega: R$ {Number(pedido?.taxa_entrega || 0).toFixed(2)}
+                          </div>
+                        )}
+                      {pedido.status === 'parcial' && (
+                      <div>
+                        <div className="pedido-saldo-devedor">
+                          Pago: R$ {( Number(pedido?.valor_pago || 0)).toFixed(2)}
+                        </div>
+                        <div className="pedido-saldo-devedor">
+                          Saldo: R$ {(Number(pedido?.total) + Number(pedido?.taxa_entrega || 0) - Number(pedido?.valor_pago || 0)).toFixed(2)}
+                        </div>
+                      </div>
+                      )}
+                      </div>
                     </div>
                   </div>
                 </div>

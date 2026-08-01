@@ -68,6 +68,7 @@ require_once __DIR__ . '/../controllers/ProdutoController.php';
 require_once __DIR__ . '/../controllers/PedidoController.php';
 require_once __DIR__ . '/../controllers/AuthController.php';
 require_once __DIR__ . '/../controllers/UsuarioController.php';
+require_once __DIR__ . '/../controllers/CardapioPedidoController.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', 0);
@@ -494,6 +495,34 @@ try {
 
         $usuariosController = new UsuarioController($database);
         $usuariosController->obterEstatisticas();
+        exit;
+    }
+
+    //===========================================
+    // ROTAS DO CARDÁPIO DIGITAL (públicas)
+    //===========================================
+
+    // GET /cardapio/categorias
+    if ($method === 'GET' && $uri === '/cardapio/categorias') {
+        (new CardapioPedidoController())->categorias();
+        exit;
+    }
+
+    // GET /cardapio/produtos
+    if ($method === 'GET' && $uri === '/cardapio/produtos') {
+        (new CardapioPedidoController())->produtos();
+        exit;
+    }
+
+    // GET /cardapio/adicionais
+    if ($method === 'GET' && $uri === '/cardapio/adicionais') {
+        (new CardapioPedidoController())->adicionais();
+        exit;
+    }
+
+    // POST /cardapio/pedidos
+    if ($method === 'POST' && $uri === '/cardapio/pedidos') {
+        (new CardapioPedidoController())->criar();
         exit;
     }
 
@@ -990,6 +1019,47 @@ try {
         } else {
             http_response_code(400);
         }
+
+        echo json_encode($resultado);
+        exit;
+    }
+
+    // 💳 PAGAMENTO PARCIAL - POST /pedidos/{id}/pagamentos
+    if ($method === 'POST' && preg_match('/^\/pedidos\/(\d+)\/pagamentos$/', $uri, $matches)) {
+        $authResult = verificarAuth($database);
+        $pedidoId = $matches[1];
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Dados do pagamento inválidos',
+            ]);
+            exit;
+        }
+
+        $pedidosController = new PedidoController($database);
+        $resultado = $pedidosController->registrarPagamento($pedidoId, $input, $authResult['user_id']);
+
+        if ($resultado['success']) {
+            http_response_code(201);
+        } else {
+            http_response_code(400);
+        }
+
+        echo json_encode($resultado);
+        exit;
+    }
+
+    // GET /pedidos/{id}/pagamentos - Histórico de pagamentos do pedido
+    if ($method === 'GET' && preg_match('/^\/pedidos\/(\d+)\/pagamentos$/', $uri, $matches)) {
+        $authResult = verificarAuth($database);
+        $pedidoId = $matches[1];
+
+        $pedidosController = new PedidoController($database);
+        $resultado = $pedidosController->buscarPagamentos($pedidoId);
 
         echo json_encode($resultado);
         exit;

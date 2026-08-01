@@ -15,7 +15,6 @@ import pedidoService from '../../services/pedidosService';
 import produtoService from '../../services/produtosService';
 import clienteService from '../../services/clientesService';
 import caixaService from '../../services/caixaService';
-import contasReceberService from '../../services/contasReceberService';
 import printService from '../../services/printService';
 import configService from '../../services/ConfigService';
 import ModalEntrega from './components/ModalEntrega';
@@ -119,6 +118,7 @@ const Pedidos = ({ onRefresh }) => {
       cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
       telefone: clienteCadastrado?.telefone || '',
       mesa: pedidoAtual?.mesa || '',
+      origem: pedidoAtual?.origem || 'PDV',
 
       // Tipo de pedido / entrega
       tipo_pedido: dadosEntrega?.tipo_pedido || 'local',
@@ -146,7 +146,7 @@ const Pedidos = ({ onRefresh }) => {
 
       observacao: pedidoAtual?.observacoes || '',
       tipo_impressao: tipoImpressao,
-      data: new Date(),
+      data: pedidoAtual.created_at || new Date(),
     };
   };
 
@@ -286,6 +286,11 @@ const Pedidos = ({ onRefresh }) => {
         status: 'aberto',
         cliente_id: clienteCadastrado?.id || pedidoAtual.cliente_id || null,
         cliente_nome: clientePedido || pedidoAtual.cliente_nome || 'Balcão',
+        tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
+        origem: pedidoAtual?.origem || 'PDV',
+        endereco_entrega: dadosEntrega?.endereco_entrega || null,
+        taxa_entrega: dadosEntrega?.taxa_entrega || 0,
+        zona_entrega_id: dadosEntrega?.zona_entrega_id || null,
         itens: carrinho.map(item => ({
           produto_id: parseInt(item.produto_id),
           quantidade: parseFloat(item.quantidade),
@@ -317,77 +322,110 @@ const Pedidos = ({ onRefresh }) => {
   const processarPagamento = async (dadosPagamento) => {
     try {
       const totais = calcularTotais();
-      const dados_pagamento = {
-        id_venda: pedidoAtual.numero_pedido,
-        valorPago: dadosPagamento.valorPago,
-        valorTroco: dadosPagamento.valorTroco,
-        formaPagamento: dadosPagamento.formaPagamento
-      };
-
       const totalFinal = totais.totalPagar + (dadosEntrega?.taxa_entrega || 0);
-      
-      const dadosPedido = {
-        id: pedidoAtual.id,
-        id_venda: pedidoAtual.numero_pedido,
-        total: totalFinal,
-        status: 'finalizado',
-        forma_pagamento: dadosPagamento.formaPagamento,
-        
-        cliente_id: pedidoAtual.cliente_id || clienteCadastrado?.id || null,
-        cliente_nome: pedidoAtual.cliente_nome || clientePedido || 'Balcão',
-        
-        tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
-        endereco_entrega: dadosEntrega?.endereco_entrega || null,
-        taxa_entrega: dadosEntrega?.taxa_entrega || 0,
-        zona_entrega_id: dadosEntrega?.zona_entrega_id || null,
-        
-        itens: carrinho.map(item => ({
-          produto_id: item.produto_id,
-          produto_nome: item.produto_nome,
-          quantidade: item.quantidade,
-          preco_unitario: parseFloat(item.preco),
-          preco_produto: parseFloat(item.preco_produto),
-          adicionais: item?.adicionais || [],
-          observacoes: item?.observacoes || '' 
-        })),
-        
-        observacoes_pagamento: dadosPagamento.observacoes,
-        dados_pagamento
-      };
 
-      let resultado;
-      if (pedidoAtual?.id) {
-        dadosPedido.id = pedidoAtual.id;
-        resultado = await pedidoService.atualizar(dadosPedido);
+      // 1️⃣ Garantir que a comanda existe e está com itens/total/entrega em dia
+      // ANTES de registrar o pagamento (o saldo devedor é calculado no backend
+      // a partir de pedidos.total, então precisa estar sincronizado).
+      // Uma comanda que já tem pagamento registrado ('parcial'/'finalizado')
+      // tem itens/total travados no backend (ver guarda em
+      // atualizarPedidoCompleto) — nesse caso só completamos o pagamento
+      // sobre o que já está salvo, sem tentar ressincronizar.
+      let pedidoId = pedidoAtual?.id;
+      let numeroPedido = pedidoAtual?.numero_pedido;
+      const comandaJaTemPagamento = ['parcial', 'finalizado'].includes(pedidoAtual?.status);
+
+      if (!comandaJaTemPagamento) {
+        const dadosSincronizacao = {
+          cliente_id: pedidoAtual?.cliente_id || clienteCadastrado?.id || null,
+          cliente_nome: pedidoAtual?.cliente_nome || clientePedido || 'Balcão',
+          tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
+          endereco_entrega: dadosEntrega?.endereco_entrega || null,
+          taxa_entrega: dadosEntrega?.taxa_entrega || 0,
+          zona_entrega_id: dadosEntrega?.zona_entrega_id || null,
+          total: totalFinal,
+          itens: carrinho.map(item => ({
+            produto_id: item.produto_id,
+            produto_nome: item.produto_nome,
+            quantidade: item.quantidade,
+            preco_unitario: parseFloat(item.preco_unitario),
+            preco_produto: parseFloat(item.preco_produto),
+            adicionais: item?.adicionais || [],
+            observacoes: item?.observacoes || ''
+          }))
+        };
+
+        if (pedidoId) {
+          const resultadoSync = await pedidoService.atualizar({ id: pedidoId, ...dadosSincronizacao });
+          if (!resultadoSync?.success) {
+            throw new Error(resultadoSync?.message || 'Erro ao atualizar comanda antes do pagamento');
+          }
+        } else {
+          const resultadoCriar = await pedidoService.criar({ ...dadosSincronizacao, status: 'aberto' });
+          if (!resultadoCriar?.success) {
+            throw new Error(resultadoCriar?.message || 'Erro ao criar comanda');
+          }
+          pedidoId = resultadoCriar.data.id;
+          numeroPedido = resultadoCriar.data.numero_pedido;
+        }
+      }
+
+      // 2️⃣ Registrar cada forma de pagamento lançada no modal (uma comanda pode
+      // ser paga com mais de uma forma na mesma sessão, ex: parte em dinheiro + parte em PIX)
+      const pedidoParaOutrasEtapas = { id: pedidoId, numero_pedido: numeroPedido };
+      const pagamentos = dadosPagamento.pagamentos || [dadosPagamento];
+
+      let resultadoFinal = null;
+      for (const pagamento of pagamentos) {
+        const resultado = await pedidoService.registrarPagamento(pedidoId, {
+          valor: pagamento.valorAPagarAgora,
+          forma_pagamento: pagamento.formaPagamento,
+          valor_recebido: pagamento.formaPagamento === 'dinheiro' ? pagamento.valorPago : null,
+          valor_troco: pagamento.valorTroco || null,
+          observacoes: pagamento.observacoes
+        });
+
+        Logger.debug('resultado do pagamento:', { info: resultado });
+
+        if (!resultado?.success) {
+          throw new Error(resultado?.message || 'Erro ao processar pagamento');
+        }
+
+        // Registrar no caixa o valor pago agora (se não for a prazo)
+        if (pagamento.formaPagamento !== 'prazo') {
+          await registrarNoCaixa(pedidoParaOutrasEtapas, pagamento, pagamento.valorAPagarAgora);
+        }
+
+        resultadoFinal = resultado;
+      }
+
+      const finalizado = resultadoFinal.data?.novo_status === 'finalizado';
+
+      if (finalizado) {
+        // 🔧 FIX: Impressão automática de recibo (só faz sentido no fechamento total)
+        const totalPago = pagamentos.reduce((s, p) => s + (p.valorPago ?? p.valorAPagarAgora), 0);
+        const totalTroco = pagamentos.reduce((s, p) => s + (p.valorTroco || 0), 0);
+        const dadosPagamentoParaRecibo = {
+          formaPagamento: pagamentos.map(p => p.nome || p.formaPagamento).join(' + '),
+          valorPago: totalPago,
+          valorTroco: totalTroco
+        };
+        await verificarImpressaoReciboAuto(pedidoParaOutrasEtapas, dadosPagamentoParaRecibo);
+
+        mostrarMensagem('Pagamento processado com sucesso!', 'success');
+        fecharModalPagamento();
+        limparFormulario();
+        await carregarDados();
+        setView('comandas');
       } else {
-        resultado = await pedidoService.criar(dadosPedido);
+        mostrarMensagem(
+          `Pagamento parcial registrado! Saldo restante: ${pedidoService.formatarMoeda(resultadoFinal.data.saldo_pendente)}`,
+          'success'
+        );
+        fecharModalPagamento();
+        await carregarDados();
       }
 
-      Logger.debug('resultado.data completo:', { info: resultado.data });
-
-      if (!resultado?.success) {
-        throw new Error(resultado?.message || 'Erro ao processar');
-      }
-
-      // Registrar no caixa (se não for a prazo)
-      if (dados_pagamento.formaPagamento !== 'prazo') {
-        await registrarNoCaixa(resultado.data, dados_pagamento, totalFinal);
-      }
-
-      // Criar conta a receber (se for a prazo)
-      if (dados_pagamento.formaPagamento === 'prazo' && clienteCadastrado?.id) {
-        await criarContaReceber(resultado.data, dados_pagamento);
-      }
-
-      // 🔧 FIX: Impressão automática de recibo
-      await verificarImpressaoReciboAuto(resultado.data, dados_pagamento);
-
-      mostrarMensagem('Pagamento processado com sucesso!', 'success');
-      fecharModalPagamento();
-      limparFormulario();
-      await carregarDados();
-      setView('comandas');
-      
     } catch (error) {
       Logger.error('Erro no pagamento:', { erro: error });
       throw error;
@@ -409,28 +447,6 @@ const Pedidos = ({ onRefresh }) => {
       }
     } catch (error) {
       Logger.warn('Aviso: erro ao registrar no caixa:', { erro: error });
-    }
-  };
-
-  const criarContaReceber = async (pedido, dadosPagamento) => {
-    try {
-      const dataVencimento = new Date();
-      dataVencimento.setDate(dataVencimento.getDate() + 30);
-
-      const dadosConta = {
-        cliente_id: clienteCadastrado.id,
-        descricao: `Pedido ${pedido.numero_pedido}`,
-        numero_documento: pedido.numero_pedido,
-        valor_original: pedido.total,
-        data_vencimento: dataVencimento.toISOString().split('T')[0],
-        data_emissao: new Date().toISOString().split('T')[0],
-        observacoes: dadosPagamento.observacoes,
-        forma_pagamento: 'Outros'
-      };
-
-      await contasReceberService.criar(dadosConta);
-    } catch (error) {
-      Logger.warn('Aviso: erro ao criar conta a receber:', { erro: error });
     }
   };
 
@@ -472,6 +488,7 @@ const Pedidos = ({ onRefresh }) => {
         const dadosRecibo = {
           numero: dadosPagamento.id_venda || pedido.numero_pedido,
           id: pedido.id,
+          origem: pedido.origem || 'PDV',
           cliente: clientePedido || clienteCadastrado?.nome || 'Balcão',
           itens: carrinho.map(item => ({
             quantidade: item.quantidade,
@@ -675,8 +692,22 @@ const Pedidos = ({ onRefresh }) => {
       if (pedidoCompleto.cliente_id) {
         setClienteCadastrado({
           id: pedidoCompleto.cliente_id,
-          nome: pedidoCompleto.cliente_nome
+          nome: pedidoCompleto.cliente_nome,
         });
+      }
+
+      // Restaura a configuração de entrega salva (some ao reabrir se não
+      // recarregarmos aqui, já que ela vive só no estado local do formulário)
+      if (pedidoCompleto.tipo_pedido === 'entrega' || parseFloat(pedidoCompleto.taxa_entrega) > 0) {
+        setDadosEntrega({
+          zona_entrega_id: pedidoCompleto.zona_entrega_id || null,
+          zona_nome: null,
+          taxa_entrega: parseFloat(pedidoCompleto.taxa_entrega) || 0,
+          endereco_entrega: pedidoCompleto.endereco_entrega || '',
+          tipo_pedido: pedidoCompleto.tipo_pedido || 'entrega'
+        });
+      } else {
+        setDadosEntrega(null);
       }
 
       limparCarrinho();
@@ -819,6 +850,7 @@ const Pedidos = ({ onRefresh }) => {
         const dadosAtualizacao = {
           id: pedidoAtual.id,
           tipo_pedido: 'entrega',
+          origem: pedidoAtual.origem || 'PDV',
           endereco_entrega: dados.endereco,
           taxa_entrega: dados.taxa,
           zona_entrega_id: dados.zonaId,
@@ -1095,6 +1127,7 @@ const Pedidos = ({ onRefresh }) => {
         clienteCadastrado={clienteCadastrado}
         carrinho={carrinho}
         totalPedido={calcularTotais().totalPagar + (dadosEntrega?.taxa_entrega || 0)}
+        valorJaPago={parseFloat(pedidoAtual?.valor_pago) || 0}
         onProcessar={processarPagamento}
       />
 

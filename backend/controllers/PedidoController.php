@@ -2,7 +2,7 @@
 
 // src/Pedidos.php - CONTROLLER que usa o Model Pedido.php
 
-require_once __DIR__.'/../models/Pedido.php';
+require_once __DIR__ . '/../models/Pedido.php';
 
 class PedidoController
 {
@@ -26,12 +26,12 @@ class PedidoController
                 'message' => 'Pedidos encontrados com sucesso',
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar pedidos: '.$e->getMessage());
+            error_log('❌ Erro ao buscar pedidos: ' . $e->getMessage());
 
             return [
                 'success' => false,
                 'data' => [],
-                'message' => 'Erro ao buscar pedidos: '.$e->getMessage(),
+                'message' => 'Erro ao buscar pedidos: ' . $e->getMessage(),
             ];
         }
     }
@@ -49,12 +49,12 @@ class PedidoController
                 'message' => "Pedidos com status '$status' encontrados com sucesso",
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar pedidos por status: '.$e->getMessage());
+            error_log('❌ Erro ao buscar pedidos por status: ' . $e->getMessage());
 
             return [
                 'success' => false,
                 'data' => [],
-                'message' => 'Erro ao buscar pedidos: '.$e->getMessage(),
+                'message' => 'Erro ao buscar pedidos: ' . $e->getMessage(),
             ];
         }
     }
@@ -88,12 +88,12 @@ class PedidoController
                 ];
             }
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar pedido por ID: '.$e->getMessage());
+            error_log('❌ Erro ao buscar pedido por ID: ' . $e->getMessage());
 
             return [
                 'success' => false,
                 'data' => null,
-                'message' => 'Erro ao buscar pedido: '.$e->getMessage(),
+                'message' => 'Erro ao buscar pedido: ' . $e->getMessage(),
             ];
         }
     }
@@ -120,12 +120,12 @@ class PedidoController
                 'message' => 'Pedidos do cliente encontrados com sucesso',
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar pedidos do cliente: '.$e->getMessage());
+            error_log('❌ Erro ao buscar pedidos do cliente: ' . $e->getMessage());
 
             return [
                 'success' => false,
                 'data' => [],
-                'message' => 'Erro ao buscar pedidos do cliente: '.$e->getMessage(),
+                'message' => 'Erro ao buscar pedidos do cliente: ' . $e->getMessage(),
             ];
         }
     }
@@ -137,7 +137,7 @@ class PedidoController
     {
         try {
             // 🔧 DEBUG: Log dos dados recebidos
-            error_log('📝 Controller - Dados recebidos para criar pedido: '.json_encode($dados));
+            error_log('📝 Controller - Dados recebidos para criar pedido: ' . json_encode($dados));
 
             // Calcular total dos itens
             $totalPedido = 0;
@@ -217,6 +217,7 @@ class PedidoController
             foreach ($dados['itens'] as $item) {
                 $itensFormatados[] = [
                     'produto_id' => $item['produto_id'],
+                    'origem' => $item['origem_pedido'] ?? 'PDV',
                     'quantidade' => floatval($item['quantidade']),
                     'preco_unitario' => floatval($item['preco_unitario']),
                     'subtotal' => floatval($item['quantidade']) * floatval($item['preco_unitario']),
@@ -235,28 +236,34 @@ class PedidoController
             $pedido->total = $totalPedido;
             $pedido->status = $dados['status'] ?? 'aberto';
             $pedido->forma_pagamento = $dados['forma_pagamento'] ?? null;
+            $pedido->tipo_pedido = $dados['tipo_pedido'] ?? 'balcao';
+            $pedido->origem = $dados['origem'] ?? 'PDV';
+            $pedido->endereco_entrega = $dados['endereco_entrega'] ?? null;
+            $pedido->taxa_entrega = $dados['taxa_entrega'] ?? 0;
+            $pedido->zona_entrega_id = $dados['zona_entrega_id'] ?? null;
             $pedido->itens = $itensFormatados;
 
             // 🔧 DEBUG: Log antes de criar
             error_log('💾 Controller - Tentando criar pedido com:');
-            error_log('   - Cliente ID: '.($cliente_id ?: 'NULL (avulso)'));
-            error_log('   - Cliente Nome: '.$cliente_nome);
-            error_log('   - Total: '.$pedido->total);
-            error_log('   - Status: '.$pedido->status);
-            error_log('   - Itens: '.count($pedido->itens));
-            error_log('   - Forma_pagamento: '.$pedido->forma_pagamento);
+            error_log('   - Cliente ID: ' . ($cliente_id ?: 'NULL (avulso)'));
+            error_log('   - Cliente Nome: ' . $cliente_nome);
+            error_log('   - Total: ' . $pedido->total);
+            error_log('   - Status: ' . $pedido->status);
+            error_log('   - Itens: ' . count($pedido->itens));
+            error_log('   - Forma_pagamento: ' . $pedido->forma_pagamento);
 
             // Tentar criar o pedido
             $resultado = $pedido->criar();
 
             if ($resultado) {
-                error_log('✅ Controller - Pedido criado com sucesso, ID: '.$pedido->id);
+                error_log('✅ Controller - Pedido criado com sucesso, ID: ' . $pedido->id);
 
                 return [
                     'success' => true,
                     'data' => [
                         'id' => $pedido->id,
                         'numero_pedido' => $pedido->numero_pedido,
+                        'origem' => $pedido->origem,
                         'total' => $pedido->total,
                         'cliente_id' => $cliente_id,
                         'cliente_nome' => $cliente_nome,
@@ -275,11 +282,11 @@ class PedidoController
                 ];
             }
         } catch (Exception $e) {
-            error_log('❌ Controller - Exceção ao criar pedido: '.$e->getMessage());
+            error_log('❌ Controller - Exceção ao criar pedido: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Erro ao criar pedido: '.$e->getMessage(),
+                'message' => 'Erro ao criar pedido: ' . $e->getMessage(),
             ];
         }
     }
@@ -467,7 +474,7 @@ class PedidoController
     {
         try {
             // 🔧 DEBUG: Log completo dos dados recebidos
-            error_log('📝 Atualizar pedido - Dados recebidos: '.json_encode($dados));
+            error_log('📝 Atualizar pedido - Dados recebidos: ' . json_encode($dados));
 
             // Validação do ID
             if (!isset($dados['id']) || !is_numeric($dados['id'])) {
@@ -508,7 +515,7 @@ class PedidoController
                 $forma_pagamento = $dados['forma_pagamento'] ?? null;
                 $resultado = $pedido->atualizarStatus($dados['status'], $forma_pagamento);
 
-                error_log('🔄 Resultado atualizarStatus(): '.($resultado ? 'true' : 'false'));
+                error_log('🔄 Resultado atualizarStatus(): ' . ($resultado ? 'true' : 'false'));
 
                 if ($resultado) {
                     error_log('✅ Status atualizado com sucesso');
@@ -539,7 +546,7 @@ class PedidoController
                 // Calcular novo total se há itens
                 $novoTotal = 0;
                 if (isset($dados['itens']) && is_array($dados['itens'])) {
-                    error_log('🧮 Calculando total baseado em '.count($dados['itens']).' itens');
+                    error_log('🧮 Calculando total baseado em ' . count($dados['itens']) . ' itens');
                     foreach ($dados['itens'] as $item) {
                         if (isset($item['quantidade']) && isset($item['preco_unitario'])) {
                             $subtotal = floatval($item['quantidade']) * floatval($item['preco_unitario']);
@@ -553,6 +560,16 @@ class PedidoController
                     error_log("💰 Total fornecido diretamente: {$novoTotal}");
                 }
 
+                // 🔧 Somar taxa de entrega ao total — pedidos.total precisa refletir o
+                // valor total devido (itens + entrega), pois é contra essa coluna que
+                // o saldo devedor é calculado em registrarPagamento() e no trigger
+                // tr_pedido_pagamentos_after_insert.
+                $taxaEntrega = isset($dados['taxa_entrega'])
+                    ? floatval($dados['taxa_entrega'])
+                    : floatval($pedidoExistente['taxa_entrega'] ?? 0);
+                $novoTotal += $taxaEntrega;
+                error_log("🚚 Taxa de entrega somada ao total: {$taxaEntrega} (total final: {$novoTotal})");
+
                 // Dados do cliente (se fornecidos)
                 $cliente_id = isset($dados['cliente_id']) ? intval($dados['cliente_id']) : null;
                 $cliente_nome = $dados['cliente_nome'] ?? null;
@@ -565,7 +582,7 @@ class PedidoController
 
                     return $resultado;
                 } else {
-                    error_log('❌ Falha ao atualizar pedido completo: '.$resultado['message']);
+                    error_log('❌ Falha ao atualizar pedido completo: ' . $resultado['message']);
 
                     return $resultado;
                 }
@@ -574,7 +591,7 @@ class PedidoController
             // 3️⃣ NENHUM CAMPO RECONHECIDO PARA ATUALIZAÇÃO
             else {
                 error_log('⚠️ Nenhum campo válido encontrado para atualização');
-                error_log('📋 Campos disponíveis: '.implode(', ', array_keys($dados)));
+                error_log('📋 Campos disponíveis: ' . implode(', ', array_keys($dados)));
 
                 return [
                     'success' => false,
@@ -582,12 +599,12 @@ class PedidoController
                 ];
             }
         } catch (Exception $e) {
-            error_log('❌ Exceção ao atualizar pedido: '.$e->getMessage());
-            error_log('📍 Arquivo: '.$e->getFile().' Linha: '.$e->getLine());
+            error_log('❌ Exceção ao atualizar pedido: ' . $e->getMessage());
+            error_log('📍 Arquivo: ' . $e->getFile() . ' Linha: ' . $e->getLine());
 
             return [
                 'success' => false,
-                'message' => 'Erro interno ao atualizar pedido: '.$e->getMessage(),
+                'message' => 'Erro interno ao atualizar pedido: ' . $e->getMessage(),
             ];
         }
     }
@@ -597,6 +614,19 @@ class PedidoController
     {
         try {
             error_log("🔄 Iniciando atualização completa do pedido {$pedido->id}");
+
+            // 🔒 Comanda com pagamento (parcial ou total) já registrado não pode
+            // ter itens/total alterados — isso desincronizaria valor_pago do total.
+            $pedidoAtual = $pedido->buscarPorId($pedido->id);
+            if (
+                $pedidoAtual && in_array($pedidoAtual['status'], ['parcial', 'finalizado'], true)
+                && (isset($dados['itens']) || isset($dados['total']))
+            ) {
+                return [
+                    'success' => false,
+                    'message' => 'Não é possível alterar itens de uma comanda com pagamento já registrado',
+                ];
+            }
 
             // 🔧 INICIAR TRANSAÇÃO para garantir consistência
             $this->database->getConnection()->beginTransaction();
@@ -624,13 +654,13 @@ class PedidoController
                 $camposAtualizar[] = 'tipo_cliente = ?';
                 $valores[] = $cliente_id;
                 $valores[] = $cliente_id ? 'cadastrado' : 'avulso';
-                error_log('👤 Novo cliente ID: '.($cliente_id ?: 'NULL'));
+                error_log('👤 Novo cliente ID: ' . ($cliente_id ?: 'NULL'));
             } else {
                 $camposAtualizar[] = 'cliente_id = ?';
                 $camposAtualizar[] = 'tipo_cliente = ?';
                 $valores[] = $cliente_id;
                 $valores[] = $cliente_id ? 'cadastrado' : 'avulso';
-                error_log('👤 Novo cliente ID: '.($cliente_id ?: 'NULL'));
+                error_log('👤 Novo cliente ID: ' . ($cliente_id ?: 'NULL'));
             }
 
             // Status se fornecido
@@ -647,13 +677,31 @@ class PedidoController
                 error_log("💳 Nova forma pagamento: {$dados['forma_pagamento']}");
             }
 
+            // Dados de entrega, se fornecidos
+            if (isset($dados['tipo_pedido'])) {
+                $camposAtualizar[] = 'tipo_pedido = ?';
+                $valores[] = $dados['tipo_pedido'];
+            }
+            if (array_key_exists('endereco_entrega', $dados)) {
+                $camposAtualizar[] = 'endereco_entrega = ?';
+                $valores[] = $dados['endereco_entrega'];
+            }
+            if (isset($dados['taxa_entrega'])) {
+                $camposAtualizar[] = 'taxa_entrega = ?';
+                $valores[] = floatval($dados['taxa_entrega']);
+            }
+            if (array_key_exists('zona_entrega_id', $dados)) {
+                $camposAtualizar[] = 'zona_entrega_id = ?';
+                $valores[] = $dados['zona_entrega_id'];
+            }
+
             // 1️⃣ ATUALIZAR DADOS PRINCIPAIS DO PEDIDO
             if (!empty($camposAtualizar)) {
                 $valores[] = $pedido->id; // WHERE id = ?
 
-                $sql = 'UPDATE pedidos SET '.implode(', ', $camposAtualizar).', updated_at = NOW() WHERE id = ?';
+                $sql = 'UPDATE pedidos SET ' . implode(', ', $camposAtualizar) . ', updated_at = NOW() WHERE id = ?';
                 error_log("🔍 SQL pedido: {$sql}");
-                error_log('📋 Valores pedido: '.json_encode($valores));
+                error_log('📋 Valores pedido: ' . json_encode($valores));
 
                 $stmt = $this->database->getConnection()->prepare($sql);
                 $resultado = $stmt->execute($valores);
@@ -667,7 +715,14 @@ class PedidoController
 
             // 2️⃣ ATUALIZAR ITENS DO PEDIDO
             if (isset($dados['itens']) && is_array($dados['itens'])) {
-                error_log('📦 Atualizando '.count($dados['itens']).' itens do pedido');
+                error_log('📦 Atualizando ' . count($dados['itens']) . ' itens do pedido');
+
+                // 🗑️ REMOVER ADICIONAIS ÓRFÃOS (tabela legada usada pelo cardápio
+                // digital — CardapioPedidoController — que não tem ON DELETE CASCADE
+                // e bloqueia a exclusão dos itens com FK 1217 se não for limpa antes)
+                $sqlDeleteAdicionais = 'DELETE FROM pedidos_itens_adicionais WHERE item_id IN (SELECT id FROM pedido_itens WHERE pedido_id = ?)';
+                $stmtDeleteAdicionais = $this->database->getConnection()->prepare($sqlDeleteAdicionais);
+                $stmtDeleteAdicionais->execute([$pedido->id]);
 
                 // 🗑️ REMOVER TODOS OS ITENS ANTIGOS
                 $sqlDelete = 'DELETE FROM pedido_itens WHERE pedido_id = ?';
@@ -694,7 +749,7 @@ class PedidoController
                 foreach ($dados['itens'] as $index => $item) {
                     // Validar item
                     if (!isset($item['produto_id']) || !isset($item['quantidade']) || !isset($item['preco_unitario'])) {
-                        error_log("⚠️ Item {$index} inválido: ".json_encode($item));
+                        error_log("⚠️ Item {$index} inválido: " . json_encode($item));
                         continue;
                     }
 
@@ -720,7 +775,7 @@ class PedidoController
 
                     if (!$resultadoInsert) {
                         $errorInfo = $stmtInsert->errorInfo();
-                        throw new Exception("Erro ao inserir item {$index}: ".implode(' - ', $errorInfo));
+                        throw new Exception("Erro ao inserir item {$index}: " . implode(' - ', $errorInfo));
                     }
 
                     $totalCalculado += $subtotal;
@@ -761,11 +816,100 @@ class PedidoController
         } catch (Exception $e) {
             // 🔙 REVERTER TRANSAÇÃO EM CASO DE ERRO
             $this->database->getConnection()->rollback();
-            error_log('❌ Erro na atualização completa (transação revertida): '.$e->getMessage());
+            error_log('❌ Erro na atualização completa (transação revertida): ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Erro na atualização completa: '.$e->getMessage(),
+                'message' => 'Erro na atualização completa: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    // Registrar pagamento (total ou parcial) de um pedido
+    public function registrarPagamento($pedidoId, $dados, $usuarioId)
+    {
+        try {
+            if (!$pedidoId || !is_numeric($pedidoId)) {
+                return [
+                    'success' => false,
+                    'message' => 'ID do pedido inválido',
+                ];
+            }
+
+            if (!isset($dados['valor']) || !is_numeric($dados['valor']) || floatval($dados['valor']) <= 0) {
+                return [
+                    'success' => false,
+                    'message' => 'Valor do pagamento é obrigatório e deve ser maior que zero',
+                ];
+            }
+
+            $formasValidas = ['dinheiro', 'cartao_debito', 'cartao_credito', 'pix', 'prazo'];
+            $formaPagamento = $dados['forma_pagamento'] ?? null;
+
+            if (!in_array($formaPagamento, $formasValidas, true)) {
+                return [
+                    'success' => false,
+                    'message' => 'Forma de pagamento inválida',
+                ];
+            }
+
+            $pedido = new Pedido($this->database->getConnection());
+            $resultado = $pedido->registrarPagamento(
+                intval($pedidoId),
+                floatval($dados['valor']),
+                $formaPagamento,
+                intval($usuarioId),
+                [
+                    'valor_recebido' => $dados['valor_recebido'] ?? null,
+                    'valor_troco' => $dados['valor_troco'] ?? null,
+                    'observacoes' => $dados['observacoes'] ?? '',
+                ]
+            );
+
+            return [
+                'success' => true,
+                'data' => $resultado,
+                'message' => $resultado['novo_status'] === 'finalizado'
+                    ? 'Pagamento registrado e pedido finalizado com sucesso'
+                    : 'Pagamento parcial registrado com sucesso',
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro ao registrar pagamento: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    // Buscar histórico de pagamentos de um pedido
+    public function buscarPagamentos($pedidoId)
+    {
+        try {
+            if (!$pedidoId || !is_numeric($pedidoId)) {
+                return [
+                    'success' => false,
+                    'data' => [],
+                    'message' => 'ID do pedido inválido',
+                ];
+            }
+
+            $pedido = new Pedido($this->database->getConnection());
+            $resultado = $pedido->buscarPagamentos(intval($pedidoId));
+
+            return [
+                'success' => true,
+                'data' => $resultado,
+                'message' => 'Pagamentos encontrados com sucesso',
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro ao buscar pagamentos: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'data' => [],
+                'message' => 'Erro ao buscar pagamentos: ' . $e->getMessage(),
             ];
         }
     }
@@ -800,11 +944,11 @@ class PedidoController
                 ];
             }
         } catch (Exception $e) {
-            error_log('❌ Erro ao deletar pedido: '.$e->getMessage());
+            error_log('❌ Erro ao deletar pedido: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Erro ao cancelar pedido: '.$e->getMessage(),
+                'message' => 'Erro ao cancelar pedido: ' . $e->getMessage(),
             ];
         }
     }
@@ -813,8 +957,10 @@ class PedidoController
     public function adicionarItem($dados)
     {
         try {
-            if (!isset($dados['pedido_id']) || !isset($dados['produto_id'])
-                || !isset($dados['quantidade']) || !isset($dados['preco_unitario'])) {
+            if (
+                !isset($dados['pedido_id']) || !isset($dados['produto_id'])
+                || !isset($dados['quantidade']) || !isset($dados['preco_unitario'])
+            ) {
                 return [
                     'success' => false,
                     'message' => 'Dados obrigatórios não fornecidos',
@@ -842,11 +988,11 @@ class PedidoController
                 ];
             }
         } catch (Exception $e) {
-            error_log('❌ Erro ao adicionar item: '.$e->getMessage());
+            error_log('❌ Erro ao adicionar item: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Erro ao adicionar item: '.$e->getMessage(),
+                'message' => 'Erro ao adicionar item: ' . $e->getMessage(),
             ];
         }
     }
@@ -879,11 +1025,11 @@ class PedidoController
                 ];
             }
         } catch (Exception $e) {
-            error_log('❌ Erro ao remover item: '.$e->getMessage());
+            error_log('❌ Erro ao remover item: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Erro ao remover item: '.$e->getMessage(),
+                'message' => 'Erro ao remover item: ' . $e->getMessage(),
             ];
         }
     }
@@ -901,12 +1047,12 @@ class PedidoController
                 'message' => 'Produtos encontrados com sucesso',
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar produtos: '.$e->getMessage());
+            error_log('❌ Erro ao buscar produtos: ' . $e->getMessage());
 
             return [
                 'success' => false,
                 'data' => [],
-                'message' => 'Erro ao buscar produtos: '.$e->getMessage(),
+                'message' => 'Erro ao buscar produtos: ' . $e->getMessage(),
             ];
         }
     }
@@ -921,7 +1067,7 @@ class PedidoController
     {
         try {
             error_log('🔄 ===== INICIANDO TRANSFERÊNCIA =====');
-            error_log('📦 Dados recebidos: '.json_encode($dados));
+            error_log('📦 Dados recebidos: ' . json_encode($dados));
 
             // ==========================================
             // 1️⃣ VALIDAÇÕES INICIAIS
@@ -1043,7 +1189,7 @@ class PedidoController
                 $totalTransferido = 0;
 
                 foreach ($itensTransferir as $itemData) {
-                    error_log('📦 Processando item: '.json_encode($itemData));
+                    error_log('📦 Processando item: ' . json_encode($itemData));
 
                     $produtoId = intval($itemData['produto_id']);
                     $quantidadeTransferir = floatval($itemData['quantidadeTransferir']);
@@ -1173,11 +1319,11 @@ class PedidoController
                 throw $e;
             }
         } catch (Exception $e) {
-            error_log('❌ Erro na transferência: '.$e->getMessage());
+            error_log('❌ Erro na transferência: ' . $e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Erro ao transferir itens: '.$e->getMessage(),
+                'message' => 'Erro ao transferir itens: ' . $e->getMessage(),
             ];
         }
     }

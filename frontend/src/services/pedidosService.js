@@ -304,6 +304,40 @@ const pedidosService = {
     },
 
     /**
+     * Registrar pagamento (total ou parcial) de um pedido
+     */
+    registrarPagamento: async (pedidoId, dados) => {
+        try {
+            Logger.info('API: Registrando pagamento...', { info: 'pedidosService.registrarPagamento', pedidoId, dados });
+
+            const response = await fetchWithAuth(`/pedidos/${pedidoId}/pagamentos`, {
+                method: 'POST',
+                body: JSON.stringify(dados)
+            });
+
+            Logger.debug('API: Resposta do pagamento:', { debug: response });
+            return response;
+
+        } catch (error) {
+            Logger.error('API: Erro ao registrar pagamento:', { erro: error });
+            return { success: false, message: error.message };
+        }
+    },
+
+    /**
+     * Buscar histórico de pagamentos de um pedido
+     */
+    buscarPagamentos: async (pedidoId) => {
+        try {
+            const response = await fetchWithAuth(`/pedidos/${pedidoId}/pagamentos`);
+            return response;
+        } catch (error) {
+            Logger.error('API: Erro ao buscar pagamentos:', { erro: error });
+            return { success: false, data: [], message: error.message };
+        }
+    },
+
+    /**
    * TRANSFERIR itens entre comandas
    */
     transferir: async (dados) => {

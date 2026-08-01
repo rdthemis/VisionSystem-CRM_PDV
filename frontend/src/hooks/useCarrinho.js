@@ -327,13 +327,15 @@ const useCarrinho = () => {
             const itemFormatado = {
                 _id: item._id || `loaded-${Date.now()}-${index}`,
                 produto_id: item.produto_id,
+                origem_pedido: item.origem_pedido || 'PDV',
                 produto_nome: item.produto_nome || item.nome,
                 quantidade: item.quantidade,
                 preco_unitario: parseFloat(item.preco_unitario),
                 preco_produto: parseFloat(item.preco_produto),
                 subtotal: parseFloat(item.quantidade) * parseFloat(item.preco_unitario),
                 adicionais: item.adicionais || [],
-                observacoes: item.observacoes || ''
+                observacoes: item.observacoes || '',
+                taxa_entrega: item.taxa_entrega || 0
             };
 
             Logger.info(`Item ${index} formatado:`, { info: itemFormatado }); // ← ADICIONAR

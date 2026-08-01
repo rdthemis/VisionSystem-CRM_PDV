@@ -15,22 +15,37 @@ const ModalPagamento = ({
   clienteCadastrado,        // Cliente selecionado (se houver)
   carrinho,                 // Itens do pedido
   totalPedido,              // Valor total
+  valorJaPago = 0,          // Soma de pagamentos já registrados nesta comanda (se houver)
   onProcessar               // Função para processar pagamento
 }) => {
 
   // ========================================
   // 📦 ESTADOS
   // ========================================
-  
+
   const [formaPagamento, setFormaPagamento] = useState('dinheiro');
   const [valorPago, setValorPago] = useState('');
   const [valorTroco, setValorTroco] = useState(0);
+  const [valorAPagarAgora, setValorAPagarAgora] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [parcelamento, setParcelamento] = useState({
     parcelas: 1,
     valorParcela: 0
   });
   const [loading, setLoading] = useState(false);
+
+  // Formas de pagamento já lançadas nesta sessão do modal (permite dividir
+  // o valor a pagar agora entre dinheiro + PIX + cartão, etc, de uma vez só)
+  const [pagamentosAdicionados, setPagamentosAdicionados] = useState([]);
+
+  // Saldo ainda devido pela comanda (total - o que já foi pago em parcelas anteriores)
+  const saldoDevedor = Math.max(0, (parseFloat(totalPedido) || 0) - (parseFloat(valorJaPago) || 0));
+
+  // Quanto já foi alocado entre as formas de pagamento adicionadas nesta sessão
+  const totalJaAlocado = pagamentosAdicionados.reduce((soma, p) => soma + p.valorAPagarAgora, 0);
+
+  // Quanto ainda pode ser alocado (para a forma de pagamento sendo configurada agora)
+  const saldoRestanteParaAlocar = Math.max(0, saldoDevedor - totalJaAlocado);
 
   // ========================================
   // 💳 FORMAS DE PAGAMENTO
@@ -97,19 +112,19 @@ const ModalPagamento = ({
   };
 
   /**
-   * Calcula o troco automaticamente
+   * Calcula o troco automaticamente (sobre o valor a pagar agora, não o total da comanda)
    */
-  const calcularTroco = (valorRecebido) => {
+  const calcularTroco = (valorRecebido, valorAlvo) => {
     const pago = parseFloat(valorRecebido) || 0;
-    const troco = Math.max(0, pago - totalPedido);
+    const troco = Math.max(0, pago - (parseFloat(valorAlvo) || 0));
     setValorTroco(troco);
   };
 
   /**
-   * Calcula valor das parcelas
+   * Calcula valor das parcelas (sobre o valor a pagar agora)
    */
   const calcularParcelas = (numParcelas) => {
-    const valorParcela = totalPedido / numParcelas;
+    const valorParcela = (parseFloat(valorAPagarAgora) || 0) / numParcelas;
     setParcelamento({
       parcelas: numParcelas,
       valorParcela: valorParcela
@@ -124,46 +139,153 @@ const ModalPagamento = ({
   };
 
   /**
-   * Valida e processa o pagamento
+   * Valida a forma de pagamento sendo configurada agora (o "formulário atual").
+   * Usada tanto para adicionar uma forma à lista quanto para confirmar o pagamento.
+   * Retorna { valido, erro, item } — item pronto para entrar no array de pagamentos.
    */
-  const handleProcessar = async () => {
+  const validarEntradaAtual = () => {
     const formaSelecionada = formasPagamento.find(f => f.id === formaPagamento);
-    
-    // Validações
+    const valorAgoraNum = parseFloat(String(valorAPagarAgora).replace(',', '.')) || 0;
+
+    if (valorAgoraNum <= 0) {
+      return { valido: false, erro: 'Informe um valor a pagar maior que zero' };
+    }
+
+    if (valorAgoraNum > saldoRestanteParaAlocar + 0.01) {
+      return {
+        valido: false,
+        erro: `Valor a pagar agora não pode ser maior que o saldo restante a alocar (${formatarPreco(saldoRestanteParaAlocar)})`
+      };
+    }
+
     if (formaSelecionada.requiresValue) {
       const valorPagoNum = parseFloat(String(valorPago).replace(',', '.')) || 0;
-      if (valorPagoNum < totalPedido) {
-        alert('Valor pago não pode ser menor que o total');
-        return;
+      if (valorPagoNum < valorAgoraNum) {
+        return { valido: false, erro: 'Valor recebido não pode ser menor que o valor a pagar agora' };
       }
     }
 
     if (formaSelecionada.requiresObservation && !observacoes.trim()) {
-      alert('Informe as observações para pagamento a prazo');
-      return;
+      return { valido: false, erro: 'Informe as observações para pagamento a prazo' };
     }
 
     if (formaSelecionada.needsClienteCadastrado && !isClienteCadastrado()) {
-      alert('Para pagamento a prazo é necessário selecionar um cliente cadastrado!');
+      return { valido: false, erro: 'Para pagamento a prazo é necessário selecionar um cliente cadastrado!' };
+    }
+
+    // Duas formas "a prazo" na mesma comanda não fazem sentido (uma única conta a receber)
+    if (formaPagamento === 'prazo' && pagamentosAdicionados.some(p => p.formaPagamento === 'prazo')) {
+      return { valido: false, erro: 'Já existe um pagamento "A Prazo" adicionado nesta lista' };
+    }
+
+    return {
+      valido: true,
+      item: {
+        id: Date.now() + Math.random(),
+        formaPagamento,
+        nome: formaSelecionada.nome,
+        valorAPagarAgora: valorAgoraNum,
+        valorPago: formaSelecionada.requiresValue ? parseFloat(String(valorPago).replace(',', '.')) : valorAgoraNum,
+        valorTroco: formaSelecionada.allowsChange ? valorTroco : 0,
+        observacoes,
+        parcelamento: formaSelecionada.allowsParcelamento ? parcelamento : null
+      }
+    };
+  };
+
+  /**
+   * Reseta o formulário da forma de pagamento "atual" para configurar a próxima,
+   * pré-preenchendo com o saldo que ainda resta alocar
+   */
+  const resetarFormularioParaRestante = (restante) => {
+    setFormaPagamento('dinheiro');
+    setValorAPagarAgora(restante > 0 ? restante.toFixed(2) : '');
+    setValorPago(restante > 0 ? restante.toFixed(2) : '');
+    setValorTroco(0);
+    setObservacoes('');
+    setParcelamento({ parcelas: 1, valorParcela: restante });
+  };
+
+  /**
+   * Adiciona a forma de pagamento configurada agora à lista e prepara o
+   * formulário para a próxima forma (ex: dinheiro + PIX na mesma comanda)
+   */
+  const handleAdicionarForma = () => {
+    const validacao = validarEntradaAtual();
+    if (!validacao.valido) {
+      alert(validacao.erro);
       return;
     }
 
-    // Preparar dados
-    const dadosPagamento = {
-      formaPagamento,
-      valorTotal: totalPedido,
-      valorPago: formaSelecionada.requiresValue ? parseFloat(valorPago) : totalPedido,
-      valorTroco,
-      observacoes,
-      parcelamento: formaSelecionada.allowsParcelamento ? parcelamento : null
-    };
+    const novaLista = [...pagamentosAdicionados, validacao.item];
+    setPagamentosAdicionados(novaLista);
+
+    const restante = Math.max(0, saldoDevedor - novaLista.reduce((s, p) => s + p.valorAPagarAgora, 0));
+    resetarFormularioParaRestante(restante);
+  };
+
+  /**
+   * Remove uma forma de pagamento já adicionada à lista
+   */
+  const handleRemoverForma = (id) => {
+    const novaLista = pagamentosAdicionados.filter(p => p.id !== id);
+    setPagamentosAdicionados(novaLista);
+
+    const restante = Math.max(0, saldoDevedor - novaLista.reduce((s, p) => s + p.valorAPagarAgora, 0));
+    resetarFormularioParaRestante(restante);
+  };
+
+  /**
+   * Valida e processa o(s) pagamento(s).
+   * Se houver um valor válido ainda no formulário atual (não adicionado à lista),
+   * ele é incluído automaticamente — assim o caso comum (uma única forma) não
+   * exige clicar em "Adicionar" antes de confirmar.
+   */
+  const handleProcessar = async () => {
+    let listaFinal = pagamentosAdicionados;
+    const valorAgoraNum = parseFloat(String(valorAPagarAgora).replace(',', '.')) || 0;
+
+    if (valorAgoraNum > 0) {
+      const validacao = validarEntradaAtual();
+      if (!validacao.valido) {
+        alert(validacao.erro);
+        return;
+      }
+      listaFinal = [...pagamentosAdicionados, validacao.item];
+    } else if (listaFinal.length === 0) {
+      alert('Informe um valor a pagar maior que zero');
+      return;
+    }
+
+    const totalFinal = listaFinal.reduce((s, p) => s + p.valorAPagarAgora, 0);
 
     setLoading(true);
     try {
-      await onProcessar(dadosPagamento);
+      await onProcessar({
+        pagamentos: listaFinal,
+        valorTotal: totalPedido,
+        valorAPagarAgora: totalFinal,
+        isPagamentoTotal: totalFinal >= saldoDevedor - 0.01
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Handler para Enter no input
+   */
+  const handleQuantidadeKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur(); // Dispara o blur que vai validar
+    }
+  };
+
+  /**
+   * Previne propagação de eventos (evita abrir modal ao clicar em botões)
+   */
+  const pararPropagacao = (e) => {
+    e.stopPropagation();
   };
 
   /**
@@ -171,23 +293,25 @@ const ModalPagamento = ({
    */
   useEffect(() => {
     if (isOpen) {
-      const total = parseFloat(totalPedido) || 0;
+      const saldo = Math.max(0, (parseFloat(totalPedido) || 0) - (parseFloat(valorJaPago) || 0));
+      setPagamentosAdicionados([]);
       setFormaPagamento('dinheiro');
-      setValorPago(total.toFixed(2));
+      setValorAPagarAgora(saldo.toFixed(2));
+      setValorPago(saldo.toFixed(2));
       setValorTroco(0);
       setObservacoes('');
-      setParcelamento({ parcelas: 1, valorParcela: total });
+      setParcelamento({ parcelas: 1, valorParcela: saldo });
     }
-  }, [isOpen, totalPedido]);
+  }, [isOpen, totalPedido, valorJaPago]);
 
   /**
-   * Calcula troco quando muda valor pago
+   * Calcula troco quando muda valor pago ou o valor a pagar agora
    */
   useEffect(() => {
     if (formaPagamento === 'dinheiro' && valorPago) {
-      calcularTroco(valorPago);
+      calcularTroco(valorPago, valorAPagarAgora);
     }
-  }, [valorPago, formaPagamento]);
+  }, [valorPago, valorAPagarAgora, formaPagamento]);
 
   // ========================================
   // 🎨 RENDERIZAÇÃO
@@ -233,10 +357,22 @@ const ModalPagamento = ({
                 <span>Itens:</span>
                 <span><strong>{carrinho.length}</strong></span>
               </div>
-              <div className="resumo-linha resumo-total">
-                <span>Total a Pagar:</span>
+              <div className="resumo-linha">
+                <span>Total da Comanda:</span>
                 <span><strong>{formatarPreco(totalPedido)}</strong></span>
               </div>
+              {valorJaPago > 0 && (
+                <>
+                  <div className="resumo-linha">
+                    <span>Já Pago:</span>
+                    <span><strong>{formatarPreco(valorJaPago)}</strong></span>
+                  </div>
+                  <div className="resumo-linha resumo-total">
+                    <span>Saldo Devedor:</span>
+                    <span><strong>{formatarPreco(saldoDevedor)}</strong></span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -276,7 +412,69 @@ const ModalPagamento = ({
               DETALHES DO PAGAMENTO
           ======================================== */}
           <div className="pagamento-detalhes">
-            
+
+            {/* Formas de pagamento já adicionadas nesta sessão (ex: parte em
+                dinheiro + parte em PIX, lançados juntos ao confirmar) */}
+            {pagamentosAdicionados.length > 0 && (
+              <div className="pagamentos-adicionados-lista">
+                {pagamentosAdicionados.map((p) => (
+                  <div key={p.id} className="pagamento-item-adicionado">
+                    <span className="pagamento-item-nome">{p.nome}</span>
+                    <span className="pagamento-item-valor">{formatarPreco(p.valorAPagarAgora)}</span>
+                    <button
+                      type="button"
+                      className="btn-remover-pagamento"
+                      onClick={() => handleRemoverForma(p.id)}
+                      title="Remover"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="pagamento-item-restante">
+                  <span>Restante a alocar:</span>
+                  <strong>{formatarPreco(saldoRestanteParaAlocar)}</strong>
+                </div>
+              </div>
+            )}
+
+            {/* Valor a pagar agora (sempre visível — reduzir esse valor é o que
+                caracteriza um pagamento parcial da comanda) */}
+            <div className="pagamento-valor">
+              <label>Valor a Pagar Agora (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={saldoRestanteParaAlocar}
+                placeholder="0,00"
+                value={valorAPagarAgora}
+                onClick={pararPropagacao}
+                onKeyPress={handleQuantidadeKeyPress}
+                onChange={(e) => setValorAPagarAgora(e.target.value)}
+                className="pagamento-input"
+                onFocus={(e) => {
+                  pararPropagacao(e);
+                  e.target.select(); // Seleciona todo o texto ao focar
+                }}
+              />
+              {parseFloat(valorAPagarAgora) > 0 && parseFloat(valorAPagarAgora) < saldoRestanteParaAlocar - 0.01 && (
+                <small className="pagamento-parcial-aviso">
+                  Restará {formatarPreco(saldoRestanteParaAlocar - parseFloat(valorAPagarAgora))} em aberto
+                  {pagamentosAdicionados.length === 0 ? ' nesta comanda' : ' (adicione outra forma de pagamento ou confirme como pagamento parcial)'}.
+                </small>
+              )}
+              {saldoRestanteParaAlocar > 0.01 && (
+                <button
+                  type="button"
+                  className="btn-adicionar-forma"
+                  onClick={handleAdicionarForma}
+                >
+                  <i className="fas fa-plus"></i> Adicionar outra forma de pagamento
+                </button>
+              )}
+            </div>
+
             {/* Valor recebido (apenas para dinheiro) */}
             {formasPagamento.find(f => f.id === formaPagamento)?.requiresValue && (
               <div className="pagamento-valor">
@@ -286,9 +484,14 @@ const ModalPagamento = ({
                   step="0.01"
                   placeholder="0,00"
                   value={valorPago}
+                  onClick={pararPropagacao}
                   onChange={(e) => setValorPago(e.target.value)}
+                  onKeyPress={handleQuantidadeKeyPress}
                   className="pagamento-input"
-                  autoFocus
+                   onFocus={(e) => {
+                  pararPropagacao(e);
+                  e.target.select(); // Seleciona todo o texto ao focar
+                }}
                 />
               </div>
             )}
@@ -317,7 +520,7 @@ const ModalPagamento = ({
                     >
                       {parcela}x
                       {parcela > 1 && (
-                        <small>{formatarPreco(totalPedido / parcela)}</small>
+                        <small>{formatarPreco((parseFloat(valorAPagarAgora) || 0) / parcela)}</small>
                       )}
                     </button>
                   ))}
@@ -351,16 +554,21 @@ const ModalPagamento = ({
               RESUMO FINAL
           ======================================== */}
           <div className="pagamento-resumo-final">
-            <div className="resumo-final-linha">
-              <span>Forma de Pagamento:</span>
-              <span>
-                <strong>
-                  {formasPagamento.find(f => f.id === formaPagamento)?.nome}
-                </strong>
-              </span>
-            </div>
+            {pagamentosAdicionados.map((p) => (
+              <div className="resumo-final-linha" key={p.id}>
+                <span>{p.nome}:</span>
+                <span><strong>{formatarPreco(p.valorAPagarAgora)}</strong></span>
+              </div>
+            ))}
 
-            {formaPagamento === 'cartao_credito' && parcelamento.parcelas > 1 && (
+            {parseFloat(valorAPagarAgora) > 0 && (
+              <div className="resumo-final-linha">
+                <span>{formasPagamento.find(f => f.id === formaPagamento)?.nome}:</span>
+                <span><strong>{formatarPreco(valorAPagarAgora)}</strong></span>
+              </div>
+            )}
+
+            {formaPagamento === 'cartao_credito' && parcelamento.parcelas > 1 && parseFloat(valorAPagarAgora) > 0 && (
               <div className="resumo-final-linha">
                 <span>Parcelamento:</span>
                 <span>
@@ -372,8 +580,12 @@ const ModalPagamento = ({
             )}
 
             <div className="resumo-final-linha total">
-              <span>Valor Total:</span>
-              <span><strong>{formatarPreco(totalPedido)}</strong></span>
+              <span>Pagando Agora (total):</span>
+              <span>
+                <strong>
+                  {formatarPreco(totalJaAlocado + (parseFloat(valorAPagarAgora) || 0))}
+                </strong>
+              </span>
             </div>
           </div>
         </div>
@@ -382,8 +594,8 @@ const ModalPagamento = ({
             RODAPÉ COM BOTÕES
         ======================================== */}
         <div className="modal-footer">
-          <button 
-            className="btn-secondary" 
+          <button
+            className="btn-secondary"
             onClick={onClose}
             disabled={loading}
           >

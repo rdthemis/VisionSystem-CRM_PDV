@@ -56,7 +56,7 @@ const PainelCarrinho = ({
       {/* ── CABEÇALHO ── */}
       <div className="pedido-header">
         <div className="pedido-info">
-          <h3>Pedido: {pedidoAtual?.numero_pedido || pedidoAtual?.id || 'Novo Pedido'}</h3>
+          <h3>Pedido: {pedidoAtual?.id || pedidoAtual?.numero_pedido || 'Novo Pedido'}</h3>
           {pedidoAtual?.status && (
             <span className={`pedido-status ${String(pedidoAtual.status).toLowerCase().replace(/\s+/g, '-')}`}>
               {pedidoAtual.status}
@@ -88,19 +88,19 @@ const PainelCarrinho = ({
             disabled={loadingPedido}
           />
         </div>
-
-        {dadosEntrega ? (
-          <div className="pedido-entrega-info">
-            <span>Entrega:</span>
-            <strong>{formatarPreco(dadosEntrega.taxa_entrega)}</strong>
-            <span>{dadosEntrega.endereco_entrega || 'Sem endereço'}</span>
-          </div>
-        ) : (
-          <div className="pedido-entrega-hint">
-            <i className="fas fa-info-circle"></i>
-            Sem entrega configurada
-          </div>
-        )}
+        <div >
+          {dadosEntrega ? (
+            <div className="pedido-entrega-info">
+              <span>Entrega:  </span>
+              <span>{dadosEntrega.endereco_entrega || 'Sem endereço'}</span>
+            </div>
+          ) : (
+            <div className="pedido-entrega-hint">
+              <i className="fas fa-info-circle"></i>
+              Sem entrega configurada
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── ITENS DO CARRINHO ── */}
@@ -155,6 +155,19 @@ const PainelCarrinho = ({
           <span>Total a pagar</span>
           <span>{formatarPreco(totalComEntrega)}</span>
         </div>
+
+        {pedidoAtual?.valor_pago > 0 && (
+          <>
+            <div className="total-linha">
+              <span>Pago</span>
+              <span>{formatarPreco(pedidoAtual.valor_pago)}</span>
+            </div>
+            <div className="total-linha total-final saldo-devedor">
+              <span>Saldo</span>
+              <span>{formatarPreco(totalComEntrega - pedidoAtual.valor_pago)}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── BOTÕES DE AÇÃO ── */}
@@ -202,7 +215,7 @@ const PainelCarrinho = ({
           onClick={onPagar}
           disabled={carrinho.length === 0 || loadingPedido}
         >
-          <i className="fas fa-credit-card"></i> PAGAR
+          <i className="fas fa-credit-card"></i> {pedidoAtual?.valor_pago > 0 ? 'PAGAR SALDO' : 'PAGAR'}
         </button>
       </div>
 

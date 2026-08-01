@@ -153,9 +153,18 @@ const produtosService = {
     },
 
     deletar: async (id) => {
-        try {
-            const response = await api.delete('/produtos', { data: { id } });
-            return response.data;
+         try {
+            const response = await fetchWithAuth('/produtos', {
+                method: 'DELETE',
+                body: JSON.stringify({ id })
+            });
+
+            if (response && response.success) {
+                return response;
+            } else {
+                Logger.error('Resposta inesperada da API:', { erro: response });
+                return response || { success: false };
+            }
         } catch (error) {
             Logger.error('Erro ao deletar produto:', { erro: error });
             throw new Error('Erro ao deletar produto');

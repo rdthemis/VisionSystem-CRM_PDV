@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import AdicionaisGrid from '../AdicionaisGrid';
 import adicionaisService from '../../services/adicionaisService';
 import Logger from '../../utils/Logger';
+import { ehProdutoPorPeso, arredondarQuantidadePeso } from '../../utils/produtoPorPeso';
 
 /**
  * Modal para adicionar/editar produto no pedido
@@ -24,10 +25,14 @@ const ModalProduto = ({
   
   // Inicializar com dados existentes se for edição
   const [quantidade, setQuantidade] = useState(dadosIniciais?.quantidade || 1);
+  const [quantidadeTexto, setQuantidadeTexto] = useState(String(dadosIniciais?.quantidade || 1));
   const [adicionaisDisponiveis, setAdicionaisDisponiveis] = useState([]);
   const [adicionaisSelecionados, setAdicionaisSelecionados] = useState(dadosIniciais?.adicionais || []);
   const [observacoes, setObservacoes] = useState(dadosIniciais?.observacoes || '');
   const [loading, setLoading] = useState(false);
+
+  // Produtos vendidos por peso (sorvete/açaí) aceitam quantidade fracionada em kg (3 casas decimais)
+  const porPeso = ehProdutoPorPeso(produto?.categoria_nome);
 
   // ========================================
   // 🔄 EFEITOS (useEffect)
@@ -52,6 +57,7 @@ const ModalProduto = ({
     if (modoEdicao && dadosIniciais) {
       // Carregar dados existentes
       setQuantidade(dadosIniciais.quantidade || 1);
+      setQuantidadeTexto(String(dadosIniciais.quantidade || 1));
       setAdicionaisSelecionados(dadosIniciais.adicionais || []);
       setObservacoes(dadosIniciais.observacoes || '');
     } else {
@@ -117,18 +123,52 @@ const ModalProduto = ({
    */
   const resetarEstados = () => {
     setQuantidade(1);
+    setQuantidadeTexto('1');
     setAdicionaisSelecionados([]);
     setObservacoes('');
   };
 
   /**
-   * Aumenta ou diminui a quantidade
+   * Aumenta ou diminui a quantidade (produtos por unidade)
    */
   const alterarQuantidade = (operacao) => {
     if (operacao === 'aumentar') {
       setQuantidade(prev => prev + 1);
+      setQuantidadeTexto(prev => String(Number(prev) + 1));
     } else if (operacao === 'diminuir' && quantidade > 1) {
       setQuantidade(prev => prev - 1);
+      setQuantidadeTexto(prev => String(Number(prev) - 1));
+    }
+  };
+
+  /**
+   * Handler de digitação no input de quantidade (produtos por peso, ex: sorvete)
+   * Aceita vírgula como separador decimal
+   */
+  const handleQuantidadeChange = (e) => {
+    setQuantidadeTexto(e.target.value.replace(',', '.'));
+  };
+
+  /**
+   * Valida e aplica a quantidade digitada ao perder o foco
+   * Produtos por peso aceitam até 3 casas decimais (gramas)
+   */
+  const handleQuantidadeBlur = () => {
+    let novaQuantidade = parseFloat(quantidadeTexto);
+
+    if (isNaN(novaQuantidade) || novaQuantidade < 0.001) {
+      novaQuantidade = 0.001;
+    }
+
+    novaQuantidade = arredondarQuantidadePeso(novaQuantidade);
+
+    setQuantidade(novaQuantidade);
+    setQuantidadeTexto(String(novaQuantidade));
+  };
+
+  const handleQuantidadeKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur();
     }
   };
 
@@ -182,6 +222,8 @@ const ModalProduto = ({
     const itemCompleto = {
       produto_id: produto.id,
       produto_nome: produto.nome,
+      categoria_id: produto.categoria_id,
+      categoria_nome: produto.categoria_nome,
       quantidade: quantidade,
       preco_unitario: precoUnitario,
       preco_produto: produto.preco,
@@ -242,22 +284,37 @@ const ModalProduto = ({
 
           {/* QUANTIDADE */}
           <div className="quantidade-modal-section">
-            <h4>Quantidade</h4>
+            <h4>Quantidade{porPeso ? ' (kg)' : ''}</h4>
             <div className="quantidade-modal-control">
-              <button 
-                className="btn-qty-modal"
-                onClick={() => alterarQuantidade('diminuir')}
-                disabled={quantidade <= 1}
-              >
-                -
-              </button>
-              <span className="quantidade-modal-display">{quantidade}</span>
-              <button 
-                className="btn-qty-modal"
-                onClick={() => alterarQuantidade('aumentar')}
-              >
-                +
-              </button>
+              {porPeso ? (
+                <input
+                  type="text"
+                  className="quantidade-modal-input"
+                  value={quantidadeTexto}
+                  onChange={handleQuantidadeChange}
+                  onBlur={handleQuantidadeBlur}
+                  onKeyPress={handleQuantidadeKeyPress}
+                  onFocus={(e) => e.target.select()}
+                  title="Digite a quantidade em kg (ex: 0.325)"
+                />
+              ) : (
+                <>
+                  <button
+                    className="btn-qty-modal"
+                    onClick={() => alterarQuantidade('diminuir')}
+                    disabled={quantidade <= 1}
+                  >
+                    -
+                  </button>
+                  <span className="quantidade-modal-display">{quantidade}</span>
+                  <button
+                    className="btn-qty-modal"
+                    onClick={() => alterarQuantidade('aumentar')}
+                  >
+                    +
+                  </button>
+                </>
+              )}
             </div>
           </div>
 

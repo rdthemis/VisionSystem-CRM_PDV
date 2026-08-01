@@ -1,4 +1,4 @@
- <?php
+<?php
 // models/Categoria.php
 
 class Categoria
@@ -23,7 +23,7 @@ class Categoria
     public function buscarTodas()
     {
         $query = 'SELECT id, nome, descricao, ativo, created_at, updated_at 
-                  FROM '.$this->table_name.' 
+                  FROM ' . $this->table_name . ' 
                   WHERE ativo = 1 
                   ORDER BY nome';
 
@@ -37,7 +37,7 @@ class Categoria
     public function buscarPorId($id)
     {
         $query = 'SELECT id, nome, descricao, ativo, created_at, updated_at 
-                  FROM '.$this->table_name.' 
+                  FROM ' . $this->table_name . ' 
                   WHERE id = :id';
 
         $stmt = $this->conn->prepare($query);
@@ -50,7 +50,7 @@ class Categoria
     // Criar nova categoria
     public function criar()
     {
-        $query = 'INSERT INTO '.$this->table_name.' 
+        $query = 'INSERT INTO ' . $this->table_name . ' 
                   (nome, descricao, ativo) 
                   VALUES (:nome, :descricao, :ativo)';
 
@@ -78,7 +78,7 @@ class Categoria
     // Atualizar categoria
     public function atualizar()
     {
-        $query = 'UPDATE '.$this->table_name.' 
+        $query = 'UPDATE ' . $this->table_name . ' 
                   SET nome = :nome, descricao = :descricao, ativo = :ativo 
                   WHERE id = :id';
 
@@ -102,7 +102,7 @@ class Categoria
     // Deletar categoria (soft delete - marca como inativo)
     public function deletar()
     {
-        $query = 'UPDATE '.$this->table_name.' 
+        $query = 'UPDATE ' . $this->table_name . ' 
                   SET ativo = 0 
                   WHERE id = :id';
 
@@ -113,4 +113,3 @@ class Categoria
         return $stmt->execute();
     }
 }
-?>

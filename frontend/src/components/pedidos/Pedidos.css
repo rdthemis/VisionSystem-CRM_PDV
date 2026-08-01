@@ -363,6 +363,15 @@
     font-weight: 600;
 }
 
+.pedido-origem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 12px;
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
 .pedido-card-footer {
     padding-top: var(--spacing-md);
     border-top: 1px solid var(--border-color);
@@ -376,6 +385,12 @@
     font-weight: 700;
     font-size: 16px;
     color: var(--success-color);
+}
+
+.pedido-saldo-devedor {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--warning-color);
 }
 
 .pedido-status-label {
@@ -449,6 +464,8 @@
     height: 100%;
     display: grid;
     grid-template-columns: 1fr 400px;
+    grid-template-rows: minmax(0, 1fr);
+    /* ✅ Força a linha a ocupar 100% da altura disponível (corrige tela cheia/F11) */
     gap: var(--spacing-md);
     overflow: hidden;
     /* ✅ IMPORTANTE */
@@ -469,6 +486,9 @@
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-sm);
+    height: 100%;
+    min-height: 0;
+    /* ✅ NOVO - permite que a área encolha/cresça corretamente dentro do grid */
     min-width: 0;
     /* ✅ NOVO */
     overflow: hidden;
@@ -605,9 +625,11 @@
     /* ✅ NOVO - CRÍTICO para Chrome/Edge */
     max-width: 100%;
     /* ✅ NOVO */
+    min-height: 0;
+    /* ✅ NOVO - garante que ocupe todo o espaço restante, inclusive em tela cheia */
 }
 
-.produto-item {
+.produtos-area .produto-item {
     background: var(--bg-secondary);
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius);
@@ -620,16 +642,25 @@
    🍕 GRID DE PRODUTOS - VERSÃO COMPACTA
    ======================================== */
 
-.produtos-grid {
+/* ⚠️ Selector escopado com ".produtos-area" de propósito: existe um ".produtos-grid"
+   genérico em Produtos.css (tela de cadastro de produtos) que, por ser CSS global
+   sem escopo (sem CSS Modules), colidia com este e limitava a grade do PDV a
+   max-height: 450px mesmo em tela cheia. Aumentar a especificidade aqui garante
+   que a grade do PDV sempre prevaleça, independente da ordem de import no bundle. */
+.produtos-area .produtos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     /* ✅ REDUZIDO de 150px */
     gap: 8px;
     /* ✅ REDUZIDO de 12px */
     padding: 4px;
+    /* Neutraliza max-height/overflow do .produtos-grid de Produtos.css: */
+    max-height: none;
+    max-width: none;
+    overflow: visible;
 }
 
-.produto-item {
+.produtos-area .produto-item {
     background: var(--bg-layout-card);
     border: 2px solid var(--border-color);
     border-radius: 6px;
@@ -643,7 +674,7 @@
     /* ✅ NOVO - altura mínima consistente */
 }
 
-.produto-item:hover {
+.produtos-area .produto-item:hover {
     transform: translateY(-2px);
     /* ✅ REDUZIDO de -4px */
     box-shadow: var(--shadow-md);
@@ -663,6 +694,7 @@
     /* ✅ NOVO - 2 linhas de texto */
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -962,6 +994,13 @@
     margin-bottom: 0;
 }
 
+.total-linha.total-final.saldo-devedor {
+    color: var(--warning-color);
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
 /* Botões de ação */
 .pedido-botoes {
     display: flex;
@@ -1093,7 +1132,7 @@
 }
 
 .modal-pagamento {
-    width: 680px;
+    width: 880px;
     max-height: 90vh;
     max-width: 95%;
 }
@@ -1200,7 +1239,7 @@
     gap: 10px;
 }
 
-..btn-confirmar-pagamento:hover {
+.btn-confirmar-pagamento:hover {
     background: #059669;
 }
 
@@ -1280,17 +1319,6 @@
     border-color: var(--primary-hover);
 }
 
-/* Produtos que não são vendidos por peso: quantidade só muda pelos botões +/- */
-.quantidade-input-readonly {
-    cursor: default;
-    background: #f1f3f5;
-    color: var(--text-secondary, #6b7280);
-}
-
-.quantidade-input-readonly:hover {
-    border-color: var(--border-color);
-}
-
 /* Label de unidade de medida */
 .unidade-medida {
     font-size: 12px;
@@ -1342,6 +1370,24 @@
     padding: 8px 15px;
     border-radius: 8px;
     border: 2px solid #007bff;
+}
+
+/* Input de quantidade decimal (kg) para produtos vendidos por peso, ex: sorvete */
+.quantidade-modal-input {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    min-width: 100px;
+    text-align: center;
+    background-color: white;
+    padding: 8px 15px;
+    border-radius: 8px;
+    border: 2px solid #007bff;
+}
+
+.quantidade-modal-input:focus {
+    outline: none;
+    background-color: #f8fafc;
 }
 
 /* === SEÇÃO DE ADICIONAIS === */
@@ -1740,6 +1786,88 @@
     border-color: #28a745;
     box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
     background: white;
+}
+
+.pagamento-parcial-aviso {
+    display: block;
+    margin-top: 8px;
+    color: var(--warning-color, #f59e0b);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.btn-adicionar-forma {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    border: 2px dashed #007bff;
+    background: rgba(0, 123, 255, 0.05);
+    color: #007bff;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-adicionar-forma:hover {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: #0056b3;
+}
+
+/* === FORMAS DE PAGAMENTO JÁ ADICIONADAS (multi-forma) === */
+.pagamentos-adicionados-lista {
+    margin-bottom: 20px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.pagamento-item-adicionado {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.pagamento-item-nome {
+    flex: 1;
+    font-weight: 600;
+    color: #333;
+}
+
+.pagamento-item-valor {
+    font-weight: 700;
+    color: #28a745;
+}
+
+.btn-remover-pagamento {
+    border: none;
+    background: transparent;
+    color: #dc3545;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+.btn-remover-pagamento:hover {
+    color: #a71d2a;
+}
+
+.pagamento-item-restante {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background: #fff3cd;
+    color: #856404;
+    font-size: 0.9rem;
 }
 
 /* === TROCO === */
@@ -2172,7 +2300,7 @@
         grid-template-columns: 1fr;
     }
 
-    .produtos-grid {
+    .produtos-area .produtos-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     }
 
@@ -2289,7 +2417,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
-    display: flex;
+    display: grid;
     align-items: center;
     justify-content: center;
     z-index: 1000;
@@ -3132,6 +3260,7 @@
     font-size: 12px;
     font-weight: 600;
     line-height: 1.3;
+    line-clamp: 2;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;

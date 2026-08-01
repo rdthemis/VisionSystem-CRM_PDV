@@ -34,8 +34,8 @@ class ComandaBuilder
         $this->printer = new BematechPrinter($device, $colunas);
         $this->config = array_merge([
             'nome_empresa' => 'SORVETES GELATTO MANNIA',
-            'endereco' => 'Corumbaí do Sul - PR',
-            'telefone' => '',
+            'endereco' => 'Rua Guarani 191 - Corumbataí do Sul - PR',
+            'telefone' => '44 9.9826-4006',
             'cnpj' => '',
         ], $config);
     }
@@ -93,8 +93,6 @@ class ComandaBuilder
         $this->imprimirObservacaoGeral($pedido);
         $this->imprimirRodape($pedido);
 
-        $this->printer->cut(true);
-
         return $this->printer->print();
     }
 
@@ -144,11 +142,19 @@ class ComandaBuilder
         // Número da comanda (negrito, tamanho normal - só o essencial em destaque)
         $this->printer->bold(true);
         $numero = $pedido['numero'] ?? '---';
+        $origemPedido = $pedido['origem_pedido'] ?? 'PDV';
         $this->printer->line("COMANDA {$numero}");
+        $this->printer->line("Origem: {$origemPedido}");
         $this->resetFormat();
 
         // Data e hora
-        $this->printer->line(date('d/m/Y H:i:s'));
+        $dataHora = $pedido['data'] ?? null;
+        if (!empty($dataHora)) {
+            $this->printer->line('Data/Hora: ' . $dataHora);
+        } else {
+            $this->printer->line('Data/Hora: ' . date('d/m/Y H:i:s'));
+        }
+        $this->printer->line();
 
         $this->printer->alignLeft();
     }
@@ -225,13 +231,13 @@ class ComandaBuilder
 
     private function imprimirItens(array $itens, string $tipoImpressao = 'producao'): void
     {
-        $this->printer->feed(1);
+        //$this->printer->feed(1);
         $this->printer->bold(true);
 
         if ($tipoImpressao === 'conta') {
             $this->printer->threeColumns('QTD', 'DESCRICAO', 'VALOR');
         } else {
-            $this->printer->line('QTD  DESCRICAO');
+            $this->printer->line('QTD     DESCRICAO');
         }
 
         $this->printer->bold(false);
@@ -241,16 +247,16 @@ class ComandaBuilder
 
         foreach ($itens as $index => $item) {
             $qtd = $item['qtd'] ?? $item['quantidade'] ?? 1;
-            $descricao = $item['descricao'] ?? $item['nome'] ?? 'Item';
+            $descricao = mb_strtoupper($item['descricao'] ?? $item['nome'] ?? 'Item', 'UTF-8');
             // Aceita ambos os nomes (valor_unit do PHP docs OU preco do frontend)
             $valorUnit = floatval($item['valor_unit'] ?? $item['preco'] ?? 0);
             $subtotal = $qtd * $valorUnit;
 
             // Item principal em negrito + altura dupla: única linha em destaque do
             // bloco, para contrastar com os adicionais (sem negrito e recuados) logo
-            // abaixo. Tamanho antes do negrito (ver resetFormat()).
-            $this->printer->doubleHeight();
-            $this->printer->bold(true);
+            // abaixo. Um único comando (ver boldDoubleHeight()) evita que o negrito
+            // "vazasse" para o texto seguinte.
+            $this->printer->boldDoubleHeight();
 
             if ($tipoImpressao === 'conta') {
                 $this->printer->threeColumns(
@@ -259,7 +265,9 @@ class ComandaBuilder
                     $this->formatarValor($subtotal)
                 );
             } else {
-                $this->printer->line($qtd . ' x  ' . $descricao);
+                $this->printer->line(
+                    $qtd . ' x ' . $descricao
+                );
             }
 
             $this->resetFormat();
@@ -267,7 +275,7 @@ class ComandaBuilder
             // Adicionais (recuados, sem negrito, para não competir com o item)
             if (!empty($item['adicionais'])) {
                 foreach ($item['adicionais'] as $adicional) {
-                    $descAdd = $adicional['descricao'] ?? $adicional['nome'] ?? '';
+                    $descAdd = mb_strtoupper($adicional['descricao'] ?? $adicional['nome'] ?? '', 'UTF-8');
                     $valorAdd = floatval($adicional['valor'] ?? $adicional['preco'] ?? 0);
 
                     if (empty($descAdd)) {
@@ -281,7 +289,10 @@ class ComandaBuilder
                             $valorAdd > 0 ? $this->formatarValor($valorAdd * $qtd) : ''
                         );
                     } else {
-                        $this->printer->line('      - ' . $descAdd);
+                        $this->printer->twoColumns(
+                            '      - ' . $descAdd,
+                            ''
+                        );
                     }
                 }
             }
@@ -335,10 +346,7 @@ class ComandaBuilder
         }
 
         $this->printer->doubleSeparator();
-        // Ordem importa: tamanho primeiro, negrito por último, para o negrito não ser
-        // sobrescrito pelo comando de tamanho na impressora.
-        $this->printer->doubleHeight();
-        $this->printer->bold(true);
+        $this->printer->boldDoubleHeight();
         $this->printer->twoColumns('TOTAL:', $this->formatarValor($total));
         $this->resetFormat();
         $this->printer->doubleSeparator();
@@ -397,7 +405,7 @@ class ComandaBuilder
         $this->printer->line($this->config['nome_empresa']);
         $this->printer->feed(1);
         $this->printer->alignLeft();
-        $this->printer->CUT(true);  // Avança 2 linhas para cortar a comanda sem rasgar o texto
+        $this->printer->cut(true); // Corte parcial (esta impressora não faz corte total) + avanço de 2 linhas
     }
 
     // ── Helpers ───────────────────────────────────────────────────
