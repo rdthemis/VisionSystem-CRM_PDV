@@ -69,6 +69,7 @@ require_once __DIR__ . '/../controllers/PedidoController.php';
 require_once __DIR__ . '/../controllers/AuthController.php';
 require_once __DIR__ . '/../controllers/UsuarioController.php';
 require_once __DIR__ . '/../controllers/CardapioPedidoController.php';
+require_once __DIR__ . '/../controllers/CardapioController.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', 0);
@@ -504,19 +505,27 @@ try {
 
     // GET /cardapio/categorias
     if ($method === 'GET' && $uri === '/cardapio/categorias') {
-        (new CardapioPedidoController())->categorias();
+        (new CardapioController())->categorias();
         exit;
     }
 
     // GET /cardapio/produtos
     if ($method === 'GET' && $uri === '/cardapio/produtos') {
-        (new CardapioPedidoController())->produtos();
+        (new CardapioController())->produtos();
         exit;
     }
 
     // GET /cardapio/adicionais
     if ($method === 'GET' && $uri === '/cardapio/adicionais') {
-        (new CardapioPedidoController())->adicionais();
+        (new CardapioController())->adicionais();
+        exit;
+    }
+
+    // GET /cardapio/zonas
+    if ($method === 'GET' && $uri === '/cardapio/zonas') {
+
+        (new CardapioController())->zonas();
+
         exit;
     }
 
@@ -534,9 +543,7 @@ try {
     if ($method === 'GET' && $uri === '/categorias') {
         $authResult = verificarAuth($database);
 
-        $categorias = new CategoriaController();
-
-        $categorias->listar();
+        (new CategoriaController())->listar();
 
         exit;
     }
@@ -556,8 +563,7 @@ try {
             exit;
         }
 
-        $categorias = new CategoriaController();
-        $categorias->criar($input);
+        (new CategoriaController())->criar();
         exit;
     }
 
@@ -576,8 +582,7 @@ try {
             exit;
         }
 
-        $categorias = new CategoriaController();
-        $resultado = $categorias->atualizar($input);
+        (new CategoriaController())->atualizar();
 
         exit;
     }
@@ -597,8 +602,7 @@ try {
             exit;
         }
 
-        $categorias = new CategoriaController();
-        $resultado = $categorias->deletar($input['id']);
+        (new CategoriaController())->deletar();
 
         exit;
     }
@@ -746,8 +750,7 @@ try {
             exit;
         }
 
-        $produtos = new ProdutoController($database);
-        $produtos->criar($input);
+        (new ProdutoController($database))->criar();
 
         exit;
     }
@@ -767,8 +770,7 @@ try {
             exit;
         }
 
-        $produtos = new ProdutoController($database);
-        $produtos->atualizar($input);
+        (new ProdutoController($database))->atualizar();
 
         exit;
     }
@@ -788,8 +790,7 @@ try {
             exit;
         }
 
-        $produtos = new ProdutoController($database);
-        $produtos->deletar($input['id']);
+        (new ProdutoController($database))->deletar();
 
         exit;
     }

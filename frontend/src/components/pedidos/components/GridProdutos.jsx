@@ -37,8 +37,26 @@ const GridProdutos = ({
     }
   };
 
+  const iconeCategoria = (categoria = '') => {
+    const nome = categoria.toLowerCase();
+    if (nome.includes('pizza')) return '🍕';
+    if (nome.includes('lanche') || nome.includes('hamb')) return '🍔';
+    if (nome.includes('bebida') || nome.includes('refri')) return '🥤';
+    if (nome.includes('aça')) return '🍨';
+    if (nome.includes('doce') || nome.includes('sobremesa')) return '🧁';
+    if (nome.includes('combo')) return '🏷️';
+    return '🍦';
+  };
+
   return (
     <div className="produtos-area">
+      <div className="produtos-area-heading">
+        <div>
+          <span className="produtos-area-eyebrow">Catálogo</span>
+          <h2>Selecione os produtos</h2>
+        </div>
+        <span className="produtos-area-count">{produtosFiltrados.length} itens</span>
+      </div>
       
       {/* ── ABAS DE CATEGORIAS ── */}
       <div className="categorias-tabs">
@@ -46,7 +64,7 @@ const GridProdutos = ({
           className={`categoria-tab ${categoriaAtiva === "" ? "active" : ""}`}
           onClick={() => onCategoriaChange("")}
         >
-          Todos
+          <span aria-hidden="true">▦</span> Todos
         </button>
         
         {categorias.map((categoria) => (
@@ -55,9 +73,14 @@ const GridProdutos = ({
             className={`categoria-tab ${categoriaAtiva === categoria ? "active" : ""}`}
             onClick={() => onCategoriaChange(categoria)}
           >
-            {categoria}
+            <span aria-hidden="true">{iconeCategoria(categoria)}</span> {categoria}
           </button>
         ))}
+      </div>
+
+      <div className="produtos-section-title">
+        <h3>Todos os produtos</h3>
+        <span>{produtosFiltrados.length} disponíveis</span>
       </div>
 
       {/* ── BARRA DE BUSCA ── */}
@@ -108,6 +131,14 @@ const GridProdutos = ({
                   key={produto.id}
                   className={`produto-item ${imagemUrl? 'com-imagem' : ''}`}
                   onClick={() => onProdutoClick(produto)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onProdutoClick(produto);
+                    }
+                  }}
                 >
                   {/* 📸 Thumbnail do produto */}
                   {imagemUrl? (
@@ -123,8 +154,12 @@ const GridProdutos = ({
                       />
                     </div>
                   ) : (
+                    <div>
+                    {/*
                     <div className="produto-item-icon">
                       <i className="fas fa-ice-cream"></i>
+                    </div>
+                    */}
                     </div>
                   )}
 
@@ -133,6 +168,7 @@ const GridProdutos = ({
                     <div className="produto-preco">
                       {formatarPreco(produto.preco)}
                     </div>
+                    {/* <span className="produto-adicionar"><i className="fas fa-plus"></i> Adicionar</span> */}
                   </div>
                 </div>
               );

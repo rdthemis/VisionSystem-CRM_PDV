@@ -17,10 +17,8 @@ const PainelCarrinho = ({
   loadingPedido,
   onClienteChange,
   onBuscarCliente,
-  onVoltar,
   onCancelar,
   onEditarItem,
-  onRemoverItem,
   onAlterarQuantidade,
   onIncrementarQuantidade,
   onDecrementarQuantidade,
@@ -54,31 +52,17 @@ const PainelCarrinho = ({
     <div className="pedido-panel">
 
       {/* ── CABEÇALHO ── */}
-      <div className="pedido-header">
-        <div className="pedido-info">
-          <h3>Pedido: {pedidoAtual?.id || pedidoAtual?.numero_pedido || 'Novo Pedido'}</h3>
-          {pedidoAtual?.status && (
-            <span className={`pedido-status ${String(pedidoAtual.status).toLowerCase().replace(/\s+/g, '-')}`}>
-              {pedidoAtual.status}
-            </span>
-          )}
-        </div>
-        <div className="pedido-actions">
-          <button className="btn-icon" title="Buscar Cliente" onClick={onBuscarCliente} disabled={loadingPedido}>
+      <div className="pedido-header pedido-header-compacto">
+        <div className="pedido-actions pedido-actions-principais">
+          <button className="btn-icon" title="Selecionar cliente" aria-label="Selecionar cliente" onClick={onBuscarCliente} disabled={loadingPedido}>
             <i className="fas fa-user"></i>
           </button>
-          <button className="btn-icon" title="Voltar" onClick={onVoltar} disabled={loadingPedido}>
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <button className="btn-icon" title="Cancelar comanda" onClick={onCancelar} disabled={loadingPedido}>
+          <button className="btn-icon btn-cancelar-comanda" title="Cancelar comanda" aria-label="Cancelar comanda" onClick={onCancelar} disabled={loadingPedido}>
             <i className="fa-solid fa-trash"></i>
           </button>
         </div>
-      </div>
-
-      {/* ── CLIENTE ── */}
-      <div className="pedido-info-cliente">
-        <div className="cliente-input-container">
+        <div className="pedido-cliente-inline">
+          <i className="fas fa-user-circle" aria-hidden="true"></i>
           <input
             type="text"
             value={clientePedido}
@@ -87,19 +71,6 @@ const PainelCarrinho = ({
             placeholder="Nome do cliente"
             disabled={loadingPedido}
           />
-        </div>
-        <div >
-          {dadosEntrega ? (
-            <div className="pedido-entrega-info">
-              <span>Entrega:  </span>
-              <span>{dadosEntrega.endereco_entrega || 'Sem endereço'}</span>
-            </div>
-          ) : (
-            <div className="pedido-entrega-hint">
-              <i className="fas fa-info-circle"></i>
-              Sem entrega configurada
-            </div>
-          )}
         </div>
       </div>
 
@@ -119,7 +90,6 @@ const PainelCarrinho = ({
                 item={item}
                 index={index}
                 onEditar={onEditarItem}
-                onRemover={onRemoverItem}
                 onAlterarQuantidade={onAlterarQuantidade}
                 onIncrementar={onIncrementarQuantidade}
                 onDecrementar={onDecrementarQuantidade}

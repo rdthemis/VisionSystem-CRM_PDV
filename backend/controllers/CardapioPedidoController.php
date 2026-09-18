@@ -2,20 +2,9 @@
 
 /**
  * CardapioPedidoController — recebe pedidos do Cardápio Digital
- * ---------------------------------------------------------------------
- * Registrar no index.php FORA do middleware JWT:
- *   GET /cardapio/categorias  -> CardapioController::categorias()
- *   GET /cardapio/produtos    -> CardapioController::produtos()
- *   GET /cardapio/adicionais  -> CardapioController::adicionais()
- *   POST /cardapio/pedidos    -> CardapioPedidoController::criar()  (também público)
- *
- * Expõe apenas o necessário pro cliente: nada de custo, estoque,
- * margem ou dados internos.
- *
- * ⚠ TODO: ajustar nomes de tabelas/colunas ao schema real.
- *   Se existir flag de ativo/visível (ex: `ativo` ou `disponivel`),
- *   descomentar os WHERE correspondentes.
  * ------------------------------------------------------------
+ * Rota sugerida no seu index.php (roteador RESTful):
+ *   POST /cardapio/pedidos  ->  CardapioPedidoController::criar()
  *
  * Payload esperado (JSON) — exatamente o que o front envia:
  * {
@@ -40,21 +29,17 @@
  *   na sua allowlist centralizada de CORS.
  */
 
+require_once '../config/Database.php';
+
 class CardapioPedidoController
 {
-    private $db;
-    private $database;
+    public $database;
+    public $db;
 
     public function __construct()
     {
         $this->database = new Database();
         $this->db = $this->database->getConnection();
-    }
-
-    private function json(array $dados): void
-    {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($dados, JSON_UNESCAPED_UNICODE);
     }
 
     public function criar(): void
@@ -78,7 +63,12 @@ class CardapioPedidoController
             }
             $subtotal += $precoItem * (int)$item['qtd'];
         }
-        $taxa  = $payload['tipo'] === 'entrega' ? $this->taxaEntrega() : 0.0;
+        $zona = null;
+        $taxa = 0.0;
+        if ($payload['tipo'] === 'entrega') {
+            $zona = $this->zonaEntrega((int)$payload['zona_entrega_id']);
+            $taxa = $zona['taxa'];
+        }
         $total = $subtotal + $taxa;
 
         try {
@@ -90,13 +80,13 @@ class CardapioPedidoController
                 "INSERT INTO pedidos
                    (numero_pedido, origem, tipo_pedido, status,
                     cliente_nome, cliente_telefone, tipo_cliente,
-                    endereco_entrega, forma_pagamento, troco_para,
+                    endereco_entrega, zona_entrega_id, forma_pagamento, troco_para,
                     taxa_entrega, total, valor_pago)
                  VALUES
                    (:numero, 'cardapio_digital', :tipo, 'aberto',
                     :nome, :telefone, 'avulso',
-                    :endereco, :forma, :troco,
-                    :taxa, :total, 0.00)"
+                    :endereco, :zona, :forma, :troco,
+                    :taxa_entrega, :total, 0.00)"
             );
             $stmt->execute([
                 ':numero'   => $numeroPedido,
@@ -104,9 +94,10 @@ class CardapioPedidoController
                 ':nome'     => trim($payload['cliente']['nome']),
                 ':telefone' => trim($payload['cliente']['telefone']),
                 ':endereco' => $payload['endereco'] ?? null,
+                ':zona'     => $zona['id'] ?? null,
                 ':forma'    => $this->mapearPagamento($payload['pagamento']['forma']),
                 ':troco'    => $payload['pagamento']['troco_para'] ?? null,
-                ':taxa'     => $taxa,
+                ':taxa_entrega' => $taxa,
                 ':total'    => $total,
             ]);
             $pedidoId = (int)$this->db->lastInsertId();
@@ -200,7 +191,7 @@ class CardapioPedidoController
             $this->db->commit();
 
             // ---- Impressão automática na Bematech ----------------------
-            // Reaproveita seu endpoint :8000/print_comanda.php (mesmo
+            // Reaproveita seu endpoint /api/print_comanda.php (mesmo
             // contrato do PDV). Falha de impressão não derruba o pedido,
             // mas o motivo vai na resposta (campo `impressao`).
             $impressao = ['ok' => true, 'erro' => null];
@@ -208,11 +199,13 @@ class CardapioPedidoController
                 $troco = $payload['pagamento']['troco_para'] ?? null;
                 $this->imprimirComanda([
                     'numero'        => $numeroPedido,
-                    'origem_pedido' => 'Cardapio_Digital',
                     'tipo'          => $payload['tipo'] === 'entrega' ? 'delivery' : 'local',
                     'cliente'       => trim($payload['cliente']['nome']),
                     'telefone'      => trim($payload['cliente']['telefone']),
-                    'endereco'      => $payload['endereco'] ?? '',
+                    'endereco'      => trim(
+                        ($payload['endereco'] ?? '') .
+                            ($zona ? ' — ' . $zona['nome'] : '')
+                    ),
                     'itens'         => $itensComanda,
                     'valor_entrega' => $taxa,
                     'desconto'      => 0,
@@ -222,7 +215,7 @@ class CardapioPedidoController
                 ]);
             } catch (Throwable $e) {
                 $impressao = ['ok' => false, 'erro' => $e->getMessage()];
-                Logger::warn("Falha ao imprimir pedido {$pedidoId}: " . $e->getMessage());
+                // Logger::warn("Falha ao imprimir pedido {$pedidoId}: " . $e->getMessage());
             }
 
             echo json_encode([
@@ -235,7 +228,7 @@ class CardapioPedidoController
             $this->db->rollBack();
             Logger::error('Erro ao gravar pedido do cardápio: ' . $e->getMessage());
             http_response_code(500);
-            echo json_encode(['sucesso' => false, 'erro' => 'Erro ao gravar o pedido.']);
+            echo json_encode(['sucesso' => false, 'erro' => 'Erro: ' . $e->getMessage()]);
         }
     }
 
@@ -250,6 +243,8 @@ class CardapioPedidoController
             return 'Tipo deve ser entrega ou retirada.';
         if ($p['tipo'] === 'entrega' && empty($p['endereco']))
             return 'Endereço é obrigatório para entrega.';
+        if ($p['tipo'] === 'entrega' && empty($p['zona_entrega_id']))
+            return 'Selecione a zona de entrega.';
         if (empty($p['pagamento']['forma'])) return 'Forma de pagamento é obrigatória.';
         if (empty($p['itens']) || !is_array($p['itens']))
             return 'O pedido precisa ter ao menos um item.';
@@ -264,7 +259,7 @@ class CardapioPedidoController
      * URL do seu endpoint de impressão existente.
      * TODO: confirmar host/porta — no PDV o hook usa http://localhost/api
      */
-    private const PRINT_URL = 'http://localhost:8000/print_comanda.php';
+    private const PRINT_URL = 'http://localhost/api/print_comanda.php';
 
     /**
      * Envia a comanda ao endpoint de impressão (mesmo contrato do PDV).
@@ -279,7 +274,7 @@ class CardapioPedidoController
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 2,
-            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_TIMEOUT        => 8,
         ]);
         $resposta = curl_exec($ch);
         $erroCurl = curl_error($ch);
@@ -294,74 +289,8 @@ class CardapioPedidoController
             throw new RuntimeException(
                 'Impressão: ' . ($json['message'] ?? "HTTP {$httpCode}")
             );
-        };
-    }
-
-    public function categorias(): void
-    {
-        // TODO: ajustar tabela/colunas
-        $rows = $this->db->query(
-            "SELECT id, nome
-               FROM categorias
-              WHERE ativo = 1
-              ORDER BY nome"
-        )->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->json(array_map(fn($r) => [
-            'id'   => (int)$r['id'],
-            'nome' => $r['nome'],
-        ], $rows));
-    }
-
-    public function produtos(): void
-    {
-        // TODO: ajustar tabela/colunas (categoria_id, descricao...)
-        $rows = $this->db->query(
-            "SELECT id, categoria_id, nome, descricao, preco
-               FROM produtos
-              WHERE ativo = 1
-              ORDER BY nome"
-        )->fetchAll(PDO::FETCH_ASSOC);
-
-        // Vínculo por CATEGORIA: o produto herda os adicionais
-        // cuja categoria_id é a mesma do produto.
-        // TODO: confirmar nome da coluna em `adicionais` (categoria_id)
-        $vinculos = [];
-        $v = $this->db->query(
-            "SELECT id, categoria_id FROM adicionais
-              WHERE ativo = 1"
-        )->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($v as $row) {
-            $vinculos[(int)$row['categoria_id']][] = (int)$row['id'];
         }
-
-        $this->json(array_map(fn($r) => [
-            'id'           => (int)$r['id'],
-            'categoriaId'  => (int)$r['categoria_id'],
-            'nome'         => $r['nome'],
-            'descricao'    => $r['descricao'] ?? '',
-            'preco'        => (float)$r['preco'],
-            'adicionaisIds' => $vinculos[(int)$r['categoria_id']] ?? [],
-        ], $rows));
     }
-
-    public function adicionais(): void
-    {
-        // TODO: ajustar tabela/colunas
-        $rows = $this->db->query(
-            "SELECT id, nome, preco
-               FROM adicionais
-              WHERE ativo = 1
-              ORDER BY nome"
-        )->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->json(array_map(fn($r) => [
-            'id'    => (int)$r['id'],
-            'nome'  => $r['nome'],
-            'preco' => (float)$r['preco'],
-        ], $rows));
-    }
-
 
     /**
      * Gera numero_pedido único (varchar 20).
@@ -411,9 +340,24 @@ class CardapioPedidoController
         return (float)$preco;
     }
 
-    private function taxaEntrega(): float
+    /**
+     * Busca a zona de entrega e sua taxa — a taxa SEMPRE vem do banco,
+     * nunca do front. TODO: confirmar nome da tabela `zonas_entrega`.
+     */
+    private function zonaEntrega(int $id): array
     {
-        // TODO: buscar de configurações do sistema, se existir tabela.
-        return 5.00;
+        $s = $this->db->prepare(
+            "SELECT id, nome, valor FROM zonas_entrega WHERE id = :id"
+        );
+        $s->execute([':id' => $id]);
+        $zona = $s->fetch(PDO::FETCH_ASSOC);
+        if ($zona === false) {
+            throw new RuntimeException("Zona de entrega {$id} não encontrada.");
+        }
+        return [
+            'id'   => (int)$zona['id'],
+            'nome' => $zona['nome'],
+            'valor' => (float)$zona['valor'],
+        ];
     }
 }

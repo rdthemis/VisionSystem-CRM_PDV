@@ -23,8 +23,12 @@ import ComandaPreview from '../../components/ComandaPreview';
 import { usePrintComanda } from '../../hooks/usePrintComanda';
 import Logger from '../../utils/Logger';
 
-// CSS
-import './Pedidos.css';
+// Vision UI + compatibilidade visual do PDV
+import '../../styles/vision/vision-tokens.css';
+import '../../styles/vision/vision-primitives.css';
+import '../../styles/vision/vision-patterns.css';
+import './PedidosDesign.css';
+import './Pdv-completo.css';
 
 // ══════════════════════════════════════════════════════════════════
 // CONFIGURAÇÃO CENTRALIZADA DA EMPRESA
@@ -820,6 +824,16 @@ const Pedidos = ({ onRefresh }) => {
     fecharModalProduto();
   };
 
+  const handleExcluirItemEditando = () => {
+    if (itemEditando === null) return;
+
+    removerItem(itemEditando);
+    cancelarEdicao();
+    setModalProdutoAberto(false);
+    setProdutoSelecionado(null);
+    mostrarMensagem('Item removido!', 'success');
+  };
+
   // ========================================
   // HANDLERS DE ENTREGA
   // ========================================
@@ -1078,7 +1092,6 @@ const Pedidos = ({ onRefresh }) => {
             onBuscarCliente={abrirModalCliente}
             onProdutoClick={abrirModalProduto}
             onEditarItem={iniciarEdicao}
-            onRemoverItem={removerItem}
             onAlterarQuantidade={atualizarQuantidade}
             onIncrementarQuantidade={incrementarQuantidade}
             onDecrementarQuantidade={decrementarQuantidade}
@@ -1115,6 +1128,7 @@ const Pedidos = ({ onRefresh }) => {
         onClose={fecharModalProduto}
         produto={produtoSelecionado}
         onConfirmar={handleConfirmarProduto}
+        onExcluir={handleExcluirItemEditando}
         modoEdicao={itemEditando !== null}
         dadosIniciais={getItemEditando()}
       />

@@ -1,0 +1,141 @@
+/* =====================================================
+   VISION UI — PADRÕES DE COMPOSIÇÃO 1.0
+   Combina primitivas em estruturas recorrentes sem
+   acoplar comportamento ou regras de negócio.
+   ===================================================== */
+
+.vision-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vision-space-3);
+}
+
+.vision-cluster {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vision-space-2);
+}
+
+.vision-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vision-space-3);
+}
+
+.vision-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--vision-space-2);
+  padding: var(--vision-space-2);
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-lg);
+  background: color-mix(in srgb, var(--vision-color-surface) 94%, transparent);
+  box-shadow: var(--vision-shadow-xs);
+}
+
+.vision-section {
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-lg);
+  background: var(--vision-color-surface);
+  box-shadow: var(--vision-shadow-xs);
+}
+
+.vision-section__header {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vision-space-3);
+  padding: 0 var(--vision-space-4);
+  border-bottom: 1px solid var(--vision-color-border);
+}
+
+.vision-section__body { padding: var(--vision-space-4); }
+
+.vision-summary {
+  padding: var(--vision-space-3) var(--vision-space-4);
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-md);
+  background: var(--vision-color-surface-soft);
+}
+
+.vision-summary--success {
+  border-color: #c7f0df;
+  background: var(--vision-color-success-50);
+}
+
+.vision-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--vision-space-2);
+}
+
+.vision-icon-button {
+  width: var(--vision-control-md);
+  height: var(--vision-control-md);
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-md);
+  background: var(--vision-color-surface);
+  color: var(--vision-color-text-muted);
+  cursor: pointer;
+  transition:
+    transform var(--vision-duration-fast) var(--vision-ease-standard),
+    color var(--vision-duration-normal),
+    border-color var(--vision-duration-normal),
+    background var(--vision-duration-normal);
+}
+
+.vision-icon-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--vision-color-brand-300);
+  background: var(--vision-color-brand-50);
+  color: var(--vision-color-brand-600);
+}
+
+.vision-modal {
+  width: min(960px, calc(100vw - 32px));
+  max-height: min(880px, calc(100dvh - 32px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-xl);
+  background: var(--vision-color-surface);
+  box-shadow: var(--vision-shadow-lg);
+}
+
+.vision-modal__body {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--vision-space-4);
+}
+
+.vision-kbd {
+  min-width: 24px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  border: 1px solid var(--vision-color-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--vision-color-surface);
+  color: var(--vision-color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (max-width: 720px) {
+  .vision-toolbar,
+  .vision-split { align-items: stretch; flex-direction: column; }
+  .vision-actions > * { flex: 1 1 auto; }
+  .vision-modal { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+}

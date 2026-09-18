@@ -14,7 +14,6 @@ const ItemCarrinho = ({
   item,                    // Dados do item
   index,                   // Índice no array do carrinho
   onEditar,                // Função para editar o item
-  onRemover,               // Função para remover o item
   onAlterarQuantidade,     // Função para alterar quantidade
   onIncrementar,           // 🆕 Incrementar quantidade
   onDecrementar            // 🆕 Decrementar quantidade
@@ -166,12 +165,9 @@ const ItemCarrinho = ({
 
       {/* DETALHES DO ITEM */}
       <div className="item-detalhes">
-        {/* Nome do produto com ícone de edição */}
+        {/* Nome do produto */}
         <div className="item-nome">
           {item.produto_nome} - {formatarPreco(item.preco_produto)}
-          <span className="item-edit-hint">
-            <i className="fas fa-edit"></i>
-          </span>
         </div>
 
         {/* Adicionais (se houver) */}
@@ -198,27 +194,16 @@ const ItemCarrinho = ({
         {/* Observações (se houver) */}
         {item.observacoes && (
           <div className="item-observacoes">
-            <i className="fas fa-comment"></i> {item.observacoes}
+            {item.observacoes}
           </div>
         )}
       </div>
 
-      {/* AÇÕES (Valor e Remover) */}
+      {/* VALOR */}
       <div className="item-actions">
         <div className="item-valor">
           {formatarPreco(item.subtotal)}
         </div>
-        
-        <button
-          className="btn-remove-item"
-          onClick={(e) => {
-            pararPropagacao(e);
-            onRemover(index);
-          }}
-          title="Remover item"
-        >
-          <i className="fas fa-trash"></i>
-        </button>
       </div>
     </div>
   );

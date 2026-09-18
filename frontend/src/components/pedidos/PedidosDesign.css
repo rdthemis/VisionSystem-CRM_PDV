@@ -1,0 +1,776 @@
+/* =============================================================
+   VISION UI — DESIGN SYSTEM CONSOLIDADO
+   Gerado automaticamente a partir de 4 arquivos, na ordem de
+   dependência (tokens antes de quem os consome).
+   Data da consolidação: 2026-09-18
+
+   Ordem de origem:
+     1. vision-tokens.css      (variáveis --vision-* em :root)
+     2. vision-primitives.css  (botões, campos, cards etc. que usam os tokens)
+     3. vision-patterns.css    (composições: stack, toolbar, modal etc.)
+     4. print.css              (estilos de impressão — independente, sem
+                                 relação com os tokens/vision-*)
+
+   Este arquivo define as variáveis --vision-color-*, --vision-radius-*,
+   --vision-shadow-*, --vision-space-* etc. usadas pelas camadas PdvV2 a
+   PdvV32 do pdv-completo.css. Se o projeto vai carregar os dois arquivos,
+   carregue ESTE primeiro (ou peça pra eu unir tudo em um único arquivo).
+   ============================================================= */
+
+/* =============================================================
+   1/4 — TOKENS — vision-tokens.css
+   ============================================================= */
+/* =====================================================
+   VISION UI — DESIGN TOKENS 1.0
+   Fonte única para cores, tipografia, espaçamento e movimento.
+   ===================================================== */
+
+:root {
+    --vision-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    --vision-color-brand-50: #eef4ff;
+    --vision-color-brand-100: #dce8ff;
+    --vision-color-brand-300: #9db8ff;
+    --vision-color-brand-500: #4f7df3;
+    --vision-color-brand-600: #3767df;
+    --vision-color-brand-700: #2e55be;
+
+    --vision-color-success-50: #eafaf4;
+    --vision-color-success-500: #20b486;
+    --vision-color-success-600: #15966e;
+    --vision-color-warning-50: #fff7e8;
+    --vision-color-warning-500: #eaa43a;
+    --vision-color-danger-50: #fff0f2;
+    --vision-color-danger-500: #e85d68;
+    --vision-color-danger-600: #d74654;
+
+    --vision-color-canvas: #f4f7fb;
+    --vision-color-surface: #ffffff;
+    --vision-color-surface-soft: #f8fafc;
+    --vision-color-border: #e7edf5;
+    --vision-color-border-strong: #d6e0ec;
+    --vision-color-text: #1e293b;
+    --vision-color-text-muted: #718096;
+    --vision-color-text-subtle: #94a3b8;
+
+    --vision-space-1: 4px;
+    --vision-space-2: 8px;
+    --vision-space-3: 12px;
+    --vision-space-4: 16px;
+    --vision-space-5: 20px;
+    --vision-space-6: 24px;
+    --vision-space-8: 32px;
+    --vision-space-10: 40px;
+    --vision-space-12: 48px;
+
+    --vision-radius-sm: 8px;
+    --vision-radius-md: 12px;
+    --vision-radius-lg: 16px;
+    --vision-radius-xl: 20px;
+    --vision-radius-pill: 999px;
+
+    --vision-shadow-xs: 0 1px 3px rgba(31, 50, 81, .05);
+    --vision-shadow-sm: 0 2px 8px rgba(31, 50, 81, .06);
+    --vision-shadow-md: 0 10px 28px rgba(31, 50, 81, .09);
+    --vision-shadow-lg: 0 18px 42px rgba(31, 50, 81, .14);
+
+    --vision-duration-fast: 120ms;
+    --vision-duration-normal: 180ms;
+    --vision-duration-slow: 260ms;
+    --vision-ease-standard: cubic-bezier(.2, .8, .2, 1);
+    --vision-focus-ring: 0 0 0 4px rgba(79, 125, 243, .14);
+
+    --vision-control-sm: 36px;
+    --vision-control-md: 44px;
+    --vision-control-lg: 52px;
+}
+
+/* =============================================================
+   2/4 — PRIMITIVAS — vision-primitives.css
+   ============================================================= */
+/* =====================================================
+   VISION UI — PRIMITIVAS REUTILIZÁVEIS
+   Classes opcionais para novas telas. O PDV também herda
+   regras seguras por meio do escopo .pdv-container.
+   ===================================================== */
+
+.vision-ui,
+.pdv-container {
+    font-family: var(--vision-font-sans);
+    color: var(--vision-color-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.vision-ui *,
+.vision-ui *::before,
+.vision-ui *::after,
+.pdv-container *,
+.pdv-container *::before,
+.pdv-container *::after {
+    box-sizing: border-box;
+}
+
+.vision-button {
+    min-height: var(--vision-control-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vision-space-2);
+    padding: 0 var(--vision-space-4);
+    border: 1px solid transparent;
+    border-radius: var(--vision-radius-md);
+    font: 700 14px/1 var(--vision-font-sans);
+    cursor: pointer;
+    transition:
+        transform var(--vision-duration-normal) var(--vision-ease-standard),
+        box-shadow var(--vision-duration-normal) var(--vision-ease-standard),
+        background var(--vision-duration-normal) var(--vision-ease-standard),
+        border-color var(--vision-duration-normal) var(--vision-ease-standard);
+}
+
+.vision-button:hover {
+    transform: translateY(-1px);
+}
+
+.vision-button:active {
+    transform: translateY(0) scale(.985);
+}
+
+.vision-button:disabled {
+    opacity: .52;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.vision-button--primary {
+    background: var(--vision-color-brand-500);
+    color: #fff;
+    box-shadow: 0 7px 16px rgba(79, 125, 243, .2);
+}
+
+.vision-button--primary:hover {
+    background: var(--vision-color-brand-600);
+}
+
+.vision-button--success {
+    background: var(--vision-color-success-500);
+    color: #fff;
+}
+
+.vision-button--danger {
+    background: var(--vision-color-danger-500);
+    color: #fff;
+}
+
+.vision-button--secondary {
+    background: var(--vision-color-surface-soft);
+    color: var(--vision-color-text);
+    border-color: var(--vision-color-border);
+}
+
+.vision-button--ghost {
+    background: transparent;
+    color: var(--vision-color-text-muted);
+}
+
+.vision-field {
+    min-height: var(--vision-control-md);
+    width: 100%;
+    padding: 0 var(--vision-space-3);
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-md);
+    background: var(--vision-color-surface);
+    color: var(--vision-color-text);
+    font: 500 14px/1.4 var(--vision-font-sans);
+    transition: border-color var(--vision-duration-normal), box-shadow var(--vision-duration-normal);
+}
+
+.vision-field:focus {
+    border-color: var(--vision-color-brand-300);
+    box-shadow: var(--vision-focus-ring);
+    outline: none;
+}
+
+.vision-card {
+    background: var(--vision-color-surface);
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-lg);
+    box-shadow: var(--vision-shadow-sm);
+}
+
+.vision-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: var(--vision-radius-pill);
+    background: var(--vision-color-surface-soft);
+    color: var(--vision-color-text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.vision-empty-state {
+    min-height: 180px;
+    display: grid;
+    place-items: center;
+    padding: var(--vision-space-8);
+    color: var(--vision-color-text-muted);
+    text-align: center;
+}
+
+:where(.vision-ui, .pdv-container) :focus-visible {
+    outline: none;
+    box-shadow: var(--vision-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .vision-ui *,
+    .vision-ui *::before,
+    .vision-ui *::after,
+    .pdv-container *,
+    .pdv-container *::before,
+    .pdv-container *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+/* =============================================================
+   3/4 — PADRÕES DE COMPOSIÇÃO — vision-patterns.css
+   ============================================================= */
+/* =====================================================
+   VISION UI — PADRÕES DE COMPOSIÇÃO 1.0
+   Combina primitivas em estruturas recorrentes sem
+   acoplar comportamento ou regras de negócio.
+   ===================================================== */
+
+.vision-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vision-space-3);
+}
+
+.vision-cluster {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--vision-space-2);
+}
+
+.vision-split {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--vision-space-3);
+}
+
+.vision-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--vision-space-2);
+    padding: var(--vision-space-2);
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-lg);
+    background: color-mix(in srgb, var(--vision-color-surface) 94%, transparent);
+    box-shadow: var(--vision-shadow-xs);
+}
+
+.vision-section {
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-lg);
+    background: var(--vision-color-surface);
+    box-shadow: var(--vision-shadow-xs);
+}
+
+.vision-section__header {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--vision-space-3);
+    padding: 0 var(--vision-space-4);
+    border-bottom: 1px solid var(--vision-color-border);
+}
+
+.vision-section__body {
+    padding: var(--vision-space-4);
+}
+
+.vision-summary {
+    padding: var(--vision-space-3) var(--vision-space-4);
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-md);
+    background: var(--vision-color-surface-soft);
+}
+
+.vision-summary--success {
+    border-color: #c7f0df;
+    background: var(--vision-color-success-50);
+}
+
+.vision-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--vision-space-2);
+}
+
+.vision-icon-button {
+    width: var(--vision-control-md);
+    height: var(--vision-control-md);
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-md);
+    background: var(--vision-color-surface);
+    color: var(--vision-color-text-muted);
+    cursor: pointer;
+    transition:
+        transform var(--vision-duration-fast) var(--vision-ease-standard),
+        color var(--vision-duration-normal),
+        border-color var(--vision-duration-normal),
+        background var(--vision-duration-normal);
+}
+
+.vision-icon-button:hover {
+    transform: translateY(-1px);
+    border-color: var(--vision-color-brand-300);
+    background: var(--vision-color-brand-50);
+    color: var(--vision-color-brand-600);
+}
+
+.vision-modal {
+    width: min(960px, calc(100vw - 32px));
+    max-height: min(880px, calc(100dvh - 32px));
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid var(--vision-color-border);
+    border-radius: var(--vision-radius-xl);
+    background: var(--vision-color-surface);
+    box-shadow: var(--vision-shadow-lg);
+}
+
+.vision-modal__body {
+    min-height: 0;
+    overflow: auto;
+    padding: var(--vision-space-4);
+}
+
+.vision-kbd {
+    min-width: 24px;
+    height: 22px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 6px;
+    border: 1px solid var(--vision-color-border-strong);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--vision-color-surface);
+    color: var(--vision-color-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+@media (max-width: 720px) {
+
+    .vision-toolbar,
+    .vision-split {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .vision-actions>* {
+        flex: 1 1 auto;
+    }
+
+    .vision-modal {
+        width: calc(100vw - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+}
+
+/* =============================================================
+   4/4 — IMPRESSÃO (independente) — print.css
+   ============================================================= */
+/* src/styles/print.css */
+/* CSS específico para impressão - compatível com impressoras comuns e térmicas */
+
+/* ========================================
+   CONFIGURAÇÕES GERAIS DE IMPRESSÃO
+   ======================================== */
+
+@media print {
+
+    /* Remover margens padrão da página */
+    @page {
+        margin: 2mm;
+        size: auto;
+    }
+
+    /* Configuração para papel térmico 80mm */
+    @page :first {
+        size: 80mm auto;
+        margin: 2mm;
+    }
+
+    /* Ocultar elementos desnecessários */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Mostrar apenas área de impressão */
+    .print-area,
+    .print-area * {
+        visibility: visible;
+    }
+
+    /* Posicionar área de impressão */
+    .print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    /* Remover cores de fundo para economia de tinta */
+    * {
+        background: transparent !important;
+        color: black !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    /* Quebras de página */
+    .break-before {
+        page-break-before: always;
+    }
+
+    .break-after {
+        page-break-after: always;
+    }
+
+    .no-break {
+        page-break-inside: avoid;
+    }
+}
+
+/* ========================================
+   ESTILOS PARA COMANDA
+   ======================================== */
+
+.comanda-print {
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 12px;
+    line-height: 1.3;
+    max-width: 72mm;
+    margin: 0 auto;
+    padding: 2mm;
+}
+
+.comanda-header {
+    text-align: center;
+    border-bottom: 1px dashed #000;
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+}
+
+.comanda-title {
+    font-size: 16px;
+    font-weight: bold;
+    background: #000;
+    color: #fff;
+    padding: 2mm;
+    margin: 2mm 0;
+    text-align: center;
+}
+
+.comanda-info {
+    margin: 1mm 0;
+}
+
+.comanda-info-line {
+    display: flex;
+    justify-content: space-between;
+    margin: 1mm 0;
+}
+
+.comanda-items {
+    margin: 3mm 0;
+}
+
+.comanda-item {
+    margin: 2mm 0;
+    border-bottom: 1px dotted #999;
+    padding-bottom: 1mm;
+}
+
+.comanda-item-name {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.comanda-item-obs {
+    font-size: 10px;
+    margin-left: 3mm;
+    color: #666;
+}
+
+.comanda-footer {
+    border-top: 1px dashed #000;
+    padding-top: 3mm;
+    margin-top: 3mm;
+    text-align: center;
+    font-size: 10px;
+}
+
+/* ========================================
+   ESTILOS PARA RECIBO DE VENDA
+   ======================================== */
+
+.recibo-print {
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 11px;
+    line-height: 1.2;
+    max-width: 72mm;
+    margin: 0 auto;
+    padding: 2mm;
+}
+
+.recibo-header {
+    text-align: center;
+    border-bottom: 1px solid #000;
+    padding-bottom: 3mm;
+    margin-bottom: 3mm;
+}
+
+.recibo-title {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    margin: 2mm 0;
+    text-decoration: underline;
+}
+
+.recibo-info-line {
+    display: flex;
+    justify-content: space-between;
+    margin: 1mm 0;
+}
+
+.recibo-items {
+    margin: 3mm 0;
+    border-top: 1px dashed #000;
+    border-bottom: 1px dashed #000;
+    padding: 2mm 0;
+}
+
+.recibo-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 1mm 0;
+    font-size: 10px;
+}
+
+.recibo-total {
+    font-weight: bold;
+    font-size: 12px;
+    border-top: 1px solid #000;
+    padding-top: 2mm;
+    margin-top: 2mm;
+}
+
+.recibo-total-line {
+    display: flex;
+    justify-content: space-between;
+    margin: 1mm 0;
+}
+
+.recibo-payment {
+    margin: 3mm 0;
+    border-top: 1px dashed #000;
+    padding-top: 2mm;
+}
+
+.recibo-footer {
+    text-align: center;
+    font-size: 9px;
+    margin-top: 3mm;
+    border-top: 1px dashed #000;
+    padding-top: 2mm;
+}
+
+/* ========================================
+   ESTILOS PARA RELATÓRIO DE CAIXA
+   ======================================== */
+
+.relatorio-print {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    max-width: 210mm;
+    /* A4 */
+    margin: 0 auto;
+    padding: 5mm;
+}
+
+.relatorio-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 5mm;
+    margin-bottom: 5mm;
+}
+
+.relatorio-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 3mm 0;
+}
+
+.relatorio-section {
+    margin: 5mm 0;
+    border: 1px solid #ccc;
+    padding: 3mm;
+}
+
+.relatorio-section-title {
+    font-weight: bold;
+    font-size: 14px;
+    background: #f0f0f0;
+    padding: 2mm;
+    margin: -3mm -3mm 3mm -3mm;
+}
+
+.relatorio-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2mm 0;
+}
+
+.relatorio-table th,
+.relatorio-table td {
+    border: 1px solid #ccc;
+    padding: 2mm;
+    text-align: left;
+}
+
+.relatorio-table th {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+.relatorio-totals {
+    background: #f9f9f9;
+    border: 2px solid #000;
+    padding: 3mm;
+    margin: 5mm 0;
+}
+
+.relatorio-signature {
+    margin-top: 10mm;
+    border-top: 1px solid #000;
+    padding-top: 5mm;
+}
+
+/* ========================================
+   UTILITÁRIOS DE FORMATAÇÃO
+   ======================================== */
+
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.font-bold {
+    font-weight: bold;
+}
+
+.font-small {
+    font-size: 10px;
+}
+
+.font-large {
+    font-size: 14px;
+}
+
+.border-top {
+    border-top: 1px solid #000;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #000;
+}
+
+.border-dashed {
+    border-style: dashed;
+}
+
+.margin-small {
+    margin: 1mm 0;
+}
+
+.margin-medium {
+    margin: 3mm 0;
+}
+
+.margin-large {
+    margin: 5mm 0;
+}
+
+.padding-small {
+    padding: 1mm;
+}
+
+.padding-medium {
+    padding: 3mm;
+}
+
+.padding-large {
+    padding: 5mm;
+}
+
+/* ========================================
+   RESPONSIVO PARA DIFERENTES TAMANHOS
+   ======================================== */
+
+/* Para impressoras de 58mm */
+@media print and (max-width: 58mm) {
+
+    .comanda-print,
+    .recibo-print {
+        max-width: 54mm;
+        font-size: 10px;
+    }
+
+    .comanda-title,
+    .recibo-title {
+        font-size: 12px;
+    }
+}
+
+/* Para impressoras A4 */
+@media print and (min-width: 200mm) {
+
+    .comanda-print,
+    .recibo-print {
+        max-width: 100mm;
+        margin: 0 auto;
+        border: 1px solid #ccc;
+        padding: 5mm;
+    }
+}

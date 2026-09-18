@@ -4,8 +4,8 @@
 require_once '../config/Database.php';
 require_once '../models/Categoria.php';
 
-require_once __DIR__.'/../config/environment.php';
-require_once __DIR__.'/../config/SecurityHeaders.php';
+require_once __DIR__ . '/../config/environment.php';
+require_once __DIR__ . '/../config/SecurityHeaders.php';
 
 SecurityHeaders::apply(IS_PRODUCTION);
 SecurityHeaders::applyForAPI();
@@ -81,7 +81,7 @@ class CategoriaController
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Erro ao buscar categorias: '.$e->getMessage(),
+                'message' => 'Erro ao buscar categorias: ' . $e->getMessage(),
             ]);
 
             return;
@@ -107,7 +107,7 @@ class CategoriaController
             // Criar categoria
             $this->categoria->criar();
         } catch (Exception $e) {
-            sendErrorResponse('Erro ao criar categoria: '.$e->getMessage(), 500);
+            sendErrorResponse('Erro ao criar categoria: ' . $e->getMessage(), 500);
         }
     }
 
@@ -131,7 +131,7 @@ class CategoriaController
             // Atualizar categoria
             $this->categoria->atualizar();
         } catch (Exception $e) {
-            sendErrorResponse('Erro ao atualizar categoria: '.$e->getMessage(), 500);
+            sendErrorResponse('Erro ao atualizar categoria: ' . $e->getMessage(), 500);
         }
     }
 
@@ -151,7 +151,7 @@ class CategoriaController
             // Deletar categoria
             $this->categoria->deletar();
         } catch (Exception $e) {
-            sendErrorResponse('Erro ao excluir categoria: '.$e->getMessage(), 500);
+            sendErrorResponse('Erro ao excluir categoria: ' . $e->getMessage(), 500);
         }
     }
 }

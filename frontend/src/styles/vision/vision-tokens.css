@@ -1,0 +1,64 @@
+/* =====================================================
+   VISION UI — DESIGN TOKENS 1.0
+   Fonte única para cores, tipografia, espaçamento e movimento.
+   ===================================================== */
+
+:root {
+  --vision-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --vision-color-brand-50: #eef4ff;
+  --vision-color-brand-100: #dce8ff;
+  --vision-color-brand-300: #9db8ff;
+  --vision-color-brand-500: #4f7df3;
+  --vision-color-brand-600: #3767df;
+  --vision-color-brand-700: #2e55be;
+
+  --vision-color-success-50: #eafaf4;
+  --vision-color-success-500: #20b486;
+  --vision-color-success-600: #15966e;
+  --vision-color-warning-50: #fff7e8;
+  --vision-color-warning-500: #eaa43a;
+  --vision-color-danger-50: #fff0f2;
+  --vision-color-danger-500: #e85d68;
+  --vision-color-danger-600: #d74654;
+
+  --vision-color-canvas: #f4f7fb;
+  --vision-color-surface: #ffffff;
+  --vision-color-surface-soft: #f8fafc;
+  --vision-color-border: #e7edf5;
+  --vision-color-border-strong: #d6e0ec;
+  --vision-color-text: #1e293b;
+  --vision-color-text-muted: #718096;
+  --vision-color-text-subtle: #94a3b8;
+
+  --vision-space-1: 4px;
+  --vision-space-2: 8px;
+  --vision-space-3: 12px;
+  --vision-space-4: 16px;
+  --vision-space-5: 20px;
+  --vision-space-6: 24px;
+  --vision-space-8: 32px;
+  --vision-space-10: 40px;
+  --vision-space-12: 48px;
+
+  --vision-radius-sm: 8px;
+  --vision-radius-md: 12px;
+  --vision-radius-lg: 16px;
+  --vision-radius-xl: 20px;
+  --vision-radius-pill: 999px;
+
+  --vision-shadow-xs: 0 1px 3px rgba(31, 50, 81, .05);
+  --vision-shadow-sm: 0 2px 8px rgba(31, 50, 81, .06);
+  --vision-shadow-md: 0 10px 28px rgba(31, 50, 81, .09);
+  --vision-shadow-lg: 0 18px 42px rgba(31, 50, 81, .14);
+
+  --vision-duration-fast: 120ms;
+  --vision-duration-normal: 180ms;
+  --vision-duration-slow: 260ms;
+  --vision-ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --vision-focus-ring: 0 0 0 4px rgba(79, 125, 243, .14);
+
+  --vision-control-sm: 36px;
+  --vision-control-md: 44px;
+  --vision-control-lg: 52px;
+}

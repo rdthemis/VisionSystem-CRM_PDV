@@ -42,7 +42,6 @@ const FormularioPedido = ({
   onProdutoClick,
   onEditarItem,
   onEditandoItem,
-  onRemoverItem,
   onAlterarQuantidade,
   onIncrementarQuantidade,    // 🆕 ADICIONAR
   onDecrementarQuantidade,    // 🆕 ADICIONAR
@@ -99,7 +98,6 @@ const FormularioPedido = ({
         onCancelar={onCancelar}
         onEditarItem={onEditarItem}
         onEditandoItem={onEditandoItem}
-        onRemoverItem={onRemoverItem}
         onAlterarQuantidade={onAlterarQuantidade}
         onIncrementarQuantidade={onIncrementarQuantidade}    // 🆕 ADICIONAR
         onDecrementarQuantidade={onDecrementarQuantidade}    // 🆕 ADICIONAR

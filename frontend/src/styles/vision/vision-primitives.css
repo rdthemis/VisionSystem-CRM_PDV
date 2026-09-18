@@ -1,0 +1,115 @@
+/* =====================================================
+   VISION UI — PRIMITIVAS REUTILIZÁVEIS
+   Classes opcionais para novas telas. O PDV também herda
+   regras seguras por meio do escopo .pdv-container.
+   ===================================================== */
+
+.vision-ui,
+.pdv-container {
+  font-family: var(--vision-font-sans);
+  color: var(--vision-color-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.vision-ui *,
+.vision-ui *::before,
+.vision-ui *::after,
+.pdv-container *,
+.pdv-container *::before,
+.pdv-container *::after {
+  box-sizing: border-box;
+}
+
+.vision-button {
+  min-height: var(--vision-control-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vision-space-2);
+  padding: 0 var(--vision-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--vision-radius-md);
+  font: 700 14px/1 var(--vision-font-sans);
+  cursor: pointer;
+  transition:
+    transform var(--vision-duration-normal) var(--vision-ease-standard),
+    box-shadow var(--vision-duration-normal) var(--vision-ease-standard),
+    background var(--vision-duration-normal) var(--vision-ease-standard),
+    border-color var(--vision-duration-normal) var(--vision-ease-standard);
+}
+
+.vision-button:hover { transform: translateY(-1px); }
+.vision-button:active { transform: translateY(0) scale(.985); }
+.vision-button:disabled { opacity: .52; cursor: not-allowed; transform: none; }
+.vision-button--primary { background: var(--vision-color-brand-500); color: #fff; box-shadow: 0 7px 16px rgba(79,125,243,.2); }
+.vision-button--primary:hover { background: var(--vision-color-brand-600); }
+.vision-button--success { background: var(--vision-color-success-500); color: #fff; }
+.vision-button--danger { background: var(--vision-color-danger-500); color: #fff; }
+.vision-button--secondary { background: var(--vision-color-surface-soft); color: var(--vision-color-text); border-color: var(--vision-color-border); }
+.vision-button--ghost { background: transparent; color: var(--vision-color-text-muted); }
+
+.vision-field {
+  min-height: var(--vision-control-md);
+  width: 100%;
+  padding: 0 var(--vision-space-3);
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-md);
+  background: var(--vision-color-surface);
+  color: var(--vision-color-text);
+  font: 500 14px/1.4 var(--vision-font-sans);
+  transition: border-color var(--vision-duration-normal), box-shadow var(--vision-duration-normal);
+}
+
+.vision-field:focus {
+  border-color: var(--vision-color-brand-300);
+  box-shadow: var(--vision-focus-ring);
+  outline: none;
+}
+
+.vision-card {
+  background: var(--vision-color-surface);
+  border: 1px solid var(--vision-color-border);
+  border-radius: var(--vision-radius-lg);
+  box-shadow: var(--vision-shadow-sm);
+}
+
+.vision-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--vision-radius-pill);
+  background: var(--vision-color-surface-soft);
+  color: var(--vision-color-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.vision-empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  padding: var(--vision-space-8);
+  color: var(--vision-color-text-muted);
+  text-align: center;
+}
+
+:where(.vision-ui, .pdv-container) :focus-visible {
+  outline: none;
+  box-shadow: var(--vision-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vision-ui *,
+  .vision-ui *::before,
+  .vision-ui *::after,
+  .pdv-container *,
+  .pdv-container *::before,
+  .pdv-container *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

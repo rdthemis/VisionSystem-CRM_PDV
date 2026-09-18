@@ -532,7 +532,7 @@ class Pedido
             $this->conn->beginTransaction();
 
             $stmt = $this->conn->prepare(
-                'SELECT total, valor_pago, status, cliente_id, cliente_nome, numero_pedido FROM ' . $this->table_pedidos . ' WHERE id = :id FOR UPDATE'
+                'SELECT total, valor_pago, status, cliente_id, cliente_nome, numero_pedido, taxa_entrega FROM ' . $this->table_pedidos . ' WHERE id = :id FOR UPDATE'
             );
             $stmt->bindParam(':id', $pedido_id, PDO::PARAM_INT);
             $stmt->execute();
@@ -547,7 +547,7 @@ class Pedido
             }
 
             $valor = floatval($valor);
-            $saldoPendente = floatval($pedido['total']) - floatval($pedido['valor_pago']);
+            $saldoPendente = floatval($pedido['total']) - floatval($pedido['valor_pago']) + floatval($pedido['taxa_entrega']);
 
             if ($valor <= 0) {
                 throw new Exception('Valor do pagamento deve ser maior que zero');

@@ -16,6 +16,7 @@ const ModalProduto = ({
   onClose,             // Function: função para fechar o modal
   produto,             // Object: produto selecionado
   onConfirmar,         // Function: função chamada ao confirmar
+  onExcluir,           // Function: exclui o item durante a edição
   modoEdicao = false,  // Boolean: se está editando item existente
   dadosIniciais = {}   // Object: dados do item sendo editado
 }) => {
@@ -412,6 +413,12 @@ const ModalProduto = ({
 
         {/* RODAPÉ */}
         <div className="modal-footer">
+          {modoEdicao && onExcluir && (
+            <button className="btn-excluir-item-modal" onClick={onExcluir}>
+              <i className="fas fa-trash" aria-hidden="true"></i>
+              Excluir item
+            </button>
+          )}
           <button className="btn-secondary" onClick={onClose}>
             Cancelar
           </button>

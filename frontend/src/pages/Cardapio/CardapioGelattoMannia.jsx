@@ -20,7 +20,7 @@ const CONFIG = {
   horarios: {
     // 0=Dom ... 6=Sáb — [abre, fecha] em horas; null = fechado
     0: [14, 22],
-    1: [13, 23],
+    1: [12, 23],
     2: [10, 22],
     3: [13, 22],
     4: [13, 20],
@@ -79,13 +79,21 @@ function lojaAberta() {
 async function carregarDoPDV() {
   if (!API_BASE) return null;
   try {
-    const [c, p, a] = await Promise.all([
+    const [c, p, a, z] = await Promise.all([
       fetch(`${API_BASE}/cardapio/categorias`).then((r) => r.json()),
       fetch(`${API_BASE}/cardapio/produtos`).then((r) => r.json()),
       fetch(`${API_BASE}/cardapio/adicionais`).then((r) => r.json()),
+      fetch(`${API_BASE}/cardapio/zonas`)
+        .then((r) => r.json())
+        .catch(() => []),
     ]);
     if (Array.isArray(c) && c.length && Array.isArray(p) && p.length) {
-      return { categorias: c, produtos: p, adicionais: a || [] };
+      return {
+        categorias: c,
+        produtos: p,
+        adicionais: a || [],
+        zonas: Array.isArray(z) ? z : [],
+      };
     }
     return null;
   } catch {
@@ -137,9 +145,14 @@ export default function CardapioGelattoMannia() {
     telefone: "",
     modo: "entrega", // entrega | retirada
     endereco: "",
+    zonaId: "",
     pagamento: CONFIG.formasPagamento[0],
     troco: "",
   });
+
+const zonaSel = (dados.zonas || []).find(
+    (z) => String(z.id) === String(cliente.zonaId)
+  );
 
   useEffect(() => {
     carregarDoPDV().then((d) => {
@@ -209,7 +222,15 @@ export default function CardapioGelattoMannia() {
         i.qtd,
     0
   );
-  const taxa = cliente.modo === "entrega" ? CONFIG.taxaEntrega : 0;
+  const temZonas = (dados.zonas || []).length > 0;
+  const taxa =
+    cliente.modo === "entrega"
+      ? zonaSel
+        ? Number(zonaSel.taxa)
+        : temZonas
+        ? 0 // aguardando seleção da zona
+        : CONFIG.taxaEntrega
+      : 0;
   const total = subtotal + taxa;
   const abaixoDoMinimo =
     cliente.modo === "entrega" && subtotal < CONFIG.pedidoMinimoEntrega;
@@ -220,6 +241,8 @@ export default function CardapioGelattoMannia() {
     cliente: { nome: cliente.nome.trim(), telefone: cliente.telefone.trim() },
     tipo: cliente.modo, // "entrega" | "retirada"
     endereco: cliente.modo === "entrega" ? cliente.endereco.trim() : null,
+    zona_entrega_id:
+      cliente.modo === "entrega" && zonaSel ? zonaSel.id : null,
     pagamento: {
       forma: cliente.pagamento,
       troco_para:
@@ -244,7 +267,7 @@ export default function CardapioGelattoMannia() {
     total,
   });
 
-  /* ----------- Mensagem do WhatsApp ----------- */
+ /* ----------- Mensagem do WhatsApp ----------- */
   const montarMensagem = (numeroPedido) => {
     const l = [];
     l.push(`*NOVO PEDIDO — ${CONFIG.nomeLoja.toUpperCase()}*`);
@@ -257,6 +280,8 @@ export default function CardapioGelattoMannia() {
         ? `*Entrega:* ${cliente.endereco}`
         : `*Retirada no balcão*`
     );
+    if (cliente.modo === "entrega" && zonaSel)
+      l.push(`*Zona:* ${zonaSel.nome}`);
     l.push("");
     l.push("*Itens:*");
     carrinho.forEach((i) => {
@@ -284,33 +309,34 @@ export default function CardapioGelattoMannia() {
   };
 
   const [numeroPedidoEnviado, setNumeroPedidoEnviado] = useState(null);
-
-  const enviarPedido = async () => {
-    setEnviando(true);
-    // 1) Tenta gravar no PDV (se API_BASE configurado). Falha não bloqueia.
-    const resp = await enviarPedidoAoPDV(montarPayload());
-    const numeroPedido = resp?.numero_pedido || resp?.pedido_id || null;
-    if (resp?.impressao && !resp.impressao.ok) {
-      console.warn("Pedido gravado, mas impressão falhou:", resp.impressao.erro);
-    }
-    // 2) Abre o WhatsApp com a mensagem (com nº do pedido, se gravou)
-    const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(
-      montarMensagem(numeroPedido)
-    )}`;
-    window.open(url, "_blank");
-    // 3) Conclui: limpa o carrinho e mostra confirmação
-    setNumeroPedidoEnviado(numeroPedido);
-    setCarrinho([]);
-    setEnviando(false);
-    setTela("enviado");
-  };
-
-  const podeEnviar =
-    cliente.nome.trim() &&
-    cliente.telefone.trim() &&
-    (cliente.modo === "retirada" || cliente.endereco.trim()) &&
-    carrinho.length > 0 &&
-    !abaixoDoMinimo;
+  
+    const enviarPedido = async () => {
+      setEnviando(true);
+      // 1) Tenta gravar no PDV (se API_BASE configurado). Falha não bloqueia.
+      const resp = await enviarPedidoAoPDV(montarPayload());
+      const numeroPedido = resp?.numero_pedido || resp?.pedido_id || null;
+      if (resp?.impressao && !resp.impressao.ok) {
+        console.warn("Pedido gravado, mas impressão falhou:", resp.impressao.erro);
+      }
+      // 2) Abre o WhatsApp com a mensagem (com nº do pedido, se gravou)
+      const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(
+        montarMensagem(numeroPedido)
+      )}`;
+      window.open(url, "_blank");
+      // 3) Conclui: limpa o carrinho e mostra confirmação
+      setNumeroPedidoEnviado(numeroPedido);
+      setCarrinho([]);
+      setEnviando(false);
+      setTela("enviado");
+    };
+  
+    const podeEnviar =
+      cliente.nome.trim() &&
+      cliente.telefone.trim() &&
+      (cliente.modo === "retirada" ||
+        (cliente.endereco.trim() && (!temZonas || zonaSel))) &&
+      carrinho.length > 0 &&
+      !abaixoDoMinimo;
 
   /* ---------------------- Render ---------------------- */
   return (
@@ -475,9 +501,34 @@ export default function CardapioGelattoMannia() {
                 }
                 placeholder="Rua, número, bairro, referência"
               />
+
+              {temZonas && (
+                <>
+                  <label className="gm-label">Bairro / Zona de entrega</label>
+                  <select
+                    className="gm-input"
+                    value={cliente.zonaId}
+                    onChange={(e) =>
+                      setCliente({ ...cliente, zonaId: e.target.value })
+                    }
+                  >
+                    <option value="">Selecione o bairro...</option>
+                    {dados.zonas.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.nome} — {fmt(Number(z.taxa))}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+
               <p className="gm-nota">
-                Taxa de entrega: {fmt(CONFIG.taxaEntrega)} · Pedido mínimo:{" "}
-                {fmt(CONFIG.pedidoMinimoEntrega)}
+                {temZonas
+                  ? zonaSel
+                    ? `Taxa de entrega para ${zonaSel.nome}: ${fmt(Number(zonaSel.taxa))}`
+                    : "Selecione o bairro para calcular a taxa de entrega."
+                  : `Taxa de entrega: ${fmt(CONFIG.taxaEntrega)}`}
+                {" · "}Pedido mínimo: {fmt(CONFIG.pedidoMinimoEntrega)}
               </p>
             </>
           )}

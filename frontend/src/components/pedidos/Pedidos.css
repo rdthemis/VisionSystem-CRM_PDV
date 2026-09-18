@@ -630,7 +630,7 @@
 }
 
 .produtos-area .produto-item {
-    background: var(--bg-secondary);
+    background: var(--primary-color);
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-md);
@@ -661,7 +661,7 @@
 }
 
 .produtos-area .produto-item {
-    background: var(--bg-layout-card);
+    background: var(--primary-color);
     border: 2px solid var(--border-color);
     border-radius: 6px;
     /* ✅ REDUZIDO de 8px */
@@ -3227,8 +3227,8 @@
 }
 
 .produto-item-thumb img {
-    width: 100%;
-    height: 100%;
+    width: 10%;
+    height: 10%;
     object-fit: cover;
     transition: transform 0.2s;
 }
@@ -3239,7 +3239,7 @@
 
 /* Ícone placeholder (quando não tem imagem) */
 .produto-item-icon {
-    width: 100%;
+    width: 10%;
     aspect-ratio: 1;
     max-height: 60px;
     display: flex;

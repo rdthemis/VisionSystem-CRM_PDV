@@ -2,8 +2,8 @@
 
 // controllers/CaixaController.php
 
-require_once '/../config/Database.php';
-require_once '/../models/Caixa.php';
+require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/../models/Caixa.php';
 require_once __DIR__ . '/../config/environment.php';
 require_once __DIR__ . '/../config/SecurityHeaders.php';
 
@@ -21,8 +21,6 @@ class CaixaController
         $this->database = new Database();
         $this->db = $this->database->getConnection();
         $this->caixa = new Caixa($this->db);
-
-        setupCORS();
     }
 
     public function processar()
@@ -51,7 +49,11 @@ class CaixaController
             if (isset($_GET['resumo'])) {
                 $caixaId = $_GET['caixa_id'] ?? null;
                 $resumo = $this->caixa->obterResumo($caixaId);
-                sendJsonResponse($resumo);
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'data' => $resumo,
+                ]);
 
                 return;
             }
@@ -75,7 +77,11 @@ class CaixaController
                 }
 
                 $movimentos = $this->caixa->buscarMovimentos($caixaId, $filtros);
-                sendJsonResponse($movimentos);
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'data' => $movimentos,
+                ]);
 
                 return;
             }
@@ -83,9 +89,13 @@ class CaixaController
             // Verificar status do caixa
             if (isset($_GET['status'])) {
                 $caixaAberto = $this->caixa->verificarCaixaAberto();
-                sendJsonResponse([
-                    'caixa_aberto' => (bool) $caixaAberto,
-                    'dados' => $caixaAberto,
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true,
+                    'data' => [
+                        'caixa_aberto' => (bool) $caixaAberto,
+                        'dados' => $caixaAberto,
+                    ],
                 ]);
 
                 return;
@@ -93,9 +103,13 @@ class CaixaController
 
             // Busca padrão - resumo do caixa atual
             $resumo = $this->caixa->obterResumo();
-            sendJsonResponse($resumo);
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'data' => $resumo,
+            ]);
         } catch (Exception $e) {
-            sendErrorResponse('Erro ao buscar dados do caixa: '.$e->getMessage(), 500);
+            sendErrorResponse('Erro ao buscar dados do caixa: ' . $e->getMessage(), 500);
         }
     }
 
@@ -135,7 +149,7 @@ class CaixaController
                     sendErrorResponse('Ação inválida', 400);
             }
         } catch (Exception $e) {
-            sendErrorResponse('Erro ao processar ação: '.$e->getMessage(), 500);
+            sendErrorResponse('Erro ao processar ação: ' . $e->getMessage(), 500);
         }
     }
 
@@ -153,7 +167,11 @@ class CaixaController
         $resultado = $this->caixa->abrirCaixa($saldo_inicial, $usuario_id, $observacoes);
 
         if ($resultado['success']) {
-            sendJsonResponse($resultado, 201);
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'data' => $resultado,
+            ]);
         } else {
             sendErrorResponse($resultado['message'], 400);
         }
@@ -163,10 +181,14 @@ class CaixaController
     {
         $observacoes = $dados['observacoes'] ?? null;
 
-        $resultado = $this->caixa->fechar($usuario_id, $observacoes);
+        $resultado = $this->caixa->fecharCaixa($usuario_id, $observacoes);
 
         if ($resultado['success']) {
-            sendJsonResponse($resultado);
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'data' => $resultado,
+            ]);
         } else {
             sendErrorResponse($resultado['message'], 400);
         }
@@ -206,7 +228,11 @@ class CaixaController
         );
 
         if ($resultado['success']) {
-            sendJsonResponse($resultado, 201);
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'data' => $resultado,
+            ]);
         } else {
             sendErrorResponse($resultado['message'], 400);
         }
@@ -220,9 +246,13 @@ class CaixaController
             // Implementar atualizações se necessário
             // Por exemplo, editar observações, corrigir valores, etc.
 
-            sendJsonResponse(['message' => 'Funcionalidade em desenvolvimento']);
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Funcionalidade em desenvolvimento',
+            ]);
         } catch (Exception $e) {
-            sendErrorResponse('Erro ao atualizar: '.$e->getMessage(), 500);
+            sendErrorResponse('Erro ao atualizar: ' . $e->getMessage(), 500);
         }
     }
 
@@ -240,13 +270,13 @@ class CaixaController
                 return null;
             }
 
-            require_once '../src/Auth.php';
+            require_once __DIR__ . '/../src/Auth.php';
             $auth = new Auth($this->database);
             $resultado = $auth->verificarToken($authHeader);
 
             return $resultado ? $resultado['usuario_id'] : null;
         } catch (Exception $e) {
-            error_log('Erro ao obter usuário logado: '.$e->getMessage());
+            error_log('Erro ao obter usuário logado: ' . $e->getMessage());
 
             return null;
         }

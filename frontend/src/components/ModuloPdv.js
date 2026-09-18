@@ -291,8 +291,8 @@ function ModuloPdv({ onVoltar }) {
                 <nav className={`sidebar ${!isExpanded ? "collapsed" : ""}`}>
                     <div className="sidebar-header">
                         <h2>
-                            <i className="fas fa-store"></i>{" "}
-                            <span className="sidebar-text">PDV Lanchonete</span>
+                            <i className="fas fa-ice-cream"></i>{" "}
+                            <span className="sidebar-text"><small>VISION</small> PDV</span>
                         </h2>
                     </div>
                     <ul className="sidebar-menu">
@@ -406,6 +406,11 @@ function ModuloPdv({ onVoltar }) {
                                 </button>
                             )}
                             */}
+                        </div>
+                        <div className="pdv-header-actions" aria-label="Status operacional">
+                            <span className="pdv-header-chip"><i className="fas fa-cash-register"></i><b>Caixa</b> {caixaVerificado ? 'aberto' : 'fechado'}</span>
+                            <span className="pdv-header-chip"><i className="far fa-clock"></i>{new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="pdv-operator"><i className="fas fa-user-circle"></i><span><b>Operador</b><small>Vision PDV</small></span></span>
                         </div>
                     </header>
 
