@@ -256,10 +256,20 @@ class CardapioPedidoController
     }
 
     /**
-     * URL do seu endpoint de impressão existente.
-     * TODO: confirmar host/porta — no PDV o hook usa http://localhost/api
+     * URL do endpoint de impressão. Configurável via env PRINT_SERVICE_URL
+     * porque, com o backend rodando na nuvem (Railway), não existe mais uma
+     * impressora Bematech acessível em "localhost" — isso só volta a
+     * funcionar quando houver um agente de impressão local na loja expondo
+     * esse endpoint (ver tarefa "agente de impressão local"). Até lá, a
+     * chamada falha de forma controlada (ver imprimirComanda(), que já é
+     * chamada dentro de um try/catch que não derruba o pedido).
      */
-    private const PRINT_URL = 'http://localhost/api/print_comanda.php';
+    private static function printUrl(): string
+    {
+        $configurado = $_ENV['PRINT_SERVICE_URL'] ?? (getenv('PRINT_SERVICE_URL') ?: null);
+
+        return $configurado ?: 'http://localhost/api/print_comanda.php';
+    }
 
     /**
      * Envia a comanda ao endpoint de impressão (mesmo contrato do PDV).
@@ -267,7 +277,7 @@ class CardapioPedidoController
      */
     private function imprimirComanda(array $dados): void
     {
-        $ch = curl_init(self::PRINT_URL);
+        $ch = curl_init(self::printUrl());
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => json_encode($dados, JSON_UNESCAPED_UNICODE),

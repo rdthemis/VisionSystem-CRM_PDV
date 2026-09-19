@@ -4,6 +4,8 @@
 import apiService from './apiService';
 import Logger from '../utils/Logger';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 const TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'user';
@@ -14,7 +16,7 @@ const authService = {
    */
   login: async (email, senha) => {
     try {
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +56,7 @@ const authService = {
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
       if (refreshToken) {
-        await fetch('http://localhost:8000/auth/logout', {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -90,7 +92,7 @@ const authService = {
         throw new Error('Refresh token não encontrado');
       }
 
-      const response = await fetch('http://localhost:8000/auth/refresh', {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

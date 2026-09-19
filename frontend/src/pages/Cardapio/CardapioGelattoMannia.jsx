@@ -29,7 +29,7 @@ const CONFIG = {
   },
 };
 
-const API_BASE = "http://localhost:8000"; // ex: "https://api.gelattomannia.com.br"
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000"; // produção: definido via REACT_APP_API_URL no Vercel
 
 /* ---------- Dados de exemplo (estrutura igual ao PDV) ---------- */
 const DADOS_EXEMPLO = {

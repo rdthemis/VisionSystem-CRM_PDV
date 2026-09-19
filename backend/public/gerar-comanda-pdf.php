@@ -6,8 +6,15 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// CORS - Permite requisições do React
-header('Access-Control-Allow-Origin: http://localhost:3000');
+// CORS - origem permitida vem de CORS_ALLOWED_ORIGINS (.env / variável de
+// ambiente), igual ao resto da API. Evita hardcode de localhost:3000 que
+// quebrava em produção (Vercel).
+require_once __DIR__ . '/../config/environment.php';
+$allowedOrigins = array_map('trim', explode(',', $_ENV['CORS_ALLOWED_ORIGINS'] ?? 'http://localhost:3000'));
+$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($requestOrigin, $allowedOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $requestOrigin);
+}
 header('Access-Control-Allow-Methods: POST, OPTIONS, GET');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Credentials: true');

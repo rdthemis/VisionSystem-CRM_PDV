@@ -1,0 +1,10 @@
+.env
+.env.local
+.env.production
+vendor/
+node_modules/
+logs/*.log
+public/backups/*.sql
+composer.lock
+.git
+.vscode
