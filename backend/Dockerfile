@@ -50,4 +50,4 @@ EXPOSE 8000
 # Shell form (não exec form) de propósito: precisa expandir $PORT em tempo
 # de execução, já que o Railway só define essa variável quando o container
 # sobe (não existe em build time).
-CMD php -S 0.0.0.0:${PORT:-8000} -t /app/public /app/public/router.php
+CMD cd /app/public && php -S 0.0.0.0:${PORT:-8000} -t /app/public router.php
