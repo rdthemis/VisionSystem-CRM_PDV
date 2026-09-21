@@ -1,8 +1,8 @@
 <?php
 
 // controllers/CategoriaController.php
-require_once '../config/Database.php';
-require_once '../models/Categoria.php';
+require_once __DIR__ . '../config/Database.php';
+require_once __DIR__ . '../models/Categoria.php';
 
 require_once __DIR__ . '/../config/environment.php';
 require_once __DIR__ . '/../config/SecurityHeaders.php';
