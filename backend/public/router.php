@@ -21,4 +21,4 @@ if ($requestedPath !== '/' && file_exists(__DIR__ . $requestedPath) && is_file(_
 // para index.php — é ele quem aplica os headers de CORS corretos e responde
 // ao OPTIONS.
 $_GET['_url'] = $_SERVER['REQUEST_URI'];
-require_once __DIR__.'/index.php';
+require_once '/index.php';
