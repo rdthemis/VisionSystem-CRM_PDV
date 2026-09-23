@@ -19,13 +19,13 @@ const CONFIG = {
   chavePix: "23634179000134", // opcional: aparece na mensagem se preenchida
   horarios: {
     // 0=Dom ... 6=Sáb — [abre, fecha] em horas; null = fechado
-    0: [14, 22],
-    1: [12, 23],
+    0: [10, 22],
+    1: [10, 23],
     2: [10, 22],
-    3: [13, 22],
-    4: [13, 20],
-    5: [13, 23],
-    6: [13, 23],
+    3: [10, 22],
+    4: [10, 20],
+    5: [10, 23],
+    6: [10, 23],
   },
 };
 
