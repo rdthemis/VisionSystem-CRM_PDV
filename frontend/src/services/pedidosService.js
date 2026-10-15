@@ -358,6 +358,28 @@ const pedidosService = {
         }
     },
 
+    /**
+     * Reenfileira um pedido já salvo para impressão. O agente local da
+     * loja pega o pedido na próxima consulta (poucos segundos) — nada é
+     * impresso diretamente a partir desta chamada.
+     */
+    reimprimir: async (pedidoId) => {
+        try {
+            Logger.info('API: Reenviando pedido para impressão...', { info: 'pedidosService.reimprimir', pedidoId });
+
+            const response = await fetchWithAuth(`/pedidos/${pedidoId}/reimprimir`, {
+                method: 'POST',
+            });
+
+            Logger.debug('API: Pedido reenviado para impressão:', { debug: response });
+            return response;
+
+        } catch (error) {
+            Logger.error('API: Erro ao reenviar pedido para impressão:', { erro: error });
+            throw error;
+        }
+    },
+
     // Formatar moeda brasileira
     formatarMoeda(valor) {
         if (!valor) return 'R$ 0,00';

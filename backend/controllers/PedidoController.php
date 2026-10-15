@@ -13,6 +13,36 @@ class PedidoController
         $this->database = $database;
     }
 
+    /**
+     * POST /pedidos/{id}/reimprimir — reenfileira um pedido pra impressão
+     * (o agente local pega na próxima consulta). Ver Pedido::reimprimir().
+     */
+    public function reimprimir(int $id): array
+    {
+        try {
+            $pedido = new Pedido($this->database->getConnection());
+
+            if (!$pedido->reimprimir($id)) {
+                return [
+                    'success' => false,
+                    'message' => 'Pedido não encontrado.',
+                ];
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Pedido enviado para a fila de impressão.',
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro ao reenfileirar pedido para impressão: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Erro ao reenviar para impressão: ' . $e->getMessage(),
+            ];
+        }
+    }
+
     // Buscar todos os pedidos
     public function buscarTodos()
     {

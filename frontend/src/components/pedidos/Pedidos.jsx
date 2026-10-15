@@ -597,29 +597,24 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   /**
-   * Imprime comanda de um pedido já salvo (da lista)
+   * Reimprime um pedido já salvo (da lista). Não imprime nada aqui —
+   * só reenfileira o pedido (status_impressao = 'pendente') pro agente
+   * local da loja pegar na próxima consulta, igual já funciona pros
+   * pedidos do cardápio digital. Ver ImpressaoController.php e
+   * Pedido::reimprimir() no backend.
    */
   const imprimirComandaPedido = async (pedido) => {
     try {
-      const dadosComanda = {
-        numero: pedido.numero_pedido,
-        cliente: pedido.cliente_nome || 'Balcão',
-        mesa: pedido.mesa || '',
-        itens: pedido.itens?.map(item => ({
-          quantidade: item.quantidade,
-          nome: item.produto_nome,
-          observacoes: item.observacoes || '',
-          adicionais: item.adicionais || []
-        })) || [],
-        observacoes: pedido.observacoes || '',
-        data: pedido.created_at ? new Date(pedido.created_at) : new Date()
-      };
+      const resultado = await pedidoService.reimprimir(pedido.id);
 
-      await printService.imprimirComanda(dadosComanda);
-      mostrarMensagem('Comanda impressa!', 'success');
+      if (resultado?.success) {
+        mostrarMensagem('Comanda enviada para a fila de impressão!', 'success');
+      } else {
+        mostrarMensagem(resultado?.message || 'Erro ao enviar para impressão', 'error');
+      }
 
     } catch (error) {
-      Logger.error('Erro ao imprimir:', { erro: error });
+      Logger.error('Erro ao reenviar comanda para impressão:', { erro: error });
       mostrarMensagem(`Erro: ${error.message}`, 'error');
     }
   };

@@ -1013,6 +1013,21 @@ try {
         exit;
     }
 
+    // 🖨️ REIMPRIMIR - POST /pedidos/{id}/reimprimir
+    // Reenfileira o pedido pra impressão (agente local pega na próxima
+    // consulta a /impressao/pendentes). Substitui o antigo botão que
+    // chamava print_comanda.php direto — isso não funciona mais com o
+    // backend no Railway (sem acesso à impressora da loja).
+    if ($method === 'POST' && preg_match('/^\/pedidos\/(\d+)\/reimprimir$/', $uri, $matches)) {
+        $authResult = verificarAuth($database);
+
+        $pedidosController = new PedidoController($database);
+        $resultado = $pedidosController->reimprimir((int)$matches[1]);
+
+        echo json_encode($resultado);
+        exit;
+    }
+
     // 🔄 TRANSFERIR - POST /pedidos/transferir
     if (($method === 'POST' || $method === 'OPTIONS') && $uri === '/pedidos/transferir') {
         // Se for OPTIONS (preflight), retornar 204 sem autenticação

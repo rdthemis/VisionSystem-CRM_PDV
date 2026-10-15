@@ -188,11 +188,18 @@ class Pedido
             }
 
             // Inserir pedido com dados do cliente
+            // 🖨️ status_impressao = 'pendente': entra na mesma fila de impressão
+            //    que o agente local da loja (print-agent/) já consulta pros
+            //    pedidos do cardápio digital — ver ImpressaoController.php.
+            //    Sem isso, pedidos lançados direto no PDV nunca eram impressos
+            //    (o backend no Railway não tem acesso à impressora local).
             $query = 'INSERT INTO ' . $this->table_pedidos . '
                   (numero_pedido, origem, cliente_id, cliente_nome, tipo_cliente, total, status, forma_pagamento,
-                   tipo_pedido, endereco_entrega, taxa_entrega, zona_entrega_id)
+                   tipo_pedido, endereco_entrega, taxa_entrega, zona_entrega_id,
+                   status_impressao, impressao_atualizada_em)
                   VALUES (:numero_pedido, :origem, :cliente_id, :cliente_nome, :tipo_cliente, :total, :status, :forma_pagamento,
-                          :tipo_pedido, :endereco_entrega, :taxa_entrega, :zona_entrega_id)';
+                          :tipo_pedido, :endereco_entrega, :taxa_entrega, :zona_entrega_id,
+                          \'pendente\', NOW())';
 
             $tipoPedido = $this->tipo_pedido ?: 'balcao';
             $taxaEntrega = $this->taxa_entrega ?: 0;
@@ -247,6 +254,27 @@ class Pedido
 
             return false;
         }
+    }
+
+    /**
+     * Reenfileira um pedido já existente para impressão (botão
+     * "Imprimir"/"Reimprimir" do PDV). Não imprime nada aqui — só marca
+     * status_impressao = 'pendente' de novo; o agente local da loja pega
+     * na próxima consulta a GET /impressao/pendentes (poucos segundos).
+     */
+    public function reimprimir(int $id): bool
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE " . $this->table_pedidos . "
+                SET status_impressao = 'pendente',
+                    tentativas_impressao = 0,
+                    erro_impressao = NULL,
+                    impressao_atualizada_em = NOW()
+              WHERE id = :id"
+        );
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+
+        return $stmt->execute() && $stmt->rowCount() > 0;
     }
 
     // Adicionar item ao pedido
