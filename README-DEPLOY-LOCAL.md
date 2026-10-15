@@ -721,3 +721,6 @@ ALTER TABLE pedidos ADD COLUMN nova_coluna VARCHAR(255);
 ---
 
 > **Nota:** Este documento foi criado durante o processo de desenvolvimento e deploy do VisionSystem-CRM_PDV para a loja Sorvetes Gelatto Mannia, Corumbataí do Sul - PR.
+
+
+AIzaSyC4tgyKDpb0PH0xpQtpFT9vEdhnCxR-jO8
