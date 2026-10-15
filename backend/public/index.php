@@ -530,6 +530,12 @@ try {
         exit;
     }
 
+    // GET /cardapio/calcular-entrega?endereco=...
+    if ($method === 'GET' && $uri === '/cardapio/calcular-entrega') {
+        (new CardapioController())->calcularEntrega();
+        exit;
+    }
+
     // POST /cardapio/pedidos
     if ($method === 'POST' && $uri === '/cardapio/pedidos') {
         (new CardapioPedidoController())->criar();

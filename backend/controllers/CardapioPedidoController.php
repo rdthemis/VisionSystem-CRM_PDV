@@ -30,6 +30,7 @@
  */
 
 require_once '../config/Database.php';
+require_once __DIR__ . '/../src/EntregaCalculoService.php';
 
 class CardapioPedidoController
 {
@@ -66,8 +67,17 @@ class CardapioPedidoController
         $zona = null;
         $taxa = 0.0;
         if ($payload['tipo'] === 'entrega') {
-            $zona = $this->zonaEntrega((int)$payload['zona_entrega_id']);
-            $taxa = $zona['taxa'];
+            $entregaCalculo = new EntregaCalculoService($this->db);
+            $resultadoEntrega = $entregaCalculo->calcular((string)$payload['endereco']);
+
+            if (!$resultadoEntrega['sucesso']) {
+                http_response_code(422);
+                echo json_encode(['sucesso' => false, 'erro' => $resultadoEntrega['erro']]);
+                return;
+            }
+
+            $zona = ['id' => $resultadoEntrega['zona_entrega_id'], 'nome' => $resultadoEntrega['zona_nome']];
+            $taxa = $resultadoEntrega['taxa'];
         }
         $total = $subtotal + $taxa;
 
@@ -226,8 +236,8 @@ class CardapioPedidoController
             return 'Tipo deve ser entrega ou retirada.';
         if ($p['tipo'] === 'entrega' && empty($p['endereco']))
             return 'Endereço é obrigatório para entrega.';
-        if ($p['tipo'] === 'entrega' && empty($p['zona_entrega_id']))
-            return 'Selecione a zona de entrega.';
+        // zona_entrega_id não é mais exigido do front: a zona/taxa agora é
+        // calculada aqui a partir do endereço (ver EntregaCalculoService).
         if (empty($p['pagamento']['forma'])) return 'Forma de pagamento é obrigatória.';
         if (empty($p['itens']) || !is_array($p['itens']))
             return 'O pedido precisa ter ao menos um item.';
@@ -286,24 +296,4 @@ class CardapioPedidoController
         return (float)$preco;
     }
 
-    /**
-     * Busca a zona de entrega e sua taxa — a taxa SEMPRE vem do banco,
-     * nunca do front. TODO: confirmar nome da tabela `zonas_entrega`.
-     */
-    private function zonaEntrega(int $id): array
-    {
-        $s = $this->db->prepare(
-            "SELECT id, nome, valor FROM zonas_entrega WHERE id = :id"
-        );
-        $s->execute([':id' => $id]);
-        $zona = $s->fetch(PDO::FETCH_ASSOC);
-        if ($zona === false) {
-            throw new RuntimeException("Zona de entrega {$id} não encontrada.");
-        }
-        return [
-            'id'   => (int)$zona['id'],
-            'nome' => $zona['nome'],
-            'valor' => (float)$zona['valor'],
-        ];
-    }
 }

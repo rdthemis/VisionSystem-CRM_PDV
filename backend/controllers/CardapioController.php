@@ -18,6 +18,7 @@
  */
 
 require_once '../config/Database.php';
+require_once __DIR__ . '/../src/EntregaCalculoService.php';
 
 class CardapioController
 {
@@ -100,6 +101,29 @@ class CardapioController
             'taxa'      => (float)$r['valor'],
             'descricao' => $r['descricao'] ?? '',
         ], $rows));
+    }
+
+    /**
+     * GET /cardapio/calcular-entrega?endereco=...
+     *
+     * "Preview" chamado pelo front enquanto o cliente ainda está
+     * preenchendo o pedido, pra mostrar a taxa antes de enviar. O valor
+     * usado de fato na hora de salvar o pedido é recalculado de novo em
+     * CardapioPedidoController::criar() — nunca confiamos no que volta
+     * daqui como se fosse definitivo.
+     */
+    public function calcularEntrega(): void
+    {
+        $endereco = trim((string)($_GET['endereco'] ?? ''));
+
+        $servico = new EntregaCalculoService($this->db);
+        $resultado = $servico->calcular($endereco);
+
+        if (!$resultado['sucesso']) {
+            http_response_code(422);
+        }
+
+        $this->json($resultado);
     }
 
     public function adicionais(): void

@@ -21,8 +21,8 @@ const CONFIG = {
     0: [10, 22],
     1: [10, 23],
     2: [10, 23],
-    3: [10, 23], // 23.79 = 23:47
-    4: [0.3, 23],
+    3: [10, 23.79], // 23.79 = 23:47
+    4: [10, 23],
     5: [10, 23],
     6: [10, 23],
   },
@@ -78,20 +78,19 @@ function lojaAberta() {
 async function carregarDoPDV() {
   if (!API_BASE) return null;
   try {
-    const [c, p, a, z] = await Promise.all([
+    const [c, p, a] = await Promise.all([
       fetch(`${API_BASE}/cardapio/categorias`).then((r) => r.json()),
       fetch(`${API_BASE}/cardapio/produtos`).then((r) => r.json()),
       fetch(`${API_BASE}/cardapio/adicionais`).then((r) => r.json()),
-      fetch(`${API_BASE}/cardapio/zonas`)
-        .then((r) => r.json())
-        .catch(() => []),
     ]);
+    // A taxa de entrega não vem mais de /cardapio/zonas carregado aqui —
+    // é calculada sob demanda em /cardapio/calcular-entrega conforme o
+    // cliente digita o endereço (ver o useEffect de taxaInfo, abaixo).
     if (Array.isArray(c) && c.length && Array.isArray(p) && p.length) {
       return {
         categorias: c,
         produtos: p,
         adicionais: a || [],
-        zonas: Array.isArray(z) ? z : [],
       };
     }
     return null;
@@ -144,14 +143,58 @@ export default function CardapioGelattoMannia() {
     telefone: "",
     modo: "entrega", // entrega | retirada
     endereco: "",
-    zonaId: "",
     pagamento: CONFIG.formasPagamento[0],
     troco: "",
   });
 
-const zonaSel = (dados.zonas || []).find(
-    (z) => String(z.id) === String(cliente.zonaId) && Number.isFinite(Number(z.taxa)) && Number(z.taxa) >= 0
-  );
+  // Taxa de entrega calculada pelo backend a partir do endereço digitado
+  // (geocodificação + distância real até a loja — ver GET /cardapio/calcular-entrega).
+  // status: "idle" | "calculando" | "ok" | "erro"
+  const [taxaInfo, setTaxaInfo] = useState({ status: "idle" });
+
+  useEffect(() => {
+    if (cliente.modo !== "entrega" || cliente.endereco.trim().length < 8) {
+      setTaxaInfo({ status: "idle" });
+      return;
+    }
+    if (!API_BASE) {
+      setTaxaInfo({ status: "erro", erro: "API indisponível (modo demonstração)." });
+      return;
+    }
+
+    setTaxaInfo({ status: "calculando" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(
+        `${API_BASE}/cardapio/calcular-entrega?endereco=${encodeURIComponent(cliente.endereco.trim())}`,
+        { signal: controller.signal }
+      )
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.sucesso) {
+            setTaxaInfo({
+              status: "ok",
+              taxa: Number(d.taxa),
+              zonaNome: d.zona_nome,
+              distanciaKm: d.distancia_km,
+              enderecoFormatado: d.endereco_formatado,
+            });
+          } else {
+            setTaxaInfo({ status: "erro", erro: d.erro || "Não foi possível calcular a taxa de entrega." });
+          }
+        })
+        .catch((e) => {
+          if (e.name !== "AbortError") {
+            setTaxaInfo({ status: "erro", erro: "Falha ao calcular a taxa de entrega. Tente novamente." });
+          }
+        });
+    }, 700); // debounce: espera parar de digitar
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [cliente.endereco, cliente.modo]);
 
   useEffect(() => {
     carregarDoPDV().then((d) => {
@@ -221,9 +264,7 @@ const zonaSel = (dados.zonas || []).find(
         i.qtd,
     0
   );
-  const zonas = (dados.zonas || []).filter((z) => Number.isFinite(Number(z.taxa)) && Number(z.taxa) >= 0);
-  const temZonas = zonas.length > 0;
-  const taxa = cliente.modo === "entrega" && zonaSel ? Number(zonaSel.taxa) : null;
+  const taxa = cliente.modo === "entrega" && taxaInfo.status === "ok" ? taxaInfo.taxa : null;
   const total = subtotal + (taxa ?? 0);
   const abaixoDoMinimo =
     cliente.modo === "entrega" && subtotal < CONFIG.pedidoMinimoEntrega;
@@ -234,8 +275,9 @@ const zonaSel = (dados.zonas || []).find(
     cliente: { nome: cliente.nome.trim(), telefone: cliente.telefone.trim() },
     tipo: cliente.modo, // "entrega" | "retirada"
     endereco: cliente.modo === "entrega" ? cliente.endereco.trim() : null,
-    zona_entrega_id:
-      cliente.modo === "entrega" && zonaSel ? zonaSel.id : null,
+    // Não manda mais zona_entrega_id: o backend calcula a zona/taxa de
+    // novo a partir do endereço (ver EntregaCalculoService), não confia
+    // em nenhuma zona escolhida no front.
     pagamento: {
       forma: cliente.pagamento,
       troco_para:
@@ -273,8 +315,8 @@ const zonaSel = (dados.zonas || []).find(
         ? `*Entrega:* ${cliente.endereco}`
         : `*Retirada no balcão*`
     );
-    if (cliente.modo === "entrega" && zonaSel)
-      l.push(`*Zona:* ${zonaSel.nome}`);
+    if (cliente.modo === "entrega" && taxaInfo.status === "ok")
+      l.push(`*Zona:* ${taxaInfo.zonaNome}`);
     l.push("");
     l.push("*Itens:*");
     carrinho.forEach((i) => {
@@ -330,7 +372,7 @@ const zonaSel = (dados.zonas || []).find(
       cliente.nome.trim() &&
       cliente.telefone.trim() &&
       (cliente.modo === "retirada" ||
-        (cliente.endereco.trim() && temZonas && zonaSel)) &&
+        (cliente.endereco.trim() && taxaInfo.status === "ok")) &&
       carrinho.length > 0 &&
       !abaixoDoMinimo;
 
@@ -499,33 +541,24 @@ const zonaSel = (dados.zonas || []).find(
                 placeholder="Rua, número, bairro, referência"
               />
 
-              {temZonas ? (
-                <>
-                  <label className="gm-label" htmlFor="gm-zona">Bairro de entrega</label>
-                  <select
-                    id="gm-zona"
-                    className="gm-input"
-                    value={cliente.zonaId}
-                    onChange={(e) =>
-                      setCliente({ ...cliente, zonaId: e.target.value })
-                    }
-                  >
-                    <option value="">Selecione o bairro...</option>
-                    {zonas.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.nome} — {fmt(Number(z.taxa))}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <p className="gm-erro" role="status">Entrega indisponível no momento: a tabela de bairros e taxas não foi carregada. Você pode escolher retirada.</p>
+              {taxaInfo.status === "calculando" && (
+                <p className="gm-nota" aria-live="polite">Calculando a taxa de entrega...</p>
               )}
 
-              {temZonas && <p className="gm-nota" aria-live="polite">
-                {zonaSel ? `Taxa para ${zonaSel.nome}: ${fmt(Number(zonaSel.taxa))}` : "Selecione o bairro para calcular a taxa de entrega."}
-                {" · "}Pedido mínimo: {fmt(CONFIG.pedidoMinimoEntrega)}
-              </p>}
+              {taxaInfo.status === "ok" && (
+                <p className="gm-nota" aria-live="polite">
+                  Taxa de entrega ({taxaInfo.zonaNome}, ~{taxaInfo.distanciaKm} km): {fmt(taxaInfo.taxa)}
+                  {" · "}Pedido mínimo: {fmt(CONFIG.pedidoMinimoEntrega)}
+                </p>
+              )}
+
+              {taxaInfo.status === "erro" && (
+                <p className="gm-erro" role="status">{taxaInfo.erro}</p>
+              )}
+
+              {taxaInfo.status === "idle" && cliente.endereco.trim().length > 0 && (
+                <p className="gm-nota" aria-live="polite">Continue digitando o endereço completo (rua e número) pra calcularmos a taxa de entrega.</p>
+              )}
             </>
           )}
 
