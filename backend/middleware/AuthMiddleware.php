@@ -103,6 +103,39 @@ function verificarAdmin($database)
 }
 
 /**
+ * Verificar o token fixo do agente de impressão local (loja).
+ * Não é o JWT dos usuários do sistema — é um segredo único (env
+ * PRINT_AGENT_TOKEN) que só o script Python que roda no PC da loja
+ * conhece, enviado no header "X-Agent-Token".
+ */
+function verificarAgenteImpressao()
+{
+    $tokenEsperado = $_ENV['PRINT_AGENT_TOKEN'] ?? (getenv('PRINT_AGENT_TOKEN') ?: '');
+
+    if (empty($tokenEsperado)) {
+        error_log('❌ PRINT_AGENT_TOKEN não configurado no ambiente.');
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Agente de impressão não configurado no servidor',
+        ]);
+        exit;
+    }
+
+    $headers = getallheaders();
+    $tokenRecebido = $headers['X-Agent-Token'] ?? $headers['x-agent-token'] ?? '';
+
+    if (empty($tokenRecebido) || !hash_equals($tokenEsperado, $tokenRecebido)) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Token do agente de impressão inválido',
+        ]);
+        exit;
+    }
+}
+
+/**
  * Verificar autenticação OPCIONAL (permite acesso mesmo sem token).
  */
 function verificarAuthOpcional($database)

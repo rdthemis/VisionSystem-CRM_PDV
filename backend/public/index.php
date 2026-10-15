@@ -70,6 +70,7 @@ require_once __DIR__ . '/../controllers/AuthController.php';
 require_once __DIR__ . '/../controllers/UsuarioController.php';
 require_once __DIR__ . '/../controllers/CardapioPedidoController.php';
 require_once __DIR__ . '/../controllers/CardapioController.php';
+require_once __DIR__ . '/../controllers/ImpressaoController.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 ini_set('display_errors', 0);
@@ -532,6 +533,31 @@ try {
     // POST /cardapio/pedidos
     if ($method === 'POST' && $uri === '/cardapio/pedidos') {
         (new CardapioPedidoController())->criar();
+        exit;
+    }
+
+    //===========================================
+    // ROTAS DO AGENTE DE IMPRESSÃO LOCAL (loja)
+    //===========================================
+
+    // GET /impressao/pendentes
+    if ($method === 'GET' && $uri === '/impressao/pendentes') {
+        verificarAgenteImpressao();
+        (new ImpressaoController())->pendentes();
+        exit;
+    }
+
+    // POST /impressao/{id}/concluir
+    if ($method === 'POST' && preg_match('/^\/impressao\/(\d+)\/concluir$/', $uri, $matches)) {
+        verificarAgenteImpressao();
+        (new ImpressaoController())->concluir((int)$matches[1]);
+        exit;
+    }
+
+    // POST /impressao/{id}/erro
+    if ($method === 'POST' && preg_match('/^\/impressao\/(\d+)\/erro$/', $uri, $matches)) {
+        verificarAgenteImpressao();
+        (new ImpressaoController())->erro((int)$matches[1]);
         exit;
     }
 

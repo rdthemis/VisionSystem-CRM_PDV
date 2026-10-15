@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import CardapioDigital from './pages/Cardapio/CardapioGelattoMannia';
+import CardapioDigital from './pages/Cardapio/CardapioGelattoManniaV2';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import reportWebVitals from './reportWebVitals';
 import Logger from './utils/Logger';

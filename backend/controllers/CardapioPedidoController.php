@@ -81,12 +81,14 @@ class CardapioPedidoController
                    (numero_pedido, origem, tipo_pedido, status,
                     cliente_nome, cliente_telefone, tipo_cliente,
                     endereco_entrega, zona_entrega_id, forma_pagamento, troco_para,
-                    taxa_entrega, total, valor_pago)
+                    taxa_entrega, total, valor_pago,
+                    status_impressao, impressao_atualizada_em)
                  VALUES
                    (:numero, 'cardapio_digital', :tipo, 'aberto',
                     :nome, :telefone, 'avulso',
                     :endereco, :zona, :forma, :troco,
-                    :taxa_entrega, :total, 0.00)"
+                    :taxa_entrega, :total, 0.00,
+                    'pendente', NOW())"
             );
             $stmt->execute([
                 ':numero'   => $numeroPedido,
@@ -190,33 +192,14 @@ class CardapioPedidoController
 
             $this->db->commit();
 
-            // ---- Impressão automática na Bematech ----------------------
-            // Reaproveita seu endpoint /api/print_comanda.php (mesmo
-            // contrato do PDV). Falha de impressão não derruba o pedido,
-            // mas o motivo vai na resposta (campo `impressao`).
+            // ---- Impressão ----------------------------------------------
+            // O pedido já entrou na fila de impressão (status_impressao =
+            // 'pendente', setado no INSERT acima). O agente local da loja
+            // (script Python, ver print-agent/) consulta GET /impressao/pendentes
+            // periodicamente e imprime na Bematech — ver ImpressaoController.php.
+            // Não chamamos mais nenhum endpoint síncrono daqui: com o backend
+            // no Railway não existe "localhost" que chegue até a impressora.
             $impressao = ['ok' => true, 'erro' => null];
-            try {
-                $troco = $payload['pagamento']['troco_para'] ?? null;
-                $this->imprimirComanda([
-                    'numero'        => $numeroPedido,
-                    'tipo'          => $payload['tipo'] === 'entrega' ? 'delivery' : 'local',
-                    'cliente'       => trim($payload['cliente']['nome']),
-                    'telefone'      => trim($payload['cliente']['telefone']),
-                    'endereco'      => trim(
-                        ($payload['endereco'] ?? '') .
-                            ($zona ? ' — ' . $zona['nome'] : '')
-                    ),
-                    'itens'         => $itensComanda,
-                    'valor_entrega' => $taxa,
-                    'desconto'      => 0,
-                    'pagamento'     => $payload['pagamento']['forma'],
-                    'observacao'    => $troco ? "Troco para R$ {$troco}" : '',
-                    'copias'        => 1,
-                ]);
-            } catch (Throwable $e) {
-                $impressao = ['ok' => false, 'erro' => $e->getMessage()];
-                // Logger::warn("Falha ao imprimir pedido {$pedidoId}: " . $e->getMessage());
-            }
 
             echo json_encode([
                 'sucesso'       => true,
@@ -253,53 +236,6 @@ class CardapioPedidoController
                 return 'Item inválido no pedido.';
         }
         return null;
-    }
-
-    /**
-     * URL do endpoint de impressão. Configurável via env PRINT_SERVICE_URL
-     * porque, com o backend rodando na nuvem (Railway), não existe mais uma
-     * impressora Bematech acessível em "localhost" — isso só volta a
-     * funcionar quando houver um agente de impressão local na loja expondo
-     * esse endpoint (ver tarefa "agente de impressão local"). Até lá, a
-     * chamada falha de forma controlada (ver imprimirComanda(), que já é
-     * chamada dentro de um try/catch que não derruba o pedido).
-     */
-    private static function printUrl(): string
-    {
-        $configurado = $_ENV['PRINT_SERVICE_URL'] ?? (getenv('PRINT_SERVICE_URL') ?: null);
-
-        return $configurado ?: 'http://localhost/api/print_comanda.php';
-    }
-
-    /**
-     * Envia a comanda ao endpoint de impressão (mesmo contrato do PDV).
-     * Lança exceção em falha — o chamador decide o que fazer (aqui, só loga).
-     */
-    private function imprimirComanda(array $dados): void
-    {
-        $ch = curl_init(self::printUrl());
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode($dados, JSON_UNESCAPED_UNICODE),
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 2,
-            CURLOPT_TIMEOUT        => 8,
-        ]);
-        $resposta = curl_exec($ch);
-        $erroCurl = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($resposta === false) {
-            throw new RuntimeException("Impressão: falha de conexão ({$erroCurl})");
-        }
-        $json = json_decode($resposta, true);
-        if ($httpCode !== 200 || empty($json['success'])) {
-            throw new RuntimeException(
-                'Impressão: ' . ($json['message'] ?? "HTTP {$httpCode}")
-            );
-        }
     }
 
     /**
