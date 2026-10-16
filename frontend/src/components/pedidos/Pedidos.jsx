@@ -20,7 +20,6 @@ import configService from '../../services/ConfigService';
 import ModalEntrega from './components/ModalEntrega';
 import zonasEntregaService from '../../services/zonasEntregaService';
 import ComandaPreview from '../../components/ComandaPreview';
-import { usePrintComanda } from '../../hooks/usePrintComanda';
 import Logger from '../../utils/Logger';
 
 // Vision UI + compatibilidade visual do PDV
@@ -46,8 +45,6 @@ const Pedidos = ({ onRefresh }) => {
   // ESTADOS PRINCIPAIS
   // ========================================
 
-  const { imprimir } = usePrintComanda();
-  
   const [view, setView] = useState('comandas');
   
   // Dados
@@ -558,7 +555,70 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   /**
-   * Handler: Botão "Imprimir" — envia direto para impressora térmica
+   * Garante que a comanda em edição está salva no banco com os itens
+   * atuais do carrinho (cria se ainda não existir, atualiza se já existir)
+   * e devolve o ID do pedido. Usado antes de qualquer impressão — a
+   * impressão em si é feita pelo agente local a partir do que está
+   * salvo no banco, nunca do estado em memória do navegador.
+   */
+  const garantirPedidoSalvoComItens = async () => {
+    const totais = calcularTotais();
+    const totalAtual = totais.totalPagar + (dadosEntrega?.taxa_entrega || 0);
+
+    const dadosSincronizacao = {
+      cliente_id: clienteCadastrado?.id || pedidoAtual?.cliente_id || null,
+      cliente_nome: clientePedido || pedidoAtual?.cliente_nome || 'Balcão',
+      tipo_pedido: dadosEntrega?.tipo_pedido || 'balcao',
+      origem: pedidoAtual?.origem || 'PDV',
+      endereco_entrega: dadosEntrega?.endereco_entrega || null,
+      taxa_entrega: dadosEntrega?.taxa_entrega || 0,
+      zona_entrega_id: dadosEntrega?.zona_entrega_id || null,
+      total: totalAtual,
+      status: 'aberto',
+      itens: carrinho.map(item => ({
+        produto_id: parseInt(item.produto_id),
+        quantidade: parseFloat(item.quantidade),
+        preco_unitario: parseFloat(item.preco_unitario),
+        preco_produto: parseFloat(item.preco_produto),
+        adicionais: item?.adicionais || [],
+        observacoes: item?.observacoes || ''
+      }))
+    };
+
+    if (pedidoAtual?.id) {
+      const resultado = await pedidoService.atualizar({ id: pedidoAtual.id, ...dadosSincronizacao });
+      if (!resultado?.success) {
+        throw new Error(resultado?.message || 'Erro ao salvar a comanda antes de imprimir');
+      }
+      return pedidoAtual.id;
+    }
+
+    const resultado = await pedidoService.criar(dadosSincronizacao);
+    if (!resultado?.success) {
+      throw new Error(resultado?.message || 'Erro ao salvar a comanda antes de imprimir');
+    }
+
+    setPedidoAtual(prev => ({ ...(prev || {}), ...resultado.data }));
+    return resultado.data.id;
+  };
+
+  /**
+   * Handler: Botão "Imprimir" — reenfileira a comanda pra impressão
+   * -----------------------------------------------------------------
+   * Antes, esse botão mandava os dados do carrinho direto pra
+   * print_comanda.php, que tentava imprimir na hora, de dentro do
+   * processo do backend — inviável com o backend no Railway (sem
+   * acesso à impressora da loja), e sempre dava 500.
+   *
+   * Agora: primeiro salva/atualiza a comanda no banco com os itens
+   * atuais (garantirPedidoSalvoComItens) e só então reenfileira
+   * (status_impressao = 'pendente') pro agente local pegar na próxima
+   * consulta — mesma fila que já funciona pros pedidos do cardápio
+   * digital. Isso também corrige o "imprime vazio e depois não imprime
+   * mais": antes, a comanda vazia criada ao informar o cliente já
+   * entrava na fila sozinha (ver Pedido::criar() no backend); agora a
+   * fila só é alimentada por esse clique explícito, sempre com os
+   * itens que estão no carrinho NESTE momento.
    */
   const handleImprimirComanda = async () => {
     if (carrinho.length === 0) {
@@ -581,14 +641,13 @@ const Pedidos = ({ onRefresh }) => {
     }
 
     try {
-      // 🔧 FIX: Usa helper padronizado
-      const dadosComandaAtual = montarDadosComanda('producao');
+      const pedidoId = await garantirPedidoSalvoComItens();
+      const resultado = await pedidoService.reimprimir(pedidoId);
 
-      const resultado = await imprimir(dadosComandaAtual);
-      if (resultado.success) {
-        mostrarMensagem('Comanda impressa com sucesso!', 'success');
+      if (resultado?.success) {
+        mostrarMensagem('Comanda enviada para a fila de impressão!', 'success');
       } else {
-        mostrarMensagem(resultado.message || 'Erro ao imprimir', 'error');
+        mostrarMensagem(resultado?.message || 'Erro ao enviar para impressão', 'error');
       }
     } catch (error) {
       Logger.error('Erro ao imprimir comanda:', { erro: error });

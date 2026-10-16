@@ -188,18 +188,19 @@ class Pedido
             }
 
             // Inserir pedido com dados do cliente
-            // 🖨️ status_impressao = 'pendente': entra na mesma fila de impressão
-            //    que o agente local da loja (print-agent/) já consulta pros
-            //    pedidos do cardápio digital — ver ImpressaoController.php.
-            //    Sem isso, pedidos lançados direto no PDV nunca eram impressos
-            //    (o backend no Railway não tem acesso à impressora local).
+            // 🖨️ IMPORTANTE: NÃO setamos status_impressao aqui. Esse método
+            //    é chamado tanto pro pedido "de verdade" quanto pro pedido
+            //    vazio criado assim que o cliente é informado (ver
+            //    Pedidos.jsx::criarPedidoVazio, itens: [] ) — se entrasse na
+            //    fila de impressão aqui, imprimiria uma comanda em branco
+            //    antes mesmo do primeiro item ser adicionado. A impressão só
+            //    deve ser enfileirada por uma ação explícita do usuário (botão
+            //    "Imprimir") — ver Pedido::reimprimir() e PedidoController.
             $query = 'INSERT INTO ' . $this->table_pedidos . '
                   (numero_pedido, origem, cliente_id, cliente_nome, tipo_cliente, total, status, forma_pagamento,
-                   tipo_pedido, endereco_entrega, taxa_entrega, zona_entrega_id,
-                   status_impressao, impressao_atualizada_em)
+                   tipo_pedido, endereco_entrega, taxa_entrega, zona_entrega_id)
                   VALUES (:numero_pedido, :origem, :cliente_id, :cliente_nome, :tipo_cliente, :total, :status, :forma_pagamento,
-                          :tipo_pedido, :endereco_entrega, :taxa_entrega, :zona_entrega_id,
-                          \'pendente\', NOW())';
+                          :tipo_pedido, :endereco_entrega, :taxa_entrega, :zona_entrega_id)';
 
             $tipoPedido = $this->tipo_pedido ?: 'balcao';
             $taxaEntrega = $this->taxa_entrega ?: 0;
