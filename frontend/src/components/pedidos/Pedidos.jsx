@@ -602,7 +602,11 @@ const Pedidos = ({ onRefresh }) => {
    * local da loja pegar na próxima consulta, igual já funciona pros
    * pedidos do cardápio digital. Ver ImpressaoController.php e
    * Pedido::reimprimir() no backend.
+   *
+   * TODO: ainda não está ligada a nenhum botão na tela — conectar a um
+   * ícone de "reimprimir" na lista de pedidos quando definirem onde.
    */
+  // eslint-disable-next-line no-unused-vars
   const imprimirComandaPedido = async (pedido) => {
     try {
       const resultado = await pedidoService.reimprimir(pedido.id);
