@@ -8,6 +8,7 @@ import caixaService from '../services/caixaService';
 import { apiService } from '../services/apiService';
 import MenuToggleButton from '../components/pedidos/components/MenuToggleButton.jsx'
 import "./ModuloPdv.css";
+import "./PdvModern.css";
 import Adicionais from './Adicionais';
 import ZonasEntrega from '../components/Configuracoes/ZonasEntrega';      
 import Logger from '../utils/Logger'; // Supondo que você tenha um logger para erros e informações
@@ -15,6 +16,12 @@ import Logger from '../utils/Logger'; // Supondo que você tenha um logger para 
 function ModuloPdv({ onVoltar }) {
     const [activeSection, setActiveSection] = useState('pedidos');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+    useEffect(() => {
+        const fechar = (event) => { if (event.key === 'Escape') setMenuMobileAberto(false); };
+        window.addEventListener('keydown', fechar);
+        return () => window.removeEventListener('keydown', fechar);
+    }, []);
 
     // ESTADOS PARA CONTROLE DO CAIXA
     const [showModalCaixa, setShowModalCaixa] = useState(false);
@@ -119,6 +126,8 @@ function ModuloPdv({ onVoltar }) {
     };
 
     const handleMenuClick = async (sectionId) => {
+        setMenuMobileAberto(false);
+        if (sectionId === activeSection) return;
         if (sectionId === 'voltar') {
             // Salvar antes de sair completamente
             if (activeSection === 'pedidos') {
@@ -286,9 +295,10 @@ function ModuloPdv({ onVoltar }) {
 
     return (
         <>
-            <div className="app">
+            <div className="app pdv-modern">
+                {menuMobileAberto && <button className="pdv-nav-backdrop" aria-label="Fechar menu de navegação" onClick={() => setMenuMobileAberto(false)} />}
                 {/* Sidebar */}
-                <nav className={`sidebar ${!isExpanded ? "collapsed" : ""}`}>
+                <nav id="pdv-navigation" aria-label="Navegação do PDV" className={`sidebar ${!isExpanded ? "collapsed" : ""} ${menuMobileAberto ? "show" : ""}`}>
                     <div className="sidebar-header">
                         <h2>
                             <i className="fas fa-ice-cream"></i>{" "}
@@ -298,33 +308,13 @@ function ModuloPdv({ onVoltar }) {
                     <ul className="sidebar-menu">
                         {menuItems.map((item) => (
                             <li key={item.id}>
-                                <a
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        handleMenuClick(item.id);
-                                    }}
+                                <button type="button" onClick={() => handleMenuClick(item.id)}
                                     className={activeSection === item.id ? "active" : ""}
-                                    title={item.label}
-                                    style={{
-                                        opacity: (!caixaVerificado && item.id !== 'caixa' && item.id !== 'voltar') ? 0.5 : 1
-                                    }}
-                                >
-
-                                    <i className={item.icon}></i>
+                                    aria-current={activeSection === item.id ? "page" : undefined}
+                                    aria-label={item.label} title={item.label}>
+                                    <i className={item.icon} aria-hidden="true"></i>
                                     <span className="sidebar-text">{item.label}</span>
-                                    {/*🆕 INDICADOR VISUAL DE REFRESH PARA PEDIDOS 
-                                    {item.id === 'pedidos' && activeSection === 'pedidos' && (
-                                        <small style={{
-                                            fontSize: '10px',
-                                            color: '#28a745',
-                                            marginLeft: '5px'
-                                        }}>
-                                            🔄
-                                        </small>
-                                    )}
-                                     */}
-                                </a>
+                                </button>
                                 {/*// 5. 🔧 ATUALIZAR o estilo do menu para destacar config-impressao
                                 // No JSX onde você renderiza os menuItems, adicione estilo especial:
                                 <a
@@ -376,9 +366,10 @@ function ModuloPdv({ onVoltar }) {
                             {/* 🆕 Botão hambúrguer apenas para mobile */}
                             <button
                                 className="mobile-menu-btn"
-                                onClick={() => {
-                                    document.querySelector('.sidebar').classList.toggle('show');
-                                }}
+                                aria-label={menuMobileAberto ? "Fechar menu" : "Abrir menu"}
+                                aria-expanded={menuMobileAberto}
+                                aria-controls="pdv-navigation"
+                                onClick={() => setMenuMobileAberto(!menuMobileAberto)}
                             >
                                 <i className="fas fa-bars"></i>
                             </button>

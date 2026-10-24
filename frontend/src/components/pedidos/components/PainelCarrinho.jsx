@@ -51,14 +51,15 @@ const PainelCarrinho = ({
   return (
     <div className="pedido-panel">
 
+      <div className="pdv-cart-title"><h3>Resumo da comanda</h3><span>{carrinho.length} {carrinho.length === 1 ? 'item' : 'itens'}</span></div>
       {/* ── CABEÇALHO ── */}
       <div className="pedido-header pedido-header-compacto">
         <div className="pedido-actions pedido-actions-principais">
           <button className="btn-icon" title="Selecionar cliente" aria-label="Selecionar cliente" onClick={onBuscarCliente} disabled={loadingPedido}>
-            <i className="fas fa-user"></i>
+            <i className="fas fa-user" aria-hidden="true"></i><span>Cliente</span>
           </button>
           <button className="btn-icon btn-cancelar-comanda" title="Cancelar comanda" aria-label="Cancelar comanda" onClick={onCancelar} disabled={loadingPedido}>
-            <i className="fa-solid fa-trash"></i>
+            <i className="fa-solid fa-trash" aria-hidden="true"></i><span>Cancelar</span>
           </button>
         </div>
         <div className="pedido-cliente-inline">
@@ -68,7 +69,8 @@ const PainelCarrinho = ({
             value={clientePedido}
             onChange={(e) => onClienteChange(e.target.value)}
             className="cliente-input"
-            placeholder="Nome do cliente"
+            aria-label="Nome do cliente da comanda"
+            placeholder="Nome do cliente (opcional)"
             disabled={loadingPedido}
           />
         </div>
@@ -185,7 +187,7 @@ const PainelCarrinho = ({
           onClick={onPagar}
           disabled={carrinho.length === 0 || loadingPedido}
         >
-          <i className="fas fa-credit-card"></i> {pedidoAtual?.valor_pago > 0 ? 'PAGAR SALDO' : 'PAGAR'}
+          <i className="fas fa-credit-card"></i> {loadingPedido ? 'Aguarde…' : pedidoAtual?.valor_pago > 0 ? 'Receber saldo' : 'Ir para pagamento'}
         </button>
       </div>
 

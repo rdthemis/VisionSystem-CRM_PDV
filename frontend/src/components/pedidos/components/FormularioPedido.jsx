@@ -1,7 +1,7 @@
 // src/components/Pedidos/components/FormularioPedido.jsx
 // 📝 COMPONENTE: Tela completa de criar/editar pedido
 
-import React from 'react';
+import React, { useState } from 'react';
 import GridProdutos from './GridProdutos';
 import PainelCarrinho from './PainelCarrinho';
 
@@ -64,8 +64,20 @@ const FormularioPedido = ({
   // 🎨 RENDERIZAÇÃO
   // ========================================
 
+  const [painelMobile, setPainelMobile] = useState('produtos');
+  const formatar = (valor) => Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   return (
-    <div className="novo-pedido-layout">
+    <div className={`pdv-venda painel-${painelMobile}`}>
+      <div className="pdv-venda-toolbar">
+        <button className="pdv-back" onClick={onVoltar} disabled={loadingPedido}><i className="fas fa-arrow-left" aria-hidden="true" /> Comandas</button>
+        <div><h2>{pedidoAtual?.id ? `Comanda #${pedidoAtual.id}` : 'Nova comanda'}</h2><span>{clientePedido || 'Atendimento no balcão'}</span></div>
+        <span className="pdv-sale-status">{loadingPedido ? 'Atualizando…' : 'Em atendimento'}</span>
+      </div>
+      <div className="pdv-mobile-tabs" aria-label="Painéis da venda">
+        <button aria-pressed={painelMobile === 'produtos'} onClick={() => setPainelMobile('produtos')}>Produtos</button>
+        <button aria-pressed={painelMobile === 'comanda'} onClick={() => setPainelMobile('comanda')}>Comanda ({carrinho.length})</button>
+      </div>
+      <div className="novo-pedido-layout">
       
       {/* ========================================
           SEÇÃO DE PRODUTOS (ESQUERDA)
@@ -111,6 +123,8 @@ const FormularioPedido = ({
         onAbrirEntrega={onAbrirEntrega}
         onLimparEntrega={onLimparEntrega}
       />
+      </div>
+      {painelMobile === 'produtos' && carrinho.length > 0 && <button className="pdv-mobile-summary" onClick={() => setPainelMobile('comanda')}><span>Ver comanda · {carrinho.length} {carrinho.length === 1 ? 'item' : 'itens'}</span><strong>{formatar(totais.totalPagar + Number(dadosEntrega?.taxa_entrega || 0))} →</strong></button>}
     </div>
   );
 };

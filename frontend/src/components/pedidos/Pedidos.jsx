@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Hooks customizados
 import useCarrinho from '../../hooks/useCarrinho';
@@ -46,6 +46,8 @@ const Pedidos = ({ onRefresh }) => {
   // ========================================
 
   const [view, setView] = useState('comandas');
+  const autoSaveTimer = useRef(null);
+  const salvamentoEmCurso = useRef(false);
   
   // Dados
   const [produtos, setProdutos] = useState([]);
@@ -168,17 +170,17 @@ const Pedidos = ({ onRefresh }) => {
 
   // AUTO-SAVE: Salva automaticamente quando carrinho muda
   useEffect(() => {
-    if (pedidoAtual?.id && !salvandoAutomaticamente && (clientePedido || clienteCadastrado)) {
+    if (pedidoAtual?.id && !['parcial', 'finalizado'].includes(pedidoAtual.status) && (clientePedido || clienteCadastrado)) {
       Logger.debug('Auto-save disparado após mudança no carrinho');
       Logger.debug('   - Pedido ID:', { debug: pedidoAtual.id });
       Logger.debug('   - Cliente do pedido:', { debug: pedidoAtual.cliente_nome });
       Logger.debug('   - Itens no carrinho:', { debug: carrinho.length });
 
-      const timer = setTimeout(() => {
+      autoSaveTimer.current = setTimeout(() => {
         salvarAutomaticamente();
       }, 1000);
       
-      return () => clearTimeout(timer);
+      return () => clearTimeout(autoSaveTimer.current);
     }
   }, [carrinho, clientePedido, clienteCadastrado]);
 
@@ -273,7 +275,8 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   const salvarAutomaticamente = async () => {
-    if (!pedidoAtual?.id) return;
+    if (!pedidoAtual?.id || salvamentoEmCurso.current) return false;
+    salvamentoEmCurso.current = true;
     
     try {
       setSalvandoAutomaticamente(true);
@@ -307,11 +310,15 @@ const Pedidos = ({ onRefresh }) => {
       if (resultado?.success) {
         Logger.info('Salvo automaticamente', { info: { pedidoId: pedidoAtual.id } });
         setUltimoSalvamento(new Date());
+        return true;
       }
+      return false;
       
     } catch (error) {
       Logger.error('Erro no auto-save:', { erro: error });
+      return false;
     } finally {
+      salvamentoEmCurso.current = false;
       setSalvandoAutomaticamente(false);
     }
   };
@@ -796,6 +803,18 @@ const Pedidos = ({ onRefresh }) => {
   };
 
   const voltarParaComandas = async () => {
+    if (salvamentoEmCurso.current || loadingPedido) {
+      mostrarMensagem('Aguarde o salvamento da comanda antes de voltar.', 'info');
+      return;
+    }
+    clearTimeout(autoSaveTimer.current);
+    if (pedidoAtual?.id && !['parcial', 'finalizado'].includes(pedidoAtual.status)) {
+      const salvo = await salvarAutomaticamente();
+      if (!salvo) {
+        mostrarMensagem('Não foi possível salvar. A comanda continua aberta nesta tela; tente novamente.', 'error');
+        return;
+      }
+    }
     await carregarDados();
     limparFormulario();
     setView('comandas');
@@ -1102,7 +1121,7 @@ const Pedidos = ({ onRefresh }) => {
       
       {/* Mensagem de feedback */}
       {mensagem && (
-        <div className={`mensagem-feedback ${tipoMensagem}`}>
+        <div role="status" className={`mensagem-feedback ${tipoMensagem}`}>
           <i className={`fas fa-${tipoMensagem === 'success' ? 'check' : 'exclamation'}-circle`}></i>
           {mensagem}
         </div>

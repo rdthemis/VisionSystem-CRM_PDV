@@ -124,6 +124,7 @@ const ItemCarrinho = ({
             pararPropagacao(e);
             onDecrementar(index);
           }}
+          aria-label={`Diminuir quantidade de ${item.produto_nome}`}
           title="Diminuir quantidade"
         >
           -
@@ -134,6 +135,8 @@ const ItemCarrinho = ({
         <input
           type="text"
           className="quantidade-input"
+          aria-label={`Quantidade de ${item.produto_nome}`}
+          inputMode={permiteDecimal() ? "decimal" : "numeric"}
           value={quantidadeTemp}
           onChange={handleQuantidadeChange}
           onBlur={handleQuantidadeBlur}
@@ -152,6 +155,7 @@ const ItemCarrinho = ({
             pararPropagacao(e);
             onIncrementar(index);
           }}
+          aria-label={`Aumentar quantidade de ${item.produto_nome}`}
           title="Aumentar quantidade"
         >
           +
@@ -166,9 +170,7 @@ const ItemCarrinho = ({
       {/* DETALHES DO ITEM */}
       <div className="item-detalhes">
         {/* Nome do produto */}
-        <div className="item-nome">
-          {item.produto_nome} - {formatarPreco(item.preco_produto)}
-        </div>
+        <button className="pdv-edit-item" onClick={(event) => { event.stopPropagation(); onEditar(index); }} aria-label={`Editar ${item.produto_nome}`}>{item.produto_nome}<small>{formatarPreco(item.preco_produto)} · Editar item</small></button>
 
         {/* Adicionais (se houver) */}
         {item.adicionais && 

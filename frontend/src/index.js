@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import CardapioDigital from './pages/Cardapio/CardapioGelattoManniaV2';
+import CardapioV3 from './pages/Cardapio/CardapioGelattoManniaV3';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import reportWebVitals from './reportWebVitals';
 import Logger from './utils/Logger';
@@ -20,7 +21,9 @@ root.render(
     <BrowserRouter>
       <Routes>
         {/* Rota Raiz (/) -> Agora abre direto o Cardápio do Cliente */}
-        <Route path="/" element={<CardapioDigital />} />
+        <Route path="/" element={<CardapioV3 />} />
+        <Route path="/cardapio-v2" element={<CardapioDigital />} />
+        <Route path="/cardapio-v3" element={<CardapioV3 />} />
         
         {/* Rota do PDV -> Protegida em um caminho específico */}
         <Route path="/pdv" element={<App />} />

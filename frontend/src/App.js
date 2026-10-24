@@ -103,22 +103,6 @@ function App() {
     
     return (
         <div className="App">
-            {/* DEBUG INFO */}
-            <div
-                style={{
-                    position: "fixed",
-                    top: 0,
-                    right: 0,
-                    background: "#333",
-                    color: "white",
-                    padding: "5px 10px",
-                    fontSize: "12px",
-                    zIndex: 9999,
-                }}
-            >
-                {logado ? "Logado" : "Não logado"} | Tela: {telaAtual}
-            </div>
-
             {/* TELA DE LOGIN */}
             {!logado && telaAtual === "login" && (
                 <Login

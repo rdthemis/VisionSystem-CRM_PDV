@@ -1,7 +1,7 @@
 // src/components/pedidos/components/GridProdutos.jsx
 // 🍕 COMPONENTE: Grade de produtos com imagens, categorias e busca
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import produtoService from '../../../services/produtosService';
 
 const GridProdutos = ({
@@ -17,6 +17,19 @@ const GridProdutos = ({
   onProdutoClick
 }) => {
 
+  const buscaRef = useRef(null);
+  useEffect(() => {
+    const buscar = (event) => {
+      if (event.key === 'F2' && !document.querySelector('[role="dialog"], .modal-overlay, .modal-produto-overlay')) {
+        event.preventDefault(); buscaRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', buscar);
+    return () => window.removeEventListener('keydown', buscar);
+  }, []);
+  const normalizar = (valor) => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const limparFiltros = () => { onBuscaChange(''); onCodigoChange(''); onCategoriaChange(''); buscaRef.current?.focus(); };
+
   const formatarPreco = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -26,8 +39,8 @@ const GridProdutos = ({
 
   const produtosFiltrados = produtos.filter((produto) => {
     const matchCategoria = !categoriaAtiva || produto.categoria_nome === categoriaAtiva;
-    const matchBusca = !busca || produto.nome.toLowerCase().includes(busca.toLowerCase());
-    const matchCodigo = !codigoBusca || produto.id.toString() === codigoBusca;
+    const matchBusca = !normalizar(busca) || normalizar(`${produto.nome} ${produto.descricao || ''}`).includes(normalizar(busca));
+    const matchCodigo = !codigoBusca || String(produto.id) === codigoBusca.trim();
     return matchCategoria && matchBusca && matchCodigo;
   });
 
@@ -59,8 +72,9 @@ const GridProdutos = ({
       </div>
       
       {/* ── ABAS DE CATEGORIAS ── */}
-      <div className="categorias-tabs">
+      <div className="categorias-tabs" aria-label="Filtrar produtos por categoria">
         <button
+          aria-pressed={categoriaAtiva === ""}
           className={`categoria-tab ${categoriaAtiva === "" ? "active" : ""}`}
           onClick={() => onCategoriaChange("")}
         >
@@ -70,6 +84,7 @@ const GridProdutos = ({
         {categorias.map((categoria) => (
           <button
             key={categoria}
+            aria-pressed={categoriaAtiva === categoria}
             className={`categoria-tab ${categoriaAtiva === categoria ? "active" : ""}`}
             onClick={() => onCategoriaChange(categoria)}
           >
@@ -79,8 +94,8 @@ const GridProdutos = ({
       </div>
 
       <div className="produtos-section-title">
-        <h3>Todos os produtos</h3>
-        <span>{produtosFiltrados.length} disponíveis</span>
+        <h3>{categoriaAtiva || 'Todos os produtos'}</h3>
+        <span role="status">{produtosFiltrados.length} disponíveis</span>
       </div>
 
       {/* ── BARRA DE BUSCA ── */}
@@ -89,8 +104,10 @@ const GridProdutos = ({
           <div className="busca-input-group">
             <i className="fas fa-search busca-icon"></i>
             <input
-              type="text"
-              placeholder="Busca pelo nome do produto"
+              ref={buscaRef}
+              type="search"
+              aria-label="Buscar produto por nome ou descrição"
+              placeholder="Buscar produto por nome ou descrição (F2)"
               value={busca}
               onChange={(e) => onBuscaChange(e.target.value)}
               className="busca-produto-input"
@@ -99,17 +116,20 @@ const GridProdutos = ({
           
           <input
             type="text"
+            aria-label="Código do produto"
             placeholder="Código"
+            inputMode="numeric"
             value={codigoBusca}
             onChange={(e) => onCodigoChange(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             className="codigo-input"
           />
           
           <button className="btn-busca" onClick={onBuscarPorCodigo}>
-            Buscar
+            Adicionar por código
           </button>
         </div>
+        {(busca || codigoBusca || categoriaAtiva) && <button className="pdv-clear-filters" onClick={limparFiltros}>Limpar filtros</button>}
       </div>
 
       {/* ── GRID DE PRODUTOS ── */}
@@ -132,6 +152,7 @@ const GridProdutos = ({
                   className={`produto-item ${imagemUrl? 'com-imagem' : ''}`}
                   onClick={() => onProdutoClick(produto)}
                   role="button"
+                  aria-label={`Adicionar ${produto.nome}, ${formatarPreco(produto.preco)}`}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -168,7 +189,7 @@ const GridProdutos = ({
                     <div className="produto-preco">
                       {formatarPreco(produto.preco)}
                     </div>
-                    {/* <span className="produto-adicionar"><i className="fas fa-plus"></i> Adicionar</span> */}
+<span className="produto-adicionar"><i className="fas fa-plus" aria-hidden="true"></i> Adicionar</span>
                   </div>
                 </div>
               );

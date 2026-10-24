@@ -1,0 +1,45 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import GridProdutos from './GridProdutos';
+import ListaPedidos from './ListaPedidos';
+jest.mock('../../../services/produtosService', () => ({ __esModule:true, default:{ getImagemUrl: () => null } }));
+const produtos = [{ id:1, nome:'Açaí 300ml', descricao:'Com granola', categoria_nome:'Açaí', preco:12 }, { id:2, nome:'Suco', categoria_nome:'Bebidas', preco:8 }];
+const grid = (extra={}) => ({ produtos, categorias:['Açaí','Bebidas'], categoriaAtiva:'', busca:'', codigoBusca:'', onCategoriaChange:jest.fn(), onBuscaChange:jest.fn(), onCodigoChange:jest.fn(), onBuscarPorCodigo:jest.fn(), onProdutoClick:jest.fn(), ...extra });
+test('busca produtos sem acentos, por descrição e respeita categoria', () => {
+ const { rerender } = render(<GridProdutos {...grid({ busca:'acai' })} />);
+ expect(screen.getByRole('button', { name:/Adicionar Açaí/ })).toBeInTheDocument();
+ expect(screen.queryByRole('button', { name:/Adicionar Suco/ })).not.toBeInTheDocument();
+ rerender(<GridProdutos {...grid({ busca:'granola' })} />);
+ expect(screen.getByRole('button', { name:/Adicionar Açaí/ })).toBeInTheDocument();
+ rerender(<GridProdutos {...grid({ categoriaAtiva:'Bebidas', busca:'granola' })} />);
+ expect(screen.getByText('Nenhum produto encontrado')).toBeInTheDocument();
+});
+test('F2 foca busca, Enter adiciona por código e limpar remove todos os filtros', () => {
+ const props = grid({ busca:'acai', codigoBusca:'1', categoriaAtiva:'Açaí' });
+ render(<GridProdutos {...props} />);
+ fireEvent.keyDown(window, { key:'F2' });
+ expect(screen.getByRole('searchbox')).toHaveFocus();
+ fireEvent.keyDown(screen.getByRole('textbox', {name:'Código do produto'}), { key:'Enter' });
+ expect(props.onBuscarPorCodigo).toHaveBeenCalledTimes(1);
+ fireEvent.click(screen.getByRole('button', {name:'Limpar filtros'}));
+ expect(props.onBuscaChange).toHaveBeenCalledWith('');
+ expect(props.onCodigoChange).toHaveBeenCalledWith('');
+ expect(props.onCategoriaChange).toHaveBeenCalledWith('');
+});
+const pedidos = [{id:1, cliente_nome:'João [VIP]', status:'aberto', origem:'PDV', total:12}, {id:2, cliente_nome:'Maria', status:'parcial', origem:'cardapio_digital', total:8}];
+test('filtra comandas e busca texto literal sem falhar com caracteres de regex', () => {
+ const onEditar=jest.fn();
+ render(<ListaPedidos pedidos={pedidos} onEditar={onEditar} onNovoPedido={jest.fn()} />);
+ fireEvent.click(screen.getByRole('button', {name:'Pagamento parcial'}));
+ expect(screen.queryByRole('button', {name:/Abrir comanda 1/})).not.toBeInTheDocument();
+ expect(screen.getByRole('button', {name:/Abrir comanda 2/})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button', {name:'Todas'}));
+ const busca=screen.getByRole('textbox', {name:/Buscar comandas/});
+ fireEvent.change(busca, {target:{value:'joao'}});
+ expect(screen.getByRole('button', {name:/Abrir comanda 1/})).toBeInTheDocument();
+ fireEvent.change(busca, {target:{value:'['}});
+ fireEvent.keyDown(screen.getByRole('button', {name:/Abrir comanda 1/}), {key:'Enter'});
+ expect(onEditar).toHaveBeenCalledWith(pedidos[0]);
+ fireEvent.click(screen.getByRole('button', {name:'Cardápio digital'}));
+ expect(screen.getByText('Nenhum pedido encontrado')).toBeInTheDocument();
+});

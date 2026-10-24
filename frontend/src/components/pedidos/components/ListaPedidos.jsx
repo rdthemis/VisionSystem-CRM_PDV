@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+const normalizar = (valor) => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 /**
  * Componente que mostra todos os pedidos com busca inteligente
@@ -16,6 +17,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
   // ========================================
   
   const [termoBusca, setTermoBusca] = useState('');
+  const [filtro, setFiltro] = useState('todos');
 
   // ========================================
   // 🔧 FUNÇÃO DE BUSCA
@@ -27,14 +29,16 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
    */
   const pedidosFiltrados = useMemo(() => {
     if (!termoBusca.trim()) {
-      return pedidos; // Se busca vazia, retorna todos
+      return pedidos.filter((pedido) => filtro === 'todos' || (filtro === 'parcial' ? pedido.status === 'parcial' : pedido.origem === 'cardapio_digital'));
     }
 
-    const termo = termoBusca.toLowerCase().trim();
+    const termo = normalizar(termoBusca);
 
     return pedidos.filter(pedido => {
+      if (filtro === 'parcial' && pedido.status !== 'parcial') return false;
+      if (filtro === 'digital' && pedido.origem !== 'cardapio_digital') return false;
       // 1. Buscar no nome do cliente
-      const nomeCliente = (pedido.cliente_nome || pedido.cliente || '').toLowerCase();
+      const nomeCliente = normalizar(pedido.cliente_nome || pedido.cliente);
       if (nomeCliente.includes(termo)) {
         return true;
       }
@@ -48,7 +52,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
       // 3. Buscar nos nomes dos produtos
       if (pedido.itens && Array.isArray(pedido.itens)) {
         const temProduto = pedido.itens.some(item => {
-          const nomeProduto = (item.produto_nome || item.nome || '').toLowerCase();
+          const nomeProduto = normalizar(item.produto_nome || item.nome);
           return nomeProduto.includes(termo);
         });
         
@@ -65,7 +69,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
 
       return false;
     });
-  }, [pedidos, termoBusca]);
+  }, [pedidos, termoBusca, filtro]);
 
   // ========================================
   // 🔧 FUNÇÕES AUXILIARES
@@ -113,21 +117,10 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
 
     if (!termo || !textoString) return textoString;
 
-    const regex = new RegExp(`(${termo})`, 'gi');
-    const partes = textoString.split(regex);
+    const inicio = textoString.toLowerCase().indexOf(termo.toLowerCase());
+    if (inicio < 0) return textoString;
+    return <>{textoString.slice(0, inicio)}<mark>{textoString.slice(inicio, inicio + termo.length)}</mark>{textoString.slice(inicio + termo.length)}</>;
 
-    return partes.map((parte, index) => 
-      regex.test(parte) ? (
-        <mark key={index} style={{ 
-          background: '#ffeb3b', 
-          padding: '2px 4px',
-          borderRadius: '3px',
-          fontWeight: 'bold'
-        }}>
-          {parte}
-        </mark>
-      ) : parte
-    );
   };
   
   // ========================================
@@ -137,6 +130,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
   return (
     <div className="lista-pedidos-container">
       
+      <div className="pdv-orders-intro"><span>ATENDIMENTO</span><h2>Suas comandas, em um só lugar.</h2><p>Abra uma venda ou selecione uma comanda para continuar.</p></div>
       {/* CABEÇALHO COM BUSCA E BOTÃO */}
       <div className="comandas-header">
         <button 
@@ -151,6 +145,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
           <i className="fas fa-search busca-icon"></i>
           <input
             type="text"
+            aria-label="Buscar comandas por cliente, pedido ou produto"
             placeholder="Buscar por cliente, pedido ou produto..."
             className="busca-input"
             value={termoBusca}
@@ -182,6 +177,9 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
         </div>
       </div>
 
+      <div className="pdv-order-filters" aria-label="Filtrar comandas">
+        {[['todos', 'Todas'], ['parcial', 'Pagamento parcial'], ['digital', 'Cardápio digital']].map(([id, label]) => <button key={id} aria-pressed={filtro === id} onClick={() => setFiltro(id)}>{label}</button>)}
+      </div>
       {/* CONTADOR DE RESULTADOS */}
       {termoBusca && (
         <div style={{
@@ -206,7 +204,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
       {/* LISTA DE PEDIDOS */}
       <div className="lista-pedidos-finalizados">
         <div className="lista-pedidos-topbar">
-          <h3>Comandas Abertas</h3>
+          <h3>Comandas em atendimento</h3>
           <span className="comandas-count">
             {pedidosFiltrados.length} {pedidosFiltrados.length === 1 ? 'comanda' : 'comandas'}
           </span>
@@ -248,7 +246,7 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
               // Não há pedidos
               <>
                 <i className="fas fa-inbox"></i>
-                <p>Nenhum pedido finalizado ainda</p>
+                <p>{filtro === "todos" ? "Tudo pronto para a próxima venda" : "Nenhuma comanda neste filtro"}</p>
                 <small>Clique em "Nova Comanda" para começar</small>
               </>
             )}
@@ -260,6 +258,10 @@ const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
                 <div
                   key={pedido.id}
                   className="pedido-card"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Abrir comanda ${pedido.id}, ${pedido.cliente_nome || pedido.cliente || "Balcão"}`}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onEditar(pedido); } }}
                   onClick={() => onEditar(pedido)}
                   style={{ cursor: 'pointer' }}
                 >

@@ -322,7 +322,8 @@ const ModalPagamento = ({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div 
-        className="modal-content modal-pagamento" 
+        className="modal-content modal-pagamento"
+        role="dialog" aria-modal="true" aria-labelledby="pdv-payment-title"
         onClick={(e) => e.stopPropagation()}
       >
         
@@ -330,11 +331,11 @@ const ModalPagamento = ({
             CABEÇALHO
         ======================================== */}
         <div className="modal-header">
-          <h3>
+          <h3 id="pdv-payment-title">
             <i className="fas fa-credit-card"></i>
             Finalizar Pedido
           </h3>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" aria-label="Fechar pagamento" onClick={onClose}>✕</button>
         </div>
 
         <div className="modal-body">
@@ -389,7 +390,8 @@ const ModalPagamento = ({
                 }
 
                 return (
-                  <div
+                  <button type="button"
+                    aria-pressed={formaPagamento === forma.id}
                     key={forma.id}
                     className={`pagamento-opcao ${formaPagamento === forma.id ? 'selecionada' : ''}`}
                     onClick={() => setFormaPagamento(forma.id)}
@@ -402,7 +404,7 @@ const ModalPagamento = ({
                     <div className="pagamento-check">
                       <i className={`fas ${formaPagamento === forma.id ? 'fa-check-circle' : 'fa-circle'}`}></i>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
