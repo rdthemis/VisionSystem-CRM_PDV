@@ -329,6 +329,7 @@ const useCarrinho = () => {
                 produto_id: item.produto_id,
                 origem_pedido: item.origem_pedido || 'PDV',
                 produto_nome: item.produto_nome || item.nome,
+                categoria_nome: item.categoria_nome || '',
                 quantidade: item.quantidade,
                 preco_unitario: parseFloat(item.preco_unitario),
                 preco_produto: parseFloat(item.preco_produto),

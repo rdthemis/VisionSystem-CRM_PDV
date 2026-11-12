@@ -78,7 +78,8 @@ const GridProdutos = ({
           className={`categoria-tab ${categoriaAtiva === "" ? "active" : ""}`}
           onClick={() => onCategoriaChange("")}
         >
-          <span aria-hidden="true">▦</span> Todos
+          <span aria-hidden="true">▦</span>
+          <span className="categoria-tab-label">Todos</span>
         </button>
         
         {categorias.map((categoria) => (
@@ -87,8 +88,10 @@ const GridProdutos = ({
             aria-pressed={categoriaAtiva === categoria}
             className={`categoria-tab ${categoriaAtiva === categoria ? "active" : ""}`}
             onClick={() => onCategoriaChange(categoria)}
+            title={categoria}
           >
-            <span aria-hidden="true">{iconeCategoria(categoria)}</span> {categoria}
+            <span aria-hidden="true">{iconeCategoria(categoria)}</span>
+            <span className="categoria-tab-label">{categoria}</span>
           </button>
         ))}
       </div>

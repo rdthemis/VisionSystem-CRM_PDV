@@ -505,7 +505,7 @@
     /* ✅ SCROLL APENAS VERTICAL */
     overflow-x: hidden;
     /* ✅ SEM SCROLL HORIZONTAL */
-    max-height: 200px;
+    max-height: 300px;
     /* ✅ ALTURA MÁXIMA (ajuste conforme necessário) */
     margin-bottom: var(--spacing-md);
     padding-bottom: var(--spacing-sm);

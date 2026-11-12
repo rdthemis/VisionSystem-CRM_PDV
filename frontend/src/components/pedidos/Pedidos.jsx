@@ -124,7 +124,7 @@ const Pedidos = ({ onRefresh }) => {
       origem: pedidoAtual?.origem || 'PDV',
 
       // Tipo de pedido / entrega
-      tipo_pedido: dadosEntrega?.tipo_pedido || 'local',
+      tipo_pedido: dadosEntrega ? 'entrega' : 'balcao',
       endereco_entrega: dadosEntrega?.endereco_entrega || null,
       zona_entrega: dadosEntrega?.zona_nome || null,
       taxa_entrega: dadosEntrega?.taxa_entrega || 0,
@@ -931,7 +931,9 @@ const Pedidos = ({ onRefresh }) => {
       zona_nome: dados.zonaNome,
       taxa_entrega: dados.taxa,
       endereco_entrega: dados.endereco,
-      tipo_pedido: dados.zonaNome !== null ? dados.zonaNome : 'local'
+      // O banco aceita somente 'balcao' ou 'entrega'; o nome da zona
+      // fica separado em zona_nome/zona_entrega_id.
+      tipo_pedido: 'entrega'
     });
 
     if (pedidoAtual?.id) {

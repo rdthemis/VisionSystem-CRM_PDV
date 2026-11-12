@@ -23,7 +23,13 @@ const ItemCarrinho = ({
   // 📊 ESTADOS LOCAIS
   // ========================================
   
-  const [quantidadeTemp, setQuantidadeTemp] = useState(item.quantidade);
+  const formatarQuantidade = (quantidade) => {
+    const valor = Number(quantidade);
+    if (!Number.isFinite(valor)) return quantidade ?? '';
+    return ehProdutoPorPeso(item.categoria_nome) ? String(valor) : String(Math.round(valor));
+  };
+
+  const [quantidadeTemp, setQuantidadeTemp] = useState(() => formatarQuantidade(item.quantidade));
 
   // ========================================
   // 🔄 SINCRONIZAÇÃO DE ESTADO
@@ -34,7 +40,7 @@ const ItemCarrinho = ({
    * Isso garante que o input visual acompanhe as mudanças dos botões + e -
    */
   useEffect(() => {
-    setQuantidadeTemp(item.quantidade);
+    setQuantidadeTemp(formatarQuantidade(item.quantidade));
   }, [item.quantidade]);
 
   // ========================================
