@@ -1,217 +1,81 @@
-// src/components/Pedidos/ItemCarrinho.jsx
-// 🛒 COMPONENTE: Exibe um item do carrinho com opções de editar/remover
-
-import React, { useState, useEffect } from 'react'; // ← ADICIONAR useEffect
+import React, { useState, useEffect } from 'react';
 import { ehProdutoPorPeso, arredondarQuantidadePeso } from '../../utils/produtoPorPeso';
 
-/**
- * Componente que representa um item individual do carrinho
- * Permite editar quantidade, editar detalhes e remover
- * 
- * @param {Object} props - Propriedades do componente
- */
-const ItemCarrinho = ({
-  item,                    // Dados do item
-  index,                   // Índice no array do carrinho
-  onEditar,                // Função para editar o item
-  onAlterarQuantidade,     // Função para alterar quantidade
-  onIncrementar,           // 🆕 Incrementar quantidade
-  onDecrementar            // 🆕 Decrementar quantidade
-}) => {
-  
-  // ========================================
-  // 📊 ESTADOS LOCAIS
-  // ========================================
-  
+const formatarPreco = (valor) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+const parar = (e) => e.stopPropagation();
+
+const ItemCarrinho = ({ item, index, onEditar, onAlterarQuantidade, onIncrementar, onDecrementar }) => {
+  const porPeso = ehProdutoPorPeso(item.categoria_nome);
+
   const formatarQuantidade = (quantidade) => {
     const valor = Number(quantidade);
     if (!Number.isFinite(valor)) return quantidade ?? '';
-    return ehProdutoPorPeso(item.categoria_nome) ? String(valor) : String(Math.round(valor));
+    return porPeso ? String(valor) : String(Math.round(valor));
   };
 
   const [quantidadeTemp, setQuantidadeTemp] = useState(() => formatarQuantidade(item.quantidade));
 
-  // ========================================
-  // 🔄 SINCRONIZAÇÃO DE ESTADO
-  // ========================================
-  
-  /**
-   * 🆕 Sincroniza quantidadeTemp quando item.quantidade mudar
-   * Isso garante que o input visual acompanhe as mudanças dos botões + e -
-   */
   useEffect(() => {
     setQuantidadeTemp(formatarQuantidade(item.quantidade));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.quantidade]);
 
-  // ========================================
-  // 🔧 FUNÇÕES AUXILIARES
-  // ========================================
-
-  /**
-   * Formata preço para exibição em reais
-   */
-  const formatarPreco = (valor) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(valor);
+  const aplicarQuantidade = () => {
+    const minimo = porPeso ? 0.001 : 1;
+    let nova = parseFloat(quantidadeTemp);
+    if (isNaN(nova) || nova < minimo) nova = minimo;
+    nova = porPeso ? arredondarQuantidadePeso(nova) : Math.round(nova);
+    setQuantidadeTemp(nova);
+    onAlterarQuantidade(index, nova);
   };
 
-  /**
-   * Previne propagação de eventos (evita abrir modal ao clicar em botões)
-   */
-  const pararPropagacao = (e) => {
-    e.stopPropagation();
-  };
-
-  /**
-   * Handler para quando o usuário digita no input de quantidade
-   */
-  const handleQuantidadeChange = (e) => {
-    // Aceita vírgula como separador decimal e converte para ponto
-    const valor = e.target.value.replace(',', '.');
-
-    // Permite digitar (inclusive string vazia para poder apagar)
-    setQuantidadeTemp(valor);
-  };
-
-  /**
-   * Handler para quando o input perde o foco (blur)
-   * Valida e aplica a quantidade
-   */
-  const handleQuantidadeBlur = () => {
-    let novaQuantidade = parseFloat(quantidadeTemp);
-    const decimalPermitido = permiteDecimal();
-    const minimo = decimalPermitido ? 0.001 : 1;
-
-    // Validações
-    if (isNaN(novaQuantidade) || novaQuantidade < minimo) {
-      novaQuantidade = minimo;
-    }
-
-    // Produtos por peso (sorvete/açaí) aceitam 3 casas decimais (gramas), os demais são sempre inteiros
-    novaQuantidade = decimalPermitido
-      ? arredondarQuantidadePeso(novaQuantidade)
-      : Math.round(novaQuantidade);
-
-    setQuantidadeTemp(novaQuantidade);
-    onAlterarQuantidade(index, novaQuantidade);
-  };
-
-  /**
-   * Handler para Enter no input
-   */
-  const handleQuantidadeKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      e.target.blur(); // Dispara o blur que vai validar
-    }
-  };
-
-  /**
-   * Verifica se é categoria que permite quantidade decimal (sorvete)
-   */
-  const permiteDecimal = () => ehProdutoPorPeso(item.categoria_nome);
-
-  // ========================================s
-  // 🎨 RENDERIZAÇÃO
-  // ========================================
+  const adicionais = Array.isArray(item.adicionais) ? item.adicionais : [];
 
   return (
-    <div 
-      className="pedido-item pedido-item-editavel"
-      onClick={() => onEditar(index)}
-      title="Clique para editar este item"
-    >
-      {/* CONTROLES DE QUANTIDADE */}
-      <div className="item-quantidade-control">
-        <button
-          className="btn-qty-small"
-          onClick={(e) => {
-            pararPropagacao(e);
-            onDecrementar(index);
-          }}
-          aria-label={`Diminuir quantidade de ${item.produto_nome}`}
-          title="Diminuir quantidade"
-        >
-          -
+    <div className="gm-cart-item" onClick={() => onEditar(index)} title="Clique para editar este item" data-testid={`cart-item-${index}`}>
+      <div className="gm-cart-item-main">
+        <button className="gm-cart-item-name" onClick={(e) => { parar(e); onEditar(index); }} aria-label={`Editar ${item.produto_nome}`} data-testid={`cart-item-edit-${index}`}>
+          {item.produto_nome}
+          <small>{formatarPreco(item.preco_produto)} {porPeso ? '/ kg' : 'cada'} · <u>editar</u></small>
         </button>
-        
-        {/* ✅ INPUT DE QUANTIDADE — editável para todos os produtos; a regra de casas decimais
-            (peso: até 3 decimais / demais: inteiro) é aplicada na validação do blur/Enter */}
+        <strong className="gm-money gm-cart-item-total" data-testid={`cart-item-subtotal-${index}`}>{formatarPreco(item.subtotal)}</strong>
+      </div>
+
+      {adicionais.length > 0 && (
+        <div className="gm-tags">
+          {adicionais.flatMap((adicional, idx) =>
+            Array.from({ length: adicional.quantidade || 1 }, (_, i) => (
+              <span key={`${idx}-${i}`} className="gm-tag">
+                + {adicional.nome}{adicional.preco > 0 && <b> {formatarPreco(adicional.preco)}</b>}
+              </span>
+            ))
+          )}
+        </div>
+      )}
+
+      {item.observacoes && <p className="gm-cart-item-note"><i className="far fa-comment" aria-hidden="true" /> {item.observacoes}</p>}
+
+      <div className="gm-stepper" onClick={parar}>
+        <button onClick={(e) => { parar(e); onDecrementar(index); }} aria-label={`Diminuir quantidade de ${item.produto_nome}`} title="Diminuir quantidade" data-testid={`cart-item-decrease-${index}`}>
+          <i className="fas fa-minus" aria-hidden="true" />
+        </button>
         <input
           type="text"
-          className="quantidade-input"
           aria-label={`Quantidade de ${item.produto_nome}`}
-          inputMode={permiteDecimal() ? "decimal" : "numeric"}
+          inputMode={porPeso ? 'decimal' : 'numeric'}
           value={quantidadeTemp}
-          onChange={handleQuantidadeChange}
-          onBlur={handleQuantidadeBlur}
-          onKeyPress={handleQuantidadeKeyPress}
-          onClick={pararPropagacao}
-          onFocus={(e) => {
-            pararPropagacao(e);
-            e.target.select(); // Seleciona todo o texto ao focar
-          }}
-          title={permiteDecimal() ? "Digite a quantidade (kg), aceita fracionado (gramas, até 3 casas decimais)" : "Digite a quantidade ou use os botões + e -, valor sempre inteiro"}
+          onChange={(e) => setQuantidadeTemp(e.target.value.replace(',', '.'))}
+          onBlur={aplicarQuantidade}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+          onClick={parar}
+          onFocus={(e) => { parar(e); e.target.select(); }}
+          title={porPeso ? 'Quantidade em kg (até 3 casas decimais)' : 'Quantidade inteira'}
+          data-testid={`cart-item-qty-${index}`}
         />
-        
-        <button
-          className="btn-qty-small"
-          onClick={(e) => {
-            pararPropagacao(e);
-            onIncrementar(index);
-          }}
-          aria-label={`Aumentar quantidade de ${item.produto_nome}`}
-          title="Aumentar quantidade"
-        >
-          +
+        <button onClick={(e) => { parar(e); onIncrementar(index); }} aria-label={`Aumentar quantidade de ${item.produto_nome}`} title="Aumentar quantidade" data-testid={`cart-item-increase-${index}`}>
+          <i className="fas fa-plus" aria-hidden="true" />
         </button>
-        
-        {/* ✅ Label indicativa para sorvetes */}
-        {permiteDecimal() && (
-          <span className="unidade-medida">kg</span>
-        )}
-      </div>
-
-      {/* DETALHES DO ITEM */}
-      <div className="item-detalhes">
-        {/* Nome do produto */}
-        <button className="pdv-edit-item" onClick={(event) => { event.stopPropagation(); onEditar(index); }} aria-label={`Editar ${item.produto_nome}`}>{item.produto_nome}<small>{formatarPreco(item.preco_produto)} · Editar item</small></button>
-
-        {/* Adicionais (se houver) */}
-        {item.adicionais && 
-          Array.isArray(item.adicionais) && 
-          item.adicionais?.length > 0 && (
-            <div className="item-adicionais">
-              {item.adicionais.flatMap((adicional, idx) => 
-                Array.from({ length: adicional.quantidade || 1 }, (_, i) => (
-                  <span key={`${idx}-${i}`} className="adicional-tag">
-                    + {adicional.nome}
-                    {adicional.preco > 0 && (
-                      <strong className="adicional-preco">
-                        {' '}(R$ {adicional.preco.toFixed(2)})
-                      </strong>
-                    )}
-                  </span>
-                ))
-              )}
-            </div>
-          )
-        }
-
-        {/* Observações (se houver) */}
-        {item.observacoes && (
-          <div className="item-observacoes">
-            {item.observacoes}
-          </div>
-        )}
-      </div>
-
-      {/* VALOR */}
-      <div className="item-actions">
-        <div className="item-valor">
-          {formatarPreco(item.subtotal)}
-        </div>
+        <span className="gm-stepper-unit">{porPeso ? 'kg' : 'un.'}</span>
       </div>
     </div>
   );

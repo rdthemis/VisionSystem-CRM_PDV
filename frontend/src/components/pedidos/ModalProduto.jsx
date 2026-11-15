@@ -256,11 +256,18 @@ const ModalProduto = ({
   // 🎨 RENDERIZAÇÃO
   // ========================================
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const fecharComEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', fecharComEsc);
+    return () => window.removeEventListener('keydown', fecharComEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !produto) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-produto" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content modal-produto" role="dialog" aria-modal="true" data-testid="product-modal" onClick={(e) => e.stopPropagation()}>
         
         {/* CABEÇALHO */}
         <div className="modal-header">
@@ -268,7 +275,7 @@ const ModalProduto = ({
             {modoEdicao ? 'Editar Item: ' : ''}
             {produto.nome}
           </h3>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" onClick={onClose} aria-label="Fechar" data-testid="product-modal-close">✕</button>
         </div>
 
         <div className="modal-body">
@@ -291,6 +298,7 @@ const ModalProduto = ({
                 <input
                   type="text"
                   className="quantidade-modal-input"
+                  data-testid="product-modal-qty-input"
                   value={quantidadeTexto}
                   onChange={handleQuantidadeChange}
                   onBlur={handleQuantidadeBlur}
@@ -303,14 +311,18 @@ const ModalProduto = ({
                   <button
                     className="btn-qty-modal"
                     onClick={() => alterarQuantidade('diminuir')}
+                    aria-label="Diminuir quantidade"
+                    data-testid="product-modal-qty-decrease"
                     disabled={quantidade <= 1}
                   >
                     -
                   </button>
-                  <span className="quantidade-modal-display">{quantidade}</span>
+                  <span className="quantidade-modal-display" data-testid="product-modal-qty">{quantidade}</span>
                   <button
                     className="btn-qty-modal"
                     onClick={() => alterarQuantidade('aumentar')}
+                    aria-label="Aumentar quantidade"
+                    data-testid="product-modal-qty-increase"
                   >
                     +
                   </button>
@@ -377,6 +389,7 @@ const ModalProduto = ({
             <h4>Observações</h4>
             <textarea
               className="observacoes-modal-input"
+              data-testid="product-modal-notes-input"
               placeholder="Adicione observações especiais..."
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
@@ -414,15 +427,15 @@ const ModalProduto = ({
         {/* RODAPÉ */}
         <div className="modal-footer">
           {modoEdicao && onExcluir && (
-            <button className="btn-excluir-item-modal" onClick={onExcluir}>
+            <button className="btn-excluir-item-modal" onClick={onExcluir} data-testid="product-modal-delete-button">
               <i className="fas fa-trash" aria-hidden="true"></i>
               Excluir item
             </button>
           )}
-          <button className="btn-secondary" onClick={onClose}>
+          <button className="btn-secondary" onClick={onClose} data-testid="product-modal-cancel-button">
             Cancelar
           </button>
-          <button className="btn-primary" onClick={confirmar}>
+          <button className="btn-primary" onClick={confirmar} data-testid="product-modal-confirm-button">
             {modoEdicao ? 'Salvar Alterações' : 'Adicionar ao Pedido'}
           </button>
         </div>

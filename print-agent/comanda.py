@@ -31,6 +31,12 @@ ALIGN_RIGHT = ESC + "\x61\x02"
 BOLD_ON = ESC + "\x45\x01"
 BOLD_OFF = ESC + "\x45\x00"
 NORMAL = ESC + "\x21\x00"
+#Fonte normal com espaçamento maior entre as letras
+NORMAL_LARG = ESC + "\x20\x07"
+#Duplo (Largura + Altura 2x)
+DUPLO = ESC + "\x21\x11"
+#Largura Duplo (Largura 2x)
+LARG_DUPLO = ESC + "\x21\x10"
 # Negrito + altura dupla num único comando (ver nota em BematechPrinter.php:
 # dois comandos separados fazia o negrito "vazar" pro texto seguinte).
 BOLD_DOUBLE_H_ON = ESC + "\x21\x18"
@@ -93,6 +99,15 @@ class ComandaPrinterBuffer:
 
     def normal(self):
         return self.raw(NORMAL)
+   
+    def normal_larg(self):
+        return self.raw(NORMAL_lARG)
+    
+    def duplo(self):
+        return self.raw(DUPLO)
+    
+    def larg_duplo(self):
+        return self.raw(LARG_DUPLO)
 
     def tight_spacing(self):
         return self.raw(LINE_SPACING_TIGHT)
@@ -180,15 +195,31 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
 
     p.bold(True)
     numero = pedido.get("numero") or "---"
+    comanda = pedido.get("id") or "---"
     origem = pedido.get("origem_pedido") or "cardapio_digital"
-    p.line(f"COMANDA {numero}")
+    p.line(f"PEDIDO {numero}")
+    p.line(f"COMANDA {comanda}")
     p.line(f"Origem: {origem}")
     p.bold(False)
     p.normal()
 
     data_hora = pedido.get("data") or datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     p.line(f"Data/Hora: {data_hora}")
-    p.line()
+
+    # Cliente
+    p.separator()
+    cliente = pedido.get("cliente")
+    if cliente:
+        p.align_center()
+        p.bold(True)
+        p.line(f"Cliente: {cliente}")
+        p.bold(False)
+        p.normal()
+        p.align_left()
+    if pedido.get("telefone"):
+        p.line(f"Fone: {pedido['telefone']}")
+    #if tipo == "entrega" and pedido.get("endereco"):
+    #    p.line(f"Entrega: {pedido['endereco']}")
     p.align_left()
 
     # Tipo de pedido / endereço
@@ -208,27 +239,13 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
         p.line(f"Endereço: {pedido.get('endereco') or '---'}")
     p.align_left()
 
-    # Cliente
-    p.separator()
-    cliente = pedido.get("cliente")
-    if cliente:
-        p.align_center()
-        p.bold(True)
-        p.line(f"Cliente: {cliente}")
-        p.bold(False)
-        p.normal()
-        p.align_left()
-    if pedido.get("telefone"):
-        p.line(f"Fone: {pedido['telefone']}")
-    if tipo == "entrega" and pedido.get("endereco"):
-        p.line(f"Entrega: {pedido['endereco']}")
     p.separator()
 
     # Itens
     itens = pedido.get("itens") or []
+    p.normal_larg
     p.bold(True)
     p.line("QTD     DESCRICAO")
-    p.bold(False)
     p.separator()
 
     total_itens = len(itens)
@@ -236,8 +253,9 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
         qtd = item.get("qtd", 1)
         descricao = str(item.get("descricao", "Item")).upper()
 
-        p.bold_double_height()
-        p.line(f"{qtd} x {descricao}")
+        p.normal_larg
+        p.bold(True)
+        p.line(f"{qtd}   x   {descricao}")
         p.bold(False)
         p.normal()
 
@@ -245,7 +263,7 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
             desc_ad = str(ad.get("descricao", "")).upper()
             if not desc_ad:
                 continue
-            p.two_columns(f"      - {desc_ad}", "")
+            p.two_columns(f"        - {desc_ad}", "")
 
         obs = item.get("observacao")
         if obs:

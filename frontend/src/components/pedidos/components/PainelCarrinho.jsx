@@ -1,208 +1,114 @@
-// src/components/pedidos/components/PainelCarrinho.jsx
-// 🛒 COMPONENTE: Painel lateral com carrinho e totais
-
 import React, { useState } from 'react';
 import ItemCarrinho from '../ItemCarrinho';
-import ModalConta from './ModalConta';
 import ModalTransferencia from './ModalTransferencia';
 
+const formatarPreco = (valor) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(valor).replace(',', '.')) || 0);
+
+const AcaoSecundaria = ({ icone, label, onClick, disabled, testId }) => (
+  <button className="gm-action" onClick={onClick} disabled={disabled} data-testid={testId}>
+    <i className={icone} aria-hidden="true" /><span>{label}</span>
+  </button>
+);
+
 const PainelCarrinho = ({
-  pedidoAtual,
-  clientePedido,
-  carrinho,
-  totais,
-  dadosEntrega,
-  onAbrirEntrega,
-  onLimparEntrega,
-  loadingPedido,
-  onClienteChange,
-  onBuscarCliente,
-  onCancelar,
-  onEditarItem,
-  onAlterarQuantidade,
-  onIncrementarQuantidade,
-  onDecrementarQuantidade,
-  onImprimir,
-  onContaConsumo,
-  onFinalizar,
-  onVincular,
-  onPagar,
-  buscarPedidos,
-  onTransferir,
+  pedidoAtual, clientePedido, carrinho, totais, dadosEntrega, onAbrirEntrega, onLimparEntrega,
+  loadingPedido, onClienteChange, onBuscarCliente, onCancelar, onEditarItem, onAlterarQuantidade,
+  onIncrementarQuantidade, onDecrementarQuantidade, onImprimir, onContaConsumo, onPagar,
+  buscarPedidos, onTransferir,
 }) => {
-
-  // ----------------------------------------
-  // 📦 ESTADOS DOS MODAIS
-  // ----------------------------------------
-  const [modalContaVisivel, setModalContaVisivel] = useState(false);
   const [modalTransferenciaVisivel, setModalTransferenciaVisivel] = useState(false);
-
-  // ----------------------------------------
-  // 🔧 FUNÇÕES AUXILIARES
-  // ----------------------------------------
-  const formatarPreco = (valor) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(valor).replace(',', '.')) || 0);
-
   const totalComEntrega = totais.totalPagar + (dadosEntrega?.taxa_entrega || 0);
+  const valorPago = Number(pedidoAtual?.valor_pago || 0);
+  const vazio = carrinho.length === 0;
 
-  // ----------------------------------------
-  // 🎨 RENDERIZAÇÃO
-  // ----------------------------------------
   return (
-    <div className="pedido-panel">
-
-      <div className="pdv-cart-title"><h3>Resumo da comanda</h3><span>{carrinho.length} {carrinho.length === 1 ? 'item' : 'itens'}</span></div>
-      {/* ── CABEÇALHO ── */}
-      <div className="pedido-header pedido-header-compacto">
-        <div className="pedido-actions pedido-actions-principais">
-          <button className="btn-icon" title="Selecionar cliente" aria-label="Selecionar cliente" onClick={onBuscarCliente} disabled={loadingPedido}>
-            <i className="fas fa-user" aria-hidden="true"></i><span>Cliente</span>
-          </button>
-          <button className="btn-icon btn-cancelar-comanda" title="Cancelar comanda" aria-label="Cancelar comanda" onClick={onCancelar} disabled={loadingPedido}>
-            <i className="fa-solid fa-trash" aria-hidden="true"></i><span>Cancelar</span>
-          </button>
+    <aside className="gm-cart" data-testid="cart-panel">
+      <div className="gm-cart-head">
+        <div>
+          <h3>Resumo da comanda</h3>
+          <span data-testid="cart-items-count">{carrinho.length} {carrinho.length === 1 ? 'item' : 'itens'}</span>
         </div>
-        <div className="pedido-cliente-inline">
-          <i className="fas fa-user-circle" aria-hidden="true"></i>
-          <input
-            type="text"
-            value={clientePedido}
-            onChange={(e) => onClienteChange(e.target.value)}
-            className="cliente-input"
-            aria-label="Nome do cliente da comanda"
-            placeholder="Nome do cliente (opcional)"
-            disabled={loadingPedido}
-          />
-        </div>
-      </div>
-
-      {/* ── ITENS DO CARRINHO ── */}
-      <div className="pedido-itens-scroll">
-        <div className="pedido-itens">
-          {carrinho.length === 0 ? (
-            <div className="sem-itens">
-              <i className="fas fa-shopping-cart"></i>
-              <p>Nenhum item adicionado</p>
-              <small>Clique nos produtos para adicionar</small>
-            </div>
-          ) : (
-            carrinho.map((item, index) => (
-              <ItemCarrinho
-                key={item._id}
-                item={item}
-                index={index}
-                onEditar={onEditarItem}
-                onAlterarQuantidade={onAlterarQuantidade}
-                onIncrementar={onIncrementarQuantidade}
-                onDecrementar={onDecrementarQuantidade}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ── TOTAIS ── */}
-      <div className="pedido-totais">
-        <div className="total-linha">
-          <span>Subtotal</span>
-          <span>{formatarPreco(totais.totalItens)}</span>
-        </div>
-
-        {dadosEntrega && (
-          <div className="total-linha taxa-entrega">
-            <span>Taxa de Entrega</span>
-            <span>{formatarPreco(dadosEntrega.taxa_entrega)}</span>
-          
-            <button
-              className="btn-limpar-entrega"
-              onClick={onLimparEntrega}
-              title="Remover entrega"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        )}
-
-        <div className="total-linha total-final">
-          <span>Total a pagar</span>
-          <span>{formatarPreco(totalComEntrega)}</span>
-        </div>
-
-        {pedidoAtual?.valor_pago > 0 && (
-          <>
-            <div className="total-linha">
-              <span>Pago</span>
-              <span>{formatarPreco(pedidoAtual.valor_pago)}</span>
-            </div>
-            <div className="total-linha total-final saldo-devedor">
-              <span>Saldo</span>
-              <span>{formatarPreco(totalComEntrega - pedidoAtual.valor_pago)}</span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ── BOTÕES DE AÇÃO ── */}
-      <div className="pedido-botoes">
-        <div className="botoes-secundarios">
-
-          {/* CONTA */}
-          <button
-            className="btn-acao"
-            onClick={onContaConsumo}
-            disabled={carrinho.length === 0}
-            title="Ver conta do cliente"
-          >
-            <i className="fas fa-receipt"></i>
-            <span>Conta</span>
-          </button>
-
-          {/* TRANSFERÊNCIA */}
-          <button
-            className="btn-acao"
-            onClick={() => setModalTransferenciaVisivel(true)}
-            disabled={carrinho.length === 0 || !pedidoAtual?.id}
-            title="Transferir itens para outra comanda"
-          >
-            <i className="fas fa-exchange-alt"></i>
-            <span>Transferência</span>
-          </button>
-
-          {/* ENTREGA */}
-          <button className="btn-acao" onClick={onAbrirEntrega}>
-            <i className="fa fa-motorcycle" aria-hidden="true"></i>
-            <span>Entrega</span>
-          </button>
-
-          {/* IMPRIMIR */}
-          <button className="btn-acao" onClick={onImprimir}>
-            <i className="fas fa-print"></i>
-            <span>Imprimir</span>
-          </button>
-        </div>
-
-        {/* Botão PAGAR */}
-        <button
-          className="btn-pagar"
-          onClick={onPagar}
-          disabled={carrinho.length === 0 || loadingPedido}
-        >
-          <i className="fas fa-credit-card"></i> {loadingPedido ? 'Aguarde…' : pedidoAtual?.valor_pago > 0 ? 'Receber saldo' : 'Ir para pagamento'}
+        <button className="gm-icon-btn danger" title="Cancelar comanda" aria-label="Cancelar comanda" onClick={onCancelar} disabled={loadingPedido} data-testid="cancel-comanda-button">
+          <i className="fa-solid fa-trash" aria-hidden="true" />
         </button>
       </div>
 
-      {/* ── MODAIS ── */}
-      <ModalConta
-        visible={modalContaVisivel}
-        pedido={pedidoAtual}
-        carrinho={carrinho}
-        totais={totais}
-        clientePedido={clientePedido}
-        onFechar={() => setModalContaVisivel(false)}
-        dadosEntrega={dadosEntrega}
-        onAbrirEntrega={onAbrirEntrega}
-        onLimparEntrega={onLimparEntrega}
-      />
+      <div className="gm-field">
+        <label htmlFor="gm-cliente-comanda">Cliente <small>opcional</small></label>
+        <div className="gm-input-action">
+          <input
+            id="gm-cliente-comanda"
+            type="text"
+            value={clientePedido}
+            onChange={(e) => onClienteChange(e.target.value)}
+            aria-label="Nome do cliente da comanda"
+            placeholder="Nome para chamar no balcão"
+            disabled={loadingPedido}
+            data-testid="cart-client-input"
+          />
+          <button className="gm-btn gm-btn-soft" title="Selecionar cliente" aria-label="Selecionar cliente" onClick={onBuscarCliente} disabled={loadingPedido} data-testid="select-client-button">
+            <i className="fas fa-address-book" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div className="gm-cart-items">
+        {vazio ? (
+          <div className="gm-empty compact" data-testid="cart-empty">
+            <span className="gm-empty-icon"><i className="fas fa-basket-shopping" aria-hidden="true" /></span>
+            <h3>Nenhum item adicionado</h3>
+            <p>Toque em um produto do catálogo para começar.</p>
+          </div>
+        ) : carrinho.map((item, index) => (
+          <ItemCarrinho
+            key={item._id}
+            item={item}
+            index={index}
+            onEditar={onEditarItem}
+            onAlterarQuantidade={onAlterarQuantidade}
+            onIncrementar={onIncrementarQuantidade}
+            onDecrementar={onDecrementarQuantidade}
+          />
+        ))}
+      </div>
+
+      <div className="gm-totals" data-testid="cart-totals">
+        <div className="gm-total-row"><span>Subtotal</span><span className="gm-money">{formatarPreco(totais.totalItens)}</span></div>
+        {dadosEntrega && (
+          <div className="gm-total-row">
+            <span><i className="fas fa-motorcycle" aria-hidden="true" /> Taxa de entrega</span>
+            <span className="gm-money">
+              {formatarPreco(dadosEntrega.taxa_entrega)}
+              <button className="gm-mini-x" onClick={onLimparEntrega} title="Remover entrega" aria-label="Remover entrega" data-testid="remove-delivery-button">
+                <i className="fas fa-times" aria-hidden="true" />
+              </button>
+            </span>
+          </div>
+        )}
+        {valorPago > 0 && (
+          <div className="gm-total-row"><span>Total da comanda</span><span className="gm-money">{formatarPreco(totalComEntrega)}</span></div>
+        )}
+        {valorPago > 0 && (
+          <div className="gm-total-row paid"><span>Já pago</span><span className="gm-money">− {formatarPreco(valorPago)}</span></div>
+        )}
+        <div className="gm-total-row grand">
+          <span>{valorPago > 0 ? 'Saldo a receber' : 'Total a pagar'}</span>
+          <strong className="gm-money" data-testid="cart-total">{formatarPreco(totalComEntrega - valorPago)}</strong>
+        </div>
+      </div>
+
+      <div className="gm-actions-grid">
+        <AcaoSecundaria icone="fas fa-receipt" label="Conta" onClick={onContaConsumo} disabled={vazio} testId="cart-conta-button" />
+        <AcaoSecundaria icone="fas fa-right-left" label="Transferir" onClick={() => setModalTransferenciaVisivel(true)} disabled={vazio || !pedidoAtual?.id} testId="cart-transfer-button" />
+        <AcaoSecundaria icone="fas fa-motorcycle" label={dadosEntrega ? 'Editar entrega' : 'Entrega'} onClick={onAbrirEntrega} testId="cart-delivery-button" />
+        <AcaoSecundaria icone="fas fa-print" label="Imprimir" onClick={onImprimir} testId="cart-print-button" />
+      </div>
+
+      <button className="gm-pay-btn" onClick={onPagar} disabled={vazio || loadingPedido} data-testid="cart-pay-button">
+        <span><i className="fas fa-wallet" aria-hidden="true" /> {loadingPedido ? 'Aguarde…' : valorPago > 0 ? 'Receber saldo' : 'Ir para pagamento'}</span>
+        <strong className="gm-money">{formatarPreco(totalComEntrega - valorPago)}</strong>
+      </button>
 
       <ModalTransferencia
         visible={modalTransferenciaVisivel}
@@ -212,7 +118,7 @@ const PainelCarrinho = ({
         onTransferir={onTransferir}
         buscarPedidos={buscarPedidos}
       />
-    </div>
+    </aside>
   );
 };
 

@@ -1,329 +1,190 @@
 import React, { useState, useMemo } from 'react';
-const normalizar = (valor) => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
-/**
- * Componente que mostra todos os pedidos com busca inteligente
- * 
- * Busca por:
- * - Nome do cliente
- * - Número do pedido
- * - Nome dos produtos
- * - Valor do pedido
- */
-const ListaPedidos = ({ pedidos, onVerDetalhes, onEditar, onNovoPedido }) => {
-  
-  // ========================================
-  // 📦 ESTADOS
-  // ========================================
-  
+const normalizar = (valor) => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const moeda = (valor) => Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const STATUS_LABELS = {
+  aberto: 'Aberto',
+  'em-preparo': 'Em preparo',
+  parcial: 'Pagamento parcial',
+  finalizado: 'Finalizado',
+  cancelado: 'Cancelado',
+  balcao: 'Balcão'
+};
+
+const FILTROS = [
+  ['todos', 'Todas', 'fa-layer-group'],
+  ['parcial', 'Pagamento parcial', 'fa-hourglass-half'],
+  ['digital', 'Cardápio digital', 'fa-mobile-screen']
+];
+
+const slugStatus = (status) => String(status || 'aberto').toLowerCase().replace(/\s+/g, '-');
+
+const tempoDecorrido = (data) => {
+  const minutos = Math.max(0, Math.round((Date.now() - new Date(data).getTime()) / 60000));
+  if (!Number.isFinite(minutos)) return '';
+  if (minutos < 60) return `${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  return horas < 24 ? `${horas}h ${minutos % 60}min` : `${Math.floor(horas / 24)}d`;
+};
+
+const destacarTexto = (texto, termo) => {
+  const textoString = String(texto || '');
+  if (!termo || !textoString) return textoString;
+  const inicio = normalizar(textoString).indexOf(normalizar(termo));
+  if (inicio < 0) return textoString;
+  return <>{textoString.slice(0, inicio)}<mark>{textoString.slice(inicio, inicio + termo.length)}</mark>{textoString.slice(inicio + termo.length)}</>;
+};
+
+const CardComanda = ({ pedido, termoBusca, onEditar }) => {
+  const status = slugStatus(pedido.status);
+  const taxa = Number(pedido.taxa_entrega || 0);
+  const saldo = Number(pedido.total) + taxa - Number(pedido.valor_pago || 0);
+  const data = pedido.data || pedido.created_at;
+  const digital = pedido.origem === 'cardapio_digital';
+  const abrir = () => onEditar(pedido);
+
+  return (
+    <div
+      className={`gm-order-card status-${status}`}
+      role="button"
+      tabIndex={0}
+      data-testid={`comanda-card-${pedido.id}`}
+      aria-label={`Abrir comanda ${pedido.id}, ${pedido.cliente_nome || pedido.cliente || 'Balcão'}`}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } }}
+      onClick={abrir}
+    >
+      <div className="gm-order-card-top">
+        <span className="gm-order-number">#{destacarTexto(String(pedido.id || ''), termoBusca)}</span>
+        <span className={`gm-status-pill status-${status}`}>{STATUS_LABELS[status] || pedido.status || 'Aberto'}</span>
+      </div>
+      <div className="gm-order-client">
+        <span className="gm-avatar" aria-hidden="true">{String(pedido.cliente_nome || pedido.cliente || 'B').trim().charAt(0).toUpperCase()}</span>
+        <div>
+          <strong>{destacarTexto(pedido.cliente_nome || pedido.cliente || 'Cliente não informado', termoBusca)}</strong>
+          <small>
+            <i className={`fas ${digital ? 'fa-mobile-screen' : 'fa-store'}`} aria-hidden="true" /> {digital ? 'Cardápio digital' : (pedido.origem || 'PDV')}
+            {taxa > 0 && <> · <i className="fas fa-motorcycle" aria-hidden="true" /> Entrega</>}
+          </small>
+        </div>
+      </div>
+      <div className="gm-order-meta">
+        <span><i className="far fa-clock" aria-hidden="true" /> {new Date(data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+        <span className="gm-order-elapsed">aberta há {tempoDecorrido(data)}</span>
+      </div>
+      <div className="gm-order-bottom">
+        <div>
+          <small>Total</small>
+          <strong className="gm-money" data-testid={`comanda-total-${pedido.id}`}>{moeda(pedido.total)}</strong>
+        </div>
+        {pedido.status === 'parcial' ? (
+          <div className="gm-order-balance">
+            <small>Pago {moeda(pedido.valor_pago)}</small>
+            <strong>Saldo {moeda(saldo)}</strong>
+          </div>
+        ) : taxa > 0 ? (
+          <div className="gm-order-balance neutral"><small>Taxa entrega</small><strong>{moeda(taxa)}</strong></div>
+        ) : (
+          <span className="gm-order-open">Abrir <i className="fas fa-arrow-right" aria-hidden="true" /></span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ListaPedidos = ({ pedidos, onEditar, onNovoPedido }) => {
   const [termoBusca, setTermoBusca] = useState('');
   const [filtro, setFiltro] = useState('todos');
 
-  // ========================================
-  // 🔧 FUNÇÃO DE BUSCA
-  // ========================================
+  const contagem = useMemo(() => ({
+    todos: pedidos.length,
+    parcial: pedidos.filter(p => p.status === 'parcial').length,
+    digital: pedidos.filter(p => p.origem === 'cardapio_digital').length
+  }), [pedidos]);
 
-  /**
-   * Filtra pedidos baseado no termo de busca
-   * Procura em: cliente, número do pedido, produtos e valor
-   */
+  const totalAberto = useMemo(() => pedidos.reduce((s, p) => s + Number(p.total || 0) + Number(p.taxa_entrega || 0) - Number(p.valor_pago || 0), 0), [pedidos]);
+
   const pedidosFiltrados = useMemo(() => {
-    if (!termoBusca.trim()) {
-      return pedidos.filter((pedido) => filtro === 'todos' || (filtro === 'parcial' ? pedido.status === 'parcial' : pedido.origem === 'cardapio_digital'));
-    }
-
     const termo = normalizar(termoBusca);
-
     return pedidos.filter(pedido => {
       if (filtro === 'parcial' && pedido.status !== 'parcial') return false;
       if (filtro === 'digital' && pedido.origem !== 'cardapio_digital') return false;
-      // 1. Buscar no nome do cliente
-      const nomeCliente = normalizar(pedido.cliente_nome || pedido.cliente);
-      if (nomeCliente.includes(termo)) {
-        return true;
-      }
-
-      // 2. Buscar no número do pedido
-      const numeroPedido = (pedido.numero_pedido || pedido.id || '').toString().toLowerCase();
-      if (numeroPedido.includes(termo)) {
-        return true;
-      }
-
-      // 3. Buscar nos nomes dos produtos
-      if (pedido.itens && Array.isArray(pedido.itens)) {
-        const temProduto = pedido.itens.some(item => {
-          const nomeProduto = normalizar(item.produto_nome || item.nome);
-          return nomeProduto.includes(termo);
-        });
-        
-        if (temProduto) {
-          return true;
-        }
-      }
-
-      // 4. Buscar no valor (ex: buscar "50" encontra pedidos de R$ 50,00)
-      const valorPedido = (pedido.total || 0).toString();
-      if (valorPedido.includes(termo)) {
-        return true;
-      }
-
-      return false;
+      if (!termo) return true;
+      if (normalizar(pedido.cliente_nome || pedido.cliente).includes(termo)) return true;
+      if ((pedido.numero_pedido || pedido.id || '').toString().toLowerCase().includes(termo)) return true;
+      if (Array.isArray(pedido.itens) && pedido.itens.some(item => normalizar(item.produto_nome || item.nome).includes(termo))) return true;
+      return (pedido.total || 0).toString().includes(termo);
     });
   }, [pedidos, termoBusca, filtro]);
 
-  // ========================================
-  // 🔧 FUNÇÕES AUXILIARES
-  // ========================================
-
-  /**
-   * Formata a data para exibição brasileira
-   */
-  const formatarData = (data) => {
-    return new Date(data).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const STATUS_LABELS = {
-    aberto: 'Aberto',
-    'em-preparo': 'Em preparo',
-    parcial: 'Parcial',
-    finalizado: 'Finalizado',
-    cancelado: 'Cancelado',
-    balcao: 'Balcão'
-  };
-
-  /**
-   * Retorna a classe CSS baseada no status
-   */
-  const getClasseStatus = (status) => {
-    return `pedido-status ${String(status || 'aberto').toLowerCase().replace(/\s+/g, '-')}`;
-  };
-
-  const getStatusLabel = (status) => {
-    return STATUS_LABELS[String(status || 'aberto').toLowerCase()] || String(status || 'Aberto');
-  };
-
-  /**
-   * Destaca o termo buscado no texto
-   */
-  const destacarTexto = (texto, termo) => {
-
-    const textoString = String(texto || '');
-
-    if (!termo || !textoString) return textoString;
-
-    const inicio = textoString.toLowerCase().indexOf(termo.toLowerCase());
-    if (inicio < 0) return textoString;
-    return <>{textoString.slice(0, inicio)}<mark>{textoString.slice(inicio, inicio + termo.length)}</mark>{textoString.slice(inicio + termo.length)}</>;
-
-  };
-  
-  // ========================================
-  // 🎨 RENDERIZAÇÃO
-  // ========================================
-
   return (
-    <div className="lista-pedidos-container">
-      
-      <div className="pdv-orders-intro"><span>ATENDIMENTO</span><h2>Suas comandas, em um só lugar.</h2><p>Abra uma venda ou selecione uma comanda para continuar.</p></div>
-      {/* CABEÇALHO COM BUSCA E BOTÃO */}
-      <div className="comandas-header">
-        <button 
-          className="btn-nova-comanda" 
-          onClick={onNovoPedido}
-        >
-          <i className="fas fa-plus"></i>
-          Nova Comanda
-        </button>
+    <div className="gm-orders" data-testid="comandas-board">
+      <header className="gm-orders-hero">
+        <div>
+          <span className="gm-eyebrow">Atendimento</span>
+          <h2>Comandas em aberto</h2>
+          <p>Abra uma nova venda ou toque em uma comanda para continuar o atendimento.</p>
+        </div>
+        <div className="gm-orders-stats">
+          <div className="gm-stat"><small>Comandas</small><strong data-testid="comandas-count">{pedidos.length}</strong></div>
+          <div className="gm-stat"><small>A receber</small><strong className="gm-money">{moeda(totalAberto)}</strong></div>
+          <button className="gm-btn gm-btn-primary gm-btn-lg" onClick={onNovoPedido} data-testid="nova-comanda-button">
+            <i className="fas fa-plus" aria-hidden="true" /> Nova comanda
+          </button>
+        </div>
+      </header>
 
-        <div className="busca-container">
-          <i className="fas fa-search busca-icon"></i>
+      <div className="gm-orders-toolbar">
+        <label className="gm-search" htmlFor="gm-busca-comandas">
+          <i className="fas fa-search" aria-hidden="true" />
           <input
+            id="gm-busca-comandas"
             type="text"
             aria-label="Buscar comandas por cliente, pedido ou produto"
-            placeholder="Buscar por cliente, pedido ou produto..."
-            className="busca-input"
+            placeholder="Buscar por cliente, nº da comanda, produto ou valor"
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
+            data-testid="comandas-search-input"
           />
-          
-          {/* Botão para limpar busca */}
           {termoBusca && (
-            <button 
-              className="btn-limpar-busca"
-              onClick={() => setTermoBusca('')}
-              title="Limpar busca"
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '18px',
-                color: '#999',
-                padding: '5px'
-              }}
-            >
-              <i className="fas fa-times-circle"></i>
+            <button type="button" className="gm-search-clear" onClick={() => setTermoBusca('')} aria-label="Limpar busca" data-testid="comandas-search-clear">
+              <i className="fas fa-times" aria-hidden="true" />
             </button>
           )}
+        </label>
+        <div className="gm-segment" aria-label="Filtrar comandas">
+          {FILTROS.map(([id, label, icone]) => (
+            <button key={id} aria-label={label} aria-pressed={filtro === id} onClick={() => setFiltro(id)} data-testid={`comandas-filter-${id}`}>
+              <i className={`fas ${icone}`} aria-hidden="true" /> {label} <span className="gm-count">{contagem[id]}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="pdv-order-filters" aria-label="Filtrar comandas">
-        {[['todos', 'Todas'], ['parcial', 'Pagamento parcial'], ['digital', 'Cardápio digital']].map(([id, label]) => <button key={id} aria-pressed={filtro === id} onClick={() => setFiltro(id)}>{label}</button>)}
-      </div>
-      {/* CONTADOR DE RESULTADOS */}
       {termoBusca && (
-        <div style={{
-          padding: '10px 20px',
-          background: '#f0f0f0',
-          borderRadius: '8px',
-          margin: '10px 0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>
-            <i className="fas fa-filter"></i> 
-            {' '}Buscando por: <strong>"{termoBusca}"</strong>
-          </span>
-          <span style={{ color: '#666' }}>
-            {pedidosFiltrados.length} {pedidosFiltrados.length === 1 ? 'resultado' : 'resultados'}
-          </span>
-        </div>
+        <p className="gm-results-note" data-testid="comandas-results-note">
+          {pedidosFiltrados.length} {pedidosFiltrados.length === 1 ? 'resultado' : 'resultados'} para <strong>“{termoBusca}”</strong>
+        </p>
       )}
 
-      {/* LISTA DE PEDIDOS */}
-      <div className="lista-pedidos-finalizados">
-        <div className="lista-pedidos-topbar">
-          <h3>Comandas em atendimento</h3>
-          <span className="comandas-count">
-            {pedidosFiltrados.length} {pedidosFiltrados.length === 1 ? 'comanda' : 'comandas'}
-          </span>
+      {pedidosFiltrados.length === 0 ? (
+        <div className="gm-empty" data-testid="comandas-empty">
+          <span className="gm-empty-icon"><i className={`fas ${termoBusca ? 'fa-search' : 'fa-ice-cream'}`} aria-hidden="true" /></span>
+          <h3>{termoBusca ? 'Nenhum pedido encontrado' : filtro === 'todos' ? 'Tudo pronto para a próxima venda' : 'Nenhuma comanda neste filtro'}</h3>
+          <p>{termoBusca ? 'Tente outro termo ou limpe a busca.' : 'Clique em “Nova comanda” para iniciar um atendimento.'}</p>
+          {termoBusca
+            ? <button className="gm-btn gm-btn-ghost" onClick={() => setTermoBusca('')}>Limpar busca</button>
+            : <button className="gm-btn gm-btn-primary" onClick={onNovoPedido}><i className="fas fa-plus" aria-hidden="true" /> Nova comanda</button>}
         </div>
-
-        {termoBusca && pedidosFiltrados.length !== pedidos.length && (
-          <div className="busca-status">
-            Mostrando {pedidosFiltrados.length} de {pedidos.length} comandas
-          </div>
-        )}
-
-        {pedidosFiltrados.length === 0 ? (
-          // Mensagem quando não há resultados
-          <div className="sem-pedidos">
-            {termoBusca ? (
-              // Nenhum resultado na busca
-              <>
-                <i className="fas fa-search"></i>
-                <p>Nenhum pedido encontrado</p>
-                <small>
-                  Tente buscar por outro termo ou{' '}
-                  <button 
-                    onClick={() => setTermoBusca('')}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#007bff',
-                      textDecoration: 'underline',
-                      cursor: 'pointer',
-                      padding: 0,
-                      font: 'inherit'
-                    }}
-                  >
-                    limpe a busca
-                  </button>
-                </small>
-              </>
-            ) : (
-              // Não há pedidos
-              <>
-                <i className="fas fa-inbox"></i>
-                <p>{filtro === "todos" ? "Tudo pronto para a próxima venda" : "Nenhuma comanda neste filtro"}</p>
-                <small>Clique em "Nova Comanda" para começar</small>
-              </>
-            )}
-          </div>
-        ) : (
-          // Grid com os pedidos
-          <div className="pedidos-grid">
-              {pedidosFiltrados.map((pedido) => (
-                <div
-                  key={pedido.id}
-                  className="pedido-card"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Abrir comanda ${pedido.id}, ${pedido.cliente_nome || pedido.cliente || "Balcão"}`}
-                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onEditar(pedido); } }}
-                  onClick={() => onEditar(pedido)}
-                  style={{ cursor: 'pointer' }}
-                >
-                
-                  {/* Cabeçalho do Card */}
-                  <div className="pedido-card-header">
-                    <span className="pedido-numero">
-                      #{destacarTexto(
-                        pedido.id || pedido.id?.toString() || '',
-                        termoBusca
-                      )}
-                    </span>
-                    <div className="pedido-status-label">
-                      {getStatusLabel(pedido.status)}
-                    </div>
-                  </div>
-                
-                  {/* Informações do Pedido */}
-                  <div className="pedido-card-body">
-                    <div className="pedido-cliente">
-                      <i className="fas fa-user"></i>
-                      {destacarTexto(
-                        pedido.cliente_nome || pedido.cliente || 'Cliente não informado',
-                        termoBusca
-                      )}
-                    </div>
-
-                    <div className="pedido-data">
-                      <i className="fas fa-clock"></i>
-                      {formatarData(pedido.data || pedido.created_at)}
-                    </div>
-                    <div className="pedido-origem">
-                      <i className="fas fa-home"></i>
-                      {pedido.origem || 'PDV'}
-                    </div>
-                    
-                    <div className="pedido-card-footer">
-                      <div className="pedido-total">R$ {pedido.total ? Number(pedido.total).toFixed(2) : '0,00'}</div>
-                      <div>
-                        {pedido.taxa_entrega > 0 &&(
-                          <div className="pedido-saldo-devedor">
-                              Entrega: R$ {Number(pedido?.taxa_entrega || 0).toFixed(2)}
-                          </div>
-                        )}
-                      {pedido.status === 'parcial' && (
-                      <div>
-                        <div className="pedido-saldo-devedor">
-                          Pago: R$ {( Number(pedido?.valor_pago || 0)).toFixed(2)}
-                        </div>
-                        <div className="pedido-saldo-devedor">
-                          Saldo: R$ {(Number(pedido?.total) + Number(pedido?.taxa_entrega || 0) - Number(pedido?.valor_pago || 0)).toFixed(2)}
-                        </div>
-                      </div>
-                      )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="gm-orders-grid">
+          {pedidosFiltrados.map((pedido, i) => (
+            <div key={pedido.id} className="gm-stagger" style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}>
+              <CardComanda pedido={pedido} termoBusca={termoBusca} onEditar={onEditar} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { apiService } from '../services/apiService';
 import MenuToggleButton from '../components/pedidos/components/MenuToggleButton.jsx'
 import "./ModuloPdv.css";
 import "./PdvModern.css";
+import "../styles/pos-fresh.css";
 import Adicionais from './Adicionais';
 import ZonasEntrega from '../components/Configuracoes/ZonasEntrega';      
 import Logger from '../utils/Logger'; // Supondo que você tenha um logger para erros e informações
@@ -295,7 +296,7 @@ function ModuloPdv({ onVoltar }) {
 
     return (
         <>
-            <div className="app pdv-modern">
+            <div className="app pdv-modern gm-shell">
                 {menuMobileAberto && <button className="pdv-nav-backdrop" aria-label="Fechar menu de navegação" onClick={() => setMenuMobileAberto(false)} />}
                 {/* Sidebar */}
                 <nav id="pdv-navigation" aria-label="Navegação do PDV" className={`sidebar ${!isExpanded ? "collapsed" : ""} ${menuMobileAberto ? "show" : ""}`}>
@@ -341,20 +342,9 @@ function ModuloPdv({ onVoltar }) {
                         ))}
                     </ul>
 
-                    {/* 🆕 INDICADOR DE STATUS DO CAIXA */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '20px',
-                        left: '10px',
-                        right: '10px',
-                        padding: '10px',
-                        background: caixaVerificado ? '#d4edda' : '#f8d7da',
-                        color: caixaVerificado ? '#155724' : '#721c24',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        textAlign: 'center'
-                    }}>
-                        {caixaVerificado ? '✅ Caixa Aberto' : '❌ Caixa Fechado'}
+                    <div className={`gm-cash-status ${caixaVerificado ? 'open' : 'closed'}`} data-testid="sidebar-cash-status">
+                        <span className="gm-dot" aria-hidden="true"></span>
+                        <span className="sidebar-text">{caixaVerificado ? 'Caixa aberto' : 'Caixa fechado'}</span>
                     </div>
                 </nav>
 

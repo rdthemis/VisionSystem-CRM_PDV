@@ -18,7 +18,7 @@
  * />
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { usePrintComanda } from '../hooks/usePrintComanda';
 import './ComandaPreview.css';
 import Logger from '../utils/Logger';
@@ -65,6 +65,13 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
     const { imprimir, imprimindo, erro, sucesso, limpar } = usePrintComanda();
     const [copias, setCopias] = useState(1);
 
+    useEffect(() => {
+        if (!pedido) return undefined;
+        const fecharComEsc = (e) => { if (e.key === 'Escape' && !imprimindo) onClose(); };
+        window.addEventListener('keydown', fecharComEsc);
+        return () => window.removeEventListener('keydown', fecharComEsc);
+    }, [pedido, imprimindo, onClose]);
+
     // Cálculos dos totais
     const totais = useMemo(() => {
         const subtotal = (pedido?.itens || []).reduce(
@@ -101,12 +108,12 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
 
     return (
         <div className="comanda-overlay">
-            <div className="comanda-modal">
+            <div className="comanda-modal" role="dialog" aria-modal="true" data-testid="comanda-preview-modal">
 
                 {/* ── Header do modal ──────────────────────────── */}
                 <div className="comanda-modal-header">
-                    <h2>📋 Preview da Comanda</h2>
-                    <button className="comanda-btn-fechar" onClick={onClose} title="Fechar">
+                    <h2><i className="fas fa-receipt" aria-hidden="true"></i> Pré-visualização da comanda</h2>
+                    <button className="comanda-btn-fechar" onClick={onClose} title="Fechar" aria-label="Fechar" data-testid="comanda-preview-close">
                         ✕
                     </button>
                 </div>
@@ -324,6 +331,7 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
                         {/* Botões */}
                         <button
                             className="comanda-btn comanda-btn-cancelar"
+                            data-testid="comanda-preview-cancel"
                             onClick={onClose}
                             disabled={imprimindo}
                         >
@@ -332,6 +340,7 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
 
                         <button
                             className="comanda-btn comanda-btn-imprimir"
+                            data-testid="comanda-preview-print"
                             onClick={handleImprimir}
                             disabled={imprimindo}
                         >
@@ -341,7 +350,7 @@ export default function ComandaPreview({ pedido, onPrint, onClose, config }) {
                                     Imprimindo...
                                 </>
                             ) : (
-                                <>🖨️ Imprimir Comanda</>
+                                <><i className="fas fa-print" aria-hidden="true"></i> Imprimir comanda</>
                             )}
                         </button>
                     </div>

@@ -431,6 +431,14 @@ const Pedidos = ({ onRefresh }) => {
           'success'
         );
         fecharModalPagamento();
+        const resposta = await pedidoService.buscarPorId(pedidoParaOutrasEtapas.id);
+        const atualizado = resposta?.id ? resposta : null;
+        setPedidoAtual(prev => ({
+          ...(prev || {}),
+          ...(atualizado || {}),
+          status: atualizado?.status || 'parcial',
+          valor_pago: atualizado?.valor_pago ?? (Number(prev?.valor_pago || 0) + Number(dadosPagamento.valorAPagarAgora || 0))
+        }));
         await carregarDados();
       }
 
@@ -1111,36 +1119,31 @@ const Pedidos = ({ onRefresh }) => {
   
   if (loading) {
     return (
-      <div className="loading-container">
-        <i className="fas fa-spinner fa-spin"></i>
-        <p>Carregando...</p>
+      <div className="pdv-container gm-pos">
+        <div className="gm-loading" data-testid="pdv-loading">
+          <span className="gm-spinner" aria-hidden="true" />
+          <p>Carregando comandas e produtos…</p>
+        </div>
       </div>
     );
   }
 
+  const iconeToast = { success: 'fa-circle-check', error: 'fa-circle-xmark', warning: 'fa-triangle-exclamation' }[tipoMensagem] || 'fa-circle-info';
+
   return (
-    <div className="pdv-container">
-      
-      {/* Mensagem de feedback */}
+    <div className="pdv-container gm-pos">
+
       {mensagem && (
-        <div role="status" className={`mensagem-feedback ${tipoMensagem}`}>
-          <i className={`fas fa-${tipoMensagem === 'success' ? 'check' : 'exclamation'}-circle`}></i>
-          {mensagem}
+        <div role="status" className={`gm-toast ${tipoMensagem || 'info'}`} data-testid="pdv-toast">
+          <i className={`fas ${iconeToast}`} aria-hidden="true"></i>
+          <span>{mensagem}</span>
         </div>
       )}
 
-      {/* Indicador de auto-save */}
-      {salvandoAutomaticamente && (
-        <div className="auto-save-indicator">
-          <i className="fas fa-spinner fa-spin"></i>
-          Salvando automaticamente...
-        </div>
-      )}
-      
-      {ultimoSalvamento && view === 'novo-pedido' && (
-        <div className="ultimo-salvamento">
-          <i className="fas fa-check-circle"></i>
-          Salvo às {ultimoSalvamento.toLocaleTimeString('pt-BR')}
+      {view === 'novo-pedido' && (salvandoAutomaticamente || ultimoSalvamento) && (
+        <div className={`gm-save-pill ${salvandoAutomaticamente ? 'saving' : ''}`} data-testid="autosave-indicator">
+          <i className={`fas ${salvandoAutomaticamente ? 'fa-spinner fa-spin' : 'fa-cloud'}`} aria-hidden="true"></i>
+          {salvandoAutomaticamente ? 'Salvando…' : `Salvo às ${ultimoSalvamento.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
         </div>
       )}
 
