@@ -171,6 +171,15 @@ def formatar_valor(v: float) -> str:
     s = s.replace(",", "X").replace(".", ",").replace("X", ".")
     return f"R$ {s}"
 
+def formatar_quantidade(q: float) -> str:
+    # Arredonda para 3 casas e formata com separador de milhar
+    s = f"{round(q, 3):,.3f}"
+    # Troca os separadores para o padrão brasileiro
+    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+    # Remove os zeros à direita e a vírgula caso o número seja inteiro
+    return s.rstrip("0").rstrip(",")
+
+
 
 def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
     """
@@ -255,7 +264,7 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
 
         p.normal_larg
         p.bold(True)
-        p.line(f"{qtd}   x   {descricao}")
+        p.line(f"{formatar_quantidade(qtd)}   x   {descricao}")
         p.bold(False)
         p.normal()
 

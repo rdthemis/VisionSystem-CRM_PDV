@@ -211,7 +211,9 @@ class ImpressaoController
             $adicionais = json_decode($item['adicionais'] ?? '[]', true) ?: [];
 
             return [
-                'qtd'        => (int)$item['quantidade'],
+                // Preserve fractional quantities (e.g. 0.788 kg) for the
+                // print agent; integer casting made these print as 0.
+                'qtd'        => (float)$item['quantidade'],
                 'descricao'  => $this->nomeProduto((int)$item['produto_id']),
                 'valor_unit' => (float)$item['preco_unitario'],
                 'observacao' => (string)($item['observacoes'] ?? ''),
