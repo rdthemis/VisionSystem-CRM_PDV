@@ -1,5 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { relatoriosService } from '../services/relatorioService';
+
+const formatarDataLocal = (data) => {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+};
+
+const formatarDataCalendario = (data) => {
+    if (!data) return '-';
+    const [ano, mes, dia] = String(data).slice(0, 10).split('-');
+    return ano && mes && dia ? `${dia}/${mes}/${ano}` : data;
+};
 
 const Relatorios = () => {
     const [tipoRelatorio, setTipoRelatorio] = useState('');
@@ -7,14 +20,19 @@ const Relatorios = () => {
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState('');
     const [sucesso, setSucesso] = useState('');
-    const [filtros, setFiltros] = useState({
-        data_inicio: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        data_fim: new Date().toISOString().split('T')[0],
-        tipo_pessoa: '',
-        cidade: '',
-        uf: '',
-        dias_atraso: 30,
-        granularidade: 'dia'
+    const [filtros, setFiltros] = useState(() => {
+        const hoje = new Date();
+        const hojeLocal = formatarDataLocal(hoje);
+        return {
+            data_inicio: `${hojeLocal.slice(0, 7)}-01`,
+            data_fim: hojeLocal,
+            tipo_pessoa: '',
+            cidade: '',
+            uf: '',
+            dias_atraso: 30,
+            granularidade: 'mes',
+            ano: hoje.getFullYear()
+        };
     });
 
     const tiposRelatorio = [
@@ -24,7 +42,8 @@ const Relatorios = () => {
         { value: 'inadimplencia', label: '⚠️ Relatório de Inadimplência' },
         { value: 'fluxo_caixa', label: '📊 Fluxo de Caixa' },
         { value: 'recibos', label: '🧾 Relatório de Recibos' },
-        { value: 'vendas_periodo', label: '📈 Vendas por Período' },
+        { value: 'vendas_periodo', label: '📈 Vendas por Mês e Ano' },
+        { value: 'faturamento_anual', label: '📅 Faturamento Anual (mês a mês)' },
         { value: 'vendas_cliente', label: '🧑‍🤝‍🧑 Vendas por Cliente' },
         { value: 'fechamento_caixa', label: '🧮 Fechamento de Caixa' }
     ];
@@ -35,9 +54,17 @@ const Relatorios = () => {
         'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
     ];
 
-    const gerarRelatorio = async () => {
+    const gerarRelatorio = async (event) => {
+        event.preventDefault();
+
         if (!tipoRelatorio) {
             setErro('Selecione um tipo de relatório');
+            return;
+        }
+
+        if (tipoRelatorio !== 'faturamento_anual' && filtros.data_inicio > filtros.data_fim) {
+            setErro('A data inicial deve ser anterior ou igual à data final.');
+            setSucesso('');
             return;
         }
 
@@ -79,6 +106,9 @@ const Relatorios = () => {
                         filtros.data_fim,
                         filtros.granularidade
                     );
+                    break;
+                case 'faturamento_anual':
+                    resultado = await relatoriosService.relatorioFaturamentoAnual(filtros.ano);
                     break;
                 case 'vendas_cliente':
                     resultado = await relatoriosService.relatorioVendasCliente(
@@ -134,9 +164,20 @@ const Relatorios = () => {
         }).format(valor || 0);
     };
 
-    const formatarData = (data) => {
-        if (!data) return '-';
-        return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
+    const handleTipoRelatorioChange = (event) => {
+        const novoTipo = event.target.value;
+        setTipoRelatorio(novoTipo);
+
+        if (novoTipo === 'vendas_periodo' && tipoRelatorio !== 'vendas_periodo') {
+            const hoje = new Date();
+            const hojeLocal = formatarDataLocal(hoje);
+            setFiltros(prev => ({
+                ...prev,
+                data_inicio: `${hoje.getFullYear()}-01-01`,
+                data_fim: hojeLocal,
+                granularidade: 'mes'
+            }));
+        }
     };
 
     const renderFiltrosEspecificos = () => {
@@ -201,8 +242,10 @@ const Relatorios = () => {
                 return (
                     <div className="filtros-especificos">
                         <div className="campo">
-                            <label>Agrupar por:</label>
+                            <label htmlFor="relatorio-granularidade">Agrupar por:</label>
                             <select
+                                id="relatorio-granularidade"
+                                name="granularidade"
                                 value={filtros.granularidade}
                                 onChange={(e) => setFiltros(prev => ({ ...prev, granularidade: e.target.value }))}
                             >
@@ -214,6 +257,31 @@ const Relatorios = () => {
                         </div>
                     </div>
                 );
+
+            case 'faturamento_anual': {
+                const anoAtual = new Date().getFullYear();
+                const anosParaExibir = dadosRelatorio?.anos_disponiveis?.length
+                    ? dadosRelatorio.anos_disponiveis
+                    : [anoAtual - 2, anoAtual - 1, anoAtual];
+
+                return (
+                    <div className="filtros-especificos">
+                        <div className="campo">
+                            <label htmlFor="relatorio-ano">Ano:</label>
+                            <select
+                                id="relatorio-ano"
+                                name="ano"
+                                value={filtros.ano}
+                                onChange={(e) => setFiltros(prev => ({ ...prev, ano: parseInt(e.target.value) }))}
+                            >
+                                {anosParaExibir.map(ano => (
+                                    <option key={ano} value={ano}>{ano}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                );
+            }
 
             default:
                 return null;
@@ -236,6 +304,8 @@ const Relatorios = () => {
                 return <RelatorioRecibos dados={dadosRelatorio} />;
             case 'vendas_periodo':
                 return <RelatorioVendasPeriodo dados={dadosRelatorio} />;
+            case 'faturamento_anual':
+                return <RelatorioFaturamentoAnual dados={dadosRelatorio} />;
             case 'vendas_cliente':
                 return <RelatorioVendasCliente dados={dadosRelatorio} />;
             case 'fechamento_caixa':
@@ -268,27 +338,29 @@ const Relatorios = () => {
 
             {/* Mensagens */}
             {erro && (
-                <div className="alert alert-error">
+                <div className="alert alert-error" role="alert">
                     ⚠️ {erro}
                 </div>
             )}
 
             {sucesso && (
-                <div className="alert alert-success">
+                <div className="alert alert-success" role="status">
                     ✅ {sucesso}
                 </div>
             )}
 
             {/* Configuração do Relatório */}
-            <div className="config-relatorio">
-                <h3>⚙️ Configuração do Relatório</h3>
+            <form className="config-relatorio" onSubmit={gerarRelatorio} aria-labelledby="config-relatorio-heading">
+                <h3 id="config-relatorio-heading">⚙️ Configuração do Relatório</h3>
 
                 <div className="config-grid">
                     <div className="campo">
-                        <label>Tipo de Relatório: *</label>
+                        <label htmlFor="relatorio-tipo">Tipo de Relatório: *</label>
                         <select
+                            id="relatorio-tipo"
+                            name="tipo_relatorio"
                             value={tipoRelatorio}
-                            onChange={(e) => setTipoRelatorio(e.target.value)}
+                            onChange={handleTipoRelatorioChange}
                         >
                             {tiposRelatorio.map(tipo => (
                                 <option key={tipo.value} value={tipo.value}>
@@ -302,18 +374,26 @@ const Relatorios = () => {
                       tipoRelatorio === 'vendas_periodo' || tipoRelatorio === 'vendas_cliente' || tipoRelatorio === 'fechamento_caixa') && (
                         <>
                             <div className="campo">
-                                <label>Data Início:</label>
+                                <label htmlFor="relatorio-data-inicio">Data Início:</label>
                                 <input
+                                    id="relatorio-data-inicio"
+                                    name="data_inicio"
                                     type="date"
+                                    required
+                                    max={filtros.data_fim}
                                     value={filtros.data_inicio}
                                     onChange={(e) => setFiltros(prev => ({ ...prev, data_inicio: e.target.value }))}
                                 />
                             </div>
 
                             <div className="campo">
-                                <label>Data Fim:</label>
+                                <label htmlFor="relatorio-data-fim">Data Fim:</label>
                                 <input
+                                    id="relatorio-data-fim"
+                                    name="data_fim"
                                     type="date"
+                                    required
+                                    min={filtros.data_inicio}
                                     value={filtros.data_fim}
                                     onChange={(e) => setFiltros(prev => ({ ...prev, data_fim: e.target.value }))}
                                 />
@@ -327,14 +407,14 @@ const Relatorios = () => {
 
                 <div className="config-actions">
                     <button
-                        onClick={gerarRelatorio}
+                        type="submit"
                         className="btn-primary"
                         disabled={loading || !tipoRelatorio}
                     >
                         {loading ? '🔄 Gerando...' : '📊 Gerar Relatório'}
                     </button>
                 </div>
-            </div>
+            </form>
 
             {/* Resultados */}
             {renderResultados()}
@@ -440,6 +520,43 @@ const Relatorios = () => {
                     display: flex;
                     gap: 12px;
                     margin-top: 20px;
+                }
+
+                .relatorio-tabela-scroll {
+                    max-inline-size: 100%;
+                    overflow-x: auto;
+                    container-type: inline-size;
+                }
+
+                .relatorio-tabela-scroll:focus-visible {
+                    outline: 3px solid #3182ce;
+                    outline-offset: 2px;
+                }
+
+                .relatorio-tabela-scroll .tabela-relatorio {
+                    inline-size: 100%;
+                    min-inline-size: 34rem;
+                }
+
+                @container (width < 600px) {
+                    .relatorio-tabela-scroll .tabela-relatorio th,
+                    .relatorio-tabela-scroll .tabela-relatorio td {
+                        padding-inline: 8px;
+                        white-space: nowrap;
+                    }
+                }
+
+                .tabela-relatorio caption {
+                    padding: 0 0 10px;
+                    color: #2d3748;
+                    font-weight: 600;
+                    text-align: left;
+                }
+
+                .relatorio-observacao {
+                    color: #4a5568;
+                    font-size: 0.9rem;
+                    line-height: 1.45;
                 }
 
                 .btn-primary {
@@ -800,11 +917,20 @@ const RelatorioVendasPeriodo = ({ dados }) => {
             currency: 'BRL'
         }).format(valor || 0);
     };
+    const granularidadeLabel = {
+        dia: 'dia',
+        semana: 'semana',
+        mes: 'mês',
+        ano: 'ano'
+    }[dados.periodo?.granularidade] || 'período';
 
     return (
         <div className="resultado-relatorio">
-            <h3>📈 Vendas por Período</h3>
-            <p>Período: {dados.periodo?.inicio} a {dados.periodo?.fim}</p>
+            <h3>📈 Vendas por Mês e Ano</h3>
+            <p>Período: {formatarDataCalendario(dados.periodo?.inicio)} a {formatarDataCalendario(dados.periodo?.fim)}</p>
+            <p className="relatorio-observacao">
+                Totais calculados somente com pedidos finalizados registrados no MySQL. Os resumos das planilhas não estão incluídos.
+            </p>
 
             <div className="resumo-cards">
                 <div className="resumo-card">
@@ -821,26 +947,139 @@ const RelatorioVendasPeriodo = ({ dados }) => {
                 </div>
             </div>
 
-            <div className="tabela-container">
+            {dados.periodo?.granularidade !== 'ano' && (
+                <>
+                    <h4>Totais por ano no período</h4>
+                    <div
+                        className="tabela-container relatorio-tabela-scroll"
+                        tabIndex={0}
+                        role="region"
+                        aria-label="Resumo anual de vendas"
+                    >
+                        <table className="tabela-relatorio">
+                            <caption>Vendas por ano no período selecionado</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Ano</th>
+                                    <th scope="col">Total de Pedidos</th>
+                                    <th scope="col">Valor Total</th>
+                                    <th scope="col">Ticket Médio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {dados.serie_anual?.map((linha) => (
+                                    <tr key={linha.periodo}>
+                                        <th scope="row">{linha.periodo_label}</th>
+                                        <td>{linha.total_pedidos}</td>
+                                        <td>{formatarMoeda(linha.valor_total)}</td>
+                                        <td>{formatarMoeda(linha.ticket_medio)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
+
+            <h4>{dados.periodo?.granularidade === 'mes' ? 'Detalhamento mensal' : `Detalhamento por ${granularidadeLabel}`}</h4>
+            <div
+                className="tabela-container relatorio-tabela-scroll"
+                tabIndex={0}
+                role="region"
+                aria-label="Detalhamento de vendas por período"
+            >
                 <table className="tabela-relatorio">
+                    <caption>Vendas agrupadas por {granularidadeLabel}</caption>
                     <thead>
                         <tr>
-                            <th>Período</th>
-                            <th>Total de Pedidos</th>
-                            <th>Valor Total</th>
-                            <th>Ticket Médio</th>
+                            <th scope="col">Período</th>
+                            <th scope="col">Total de Pedidos</th>
+                            <th scope="col">Valor Total</th>
+                            <th scope="col">Ticket Médio</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {dados.serie?.map((linha, index) => (
-                            <tr key={index}>
-                                <td>{linha.periodo_label}</td>
+                        {dados.serie?.map((linha) => (
+                            <tr key={linha.periodo}>
+                                <th scope="row">{linha.periodo_label}</th>
                                 <td>{linha.total_pedidos}</td>
                                 <td>{formatarMoeda(linha.valor_total)}</td>
                                 <td>{formatarMoeda(linha.ticket_medio)}</td>
                             </tr>
                         ))}
                     </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+// Componente para Relatório de Faturamento Anual (mês a mês)
+const RelatorioFaturamentoAnual = ({ dados }) => {
+    const formatarMoeda = (valor) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(valor || 0);
+    };
+
+    return (
+        <div className="resultado-relatorio">
+            <h3>📅 Faturamento Anual — {dados.ano}</h3>
+            <p className="relatorio-observacao">
+                Inclui o histórico importado das planilhas e os pedidos finalizados registrados no sistema.
+            </p>
+
+            <div className="resumo-cards">
+                <div className="resumo-card">
+                    <div className="card-value">{dados.resumo?.quantidade_total || 0}</div>
+                    <div className="card-label">Total de Vendas no Ano</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.valor_total)}</div>
+                    <div className="card-label">Faturamento Total</div>
+                </div>
+                <div className="resumo-card">
+                    <div className="card-value">{formatarMoeda(dados.resumo?.ticket_medio)}</div>
+                    <div className="card-label">Ticket Médio</div>
+                </div>
+            </div>
+
+            <h4>Detalhamento mensal</h4>
+            <div
+                className="tabela-container relatorio-tabela-scroll"
+                tabIndex={0}
+                role="region"
+                aria-label="Faturamento mês a mês"
+            >
+                <table className="tabela-relatorio">
+                    <caption>Faturamento de {dados.ano}, mês a mês</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Mês</th>
+                            <th scope="col">Quantidade</th>
+                            <th scope="col">Valor Total</th>
+                            <th scope="col">Ticket Médio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {dados.serie?.map((linha) => (
+                            <tr key={linha.mes}>
+                                <th scope="row">{linha.mes_label}</th>
+                                <td>{linha.quantidade}</td>
+                                <td>{formatarMoeda(linha.valor_total)}</td>
+                                <td>{formatarMoeda(linha.ticket_medio)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row">Total do ano</th>
+                            <td>{dados.resumo?.quantidade_total || 0}</td>
+                            <td>{formatarMoeda(dados.resumo?.valor_total)}</td>
+                            <td>{formatarMoeda(dados.resumo?.ticket_medio)}</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>

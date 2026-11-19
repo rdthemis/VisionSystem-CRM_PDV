@@ -14,8 +14,9 @@ class ContasReceber
     // Listar contas com paginação e filtros
     public function listar($filtros = [])
     {
+        $sqlEmExecucao = null;
         try {
-            $where = ['ativo = 1'];
+            $where = ['cr.ativo = 1'];
             $params = [];
 
             // Filtro por cliente
@@ -26,7 +27,7 @@ class ContasReceber
 
             // Filtro por status
             if (!empty($filtros['status'])) {
-                $where[] = 'status = ?';
+                $where[] = 'cr.status = ?';
                 $params[] = $filtros['status'];
             }
 
@@ -55,7 +56,7 @@ class ContasReceber
             // Filtro por descrição
             if (!empty($filtros['descricao'])) {
                 $where[] = '(cr.descricao LIKE ? OR cr.numero_documento LIKE ?)';
-                $searchTerm = '%'.$filtros['descricao'].'%';
+                $searchTerm = '%' . $filtros['descricao'] . '%';
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
             }
@@ -69,19 +70,52 @@ class ContasReceber
             $ordenacao = $filtros['ordenacao'] ?? 'data_vencimento';
             $direcao = ($filtros['direcao'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
 
-            $validOrders = ['data_vencimento', 'valor_original', 'cliente_nome', 'status', 'created_at'];
-            if (!in_array($ordenacao, $validOrders)) {
+            $validOrders = [
+                'data_vencimento' => 'cr.data_vencimento',
+                'valor_original' => 'cr.valor_original',
+                'cliente_nome' => 'cliente_nome',
+                'status' => 'cr.status',
+                'created_at' => 'cr.created_at',
+            ];
+            if (!isset($validOrders[$ordenacao])) {
                 $ordenacao = 'data_vencimento';
             }
+            $campoOrdenacao = $validOrders[$ordenacao];
 
-            // Query principal usando a view
+            // Consulta direto nas tabelas para não depender da view opcional.
             $sql = '
-                SELECT *
-                FROM vw_contas_receber_completo
-                WHERE '.implode(' AND ', $where)."
-                ORDER BY {$ordenacao} {$direcao}
+                SELECT
+                    cr.*,
+                    c.nome as cliente_nome,
+                    c.cpf_cnpj as cliente_documento,
+                    c.email as cliente_email,
+                    c.telefone as cliente_telefone,
+                    c.cidade as cliente_cidade,
+                    c.uf as cliente_uf,
+                    u.nome as usuario_criacao_nome,
+                    (cr.valor_original - cr.valor_recebido) as valor_pendente,
+                    CASE cr.status
+                        WHEN \'pago\' THEN \'Pago\'
+                        WHEN \'pendente\' THEN \'Pendente\'
+                        WHEN \'vencido\' THEN \'Vencido\'
+                        WHEN \'cancelado\' THEN \'Cancelado\'
+                    END as status_texto,
+                    CASE
+                        WHEN cr.status = \'vencido\' THEN DATEDIFF(CURDATE(), cr.data_vencimento)
+                        ELSE 0
+                    END as dias_atraso,
+                    CASE
+                        WHEN cr.valor_original > 0 THEN (cr.valor_recebido / cr.valor_original) * 100
+                        ELSE 0
+                    END as percentual_recebido
+                FROM contas_receber cr
+                LEFT JOIN clientes c ON cr.cliente_id = c.id
+                LEFT JOIN usuarios u ON cr.usuario_criacao = u.id
+                WHERE ' . implode(' AND ', $where) . "
+                ORDER BY {$campoOrdenacao} {$direcao}
                 LIMIT {$limite} OFFSET {$offset}
             ";
+            $sqlEmExecucao = $sql;
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
@@ -90,8 +124,9 @@ class ContasReceber
             // Contar total para paginação
             $sqlCount = '
                 SELECT COUNT(*) as total
-                FROM vw_contas_receber_completo
-                WHERE '.implode(' AND ', $where);
+                FROM contas_receber cr
+                WHERE ' . implode(' AND ', $where);
+            $sqlEmExecucao = $sqlCount;
 
             $stmtCount = $this->db->prepare($sqlCount);
             $stmtCount->execute($params);
@@ -107,8 +142,18 @@ class ContasReceber
                     'total_paginas' => ceil($total / $limite),
                 ],
             ];
-        } catch (Exception $e) {
-            error_log('❌ Erro ao listar contas: '.$e->getMessage());
+        } catch (Throwable $e) {
+            $contextoErro = [
+                'erro' => $e->getMessage(),
+                'tipo' => get_class($e),
+                'codigo' => $e->getCode(),
+                'arquivo' => $e->getFile(),
+                'linha' => $e->getLine(),
+                'sql' => $sqlEmExecucao,
+                'filtros' => $filtros,
+            ];
+            error_log('[CONTAS_RECEBER_LISTAR] ' . json_encode($contextoErro, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            logError('[CONTAS_RECEBER_LISTAR] falha ao consultar contas', $contextoErro);
 
             return [
                 'success' => false,
@@ -153,7 +198,7 @@ class ContasReceber
                 'data' => $conta,
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar conta: '.$e->getMessage());
+            error_log('❌ Erro ao buscar conta: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -233,8 +278,8 @@ class ContasReceber
             }
 
             $sql = '
-                INSERT INTO contas_receber ('.implode(', ', $campos).', usuario_criacao) 
-                VALUES ('.implode(', ', $placeholders).')
+                INSERT INTO contas_receber (' . implode(', ', $campos) . ', usuario_criacao) 
+                VALUES (' . implode(', ', $placeholders) . ')
             ';
 
             $stmt = $this->db->prepare($sql);
@@ -250,7 +295,7 @@ class ContasReceber
                 'data' => ['id' => $contaId],
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao criar conta: '.$e->getMessage());
+            error_log('❌ Erro ao criar conta: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -318,7 +363,7 @@ class ContasReceber
 
             $values[] = $id;
 
-            $sql = 'UPDATE contas_receber SET '.implode(', ', $updates).' WHERE id = ? AND ativo = 1';
+            $sql = 'UPDATE contas_receber SET ' . implode(', ', $updates) . ' WHERE id = ? AND ativo = 1';
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($values);
@@ -330,7 +375,7 @@ class ContasReceber
                 'message' => 'Conta atualizada com sucesso',
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao atualizar conta: '.$e->getMessage());
+            error_log('❌ Erro ao atualizar conta: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -372,7 +417,7 @@ class ContasReceber
                 'message' => 'Conta cancelada com sucesso',
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao cancelar conta: '.$e->getMessage());
+            error_log('❌ Erro ao cancelar conta: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -463,7 +508,7 @@ class ContasReceber
             $resultadoRecibo = $recibos->gerarParaPagamento($contaId, $dadosPagamento, $usuarioId);
 
             if (!$resultadoRecibo['success']) {
-                error_log('⚠️ Falha ao gerar recibo, mas pagamento foi registrado: '.$resultadoRecibo['message']);
+                error_log('⚠️ Falha ao gerar recibo, mas pagamento foi registrado: ' . $resultadoRecibo['message']);
             }
 
             // Confirmar transação
@@ -484,7 +529,7 @@ class ContasReceber
             ];
         } catch (Exception $e) {
             $pdo->rollBack();
-            error_log('❌ Erro ao adicionar pagamento: '.$e->getMessage());
+            error_log('❌ Erro ao adicionar pagamento: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -631,7 +676,7 @@ class ContasReceber
                 'data' => $resumo,
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao obter resumo: '.$e->getMessage());
+            error_log('❌ Erro ao obter resumo: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -658,7 +703,7 @@ class ContasReceber
                 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao buscar contas por cliente: '.$e->getMessage());
+            error_log('❌ Erro ao buscar contas por cliente: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -688,7 +733,7 @@ class ContasReceber
                 'message' => "Status atualizado para {$contasAtualizadas} contas",
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao atualizar status: '.$e->getMessage());
+            error_log('❌ Erro ao atualizar status: ' . $e->getMessage());
 
             return [
                 'success' => false,
@@ -758,7 +803,7 @@ class ContasReceber
                 ],
             ];
         } catch (Exception $e) {
-            error_log('❌ Erro ao gerar relatório: '.$e->getMessage());
+            error_log('❌ Erro ao gerar relatório: ' . $e->getMessage());
 
             return [
                 'success' => false,

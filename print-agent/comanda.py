@@ -14,6 +14,7 @@ similares (comandos ESC/POS padrão).
 from __future__ import annotations
 
 from dataclasses import dataclass
+import textwrap
 from datetime import datetime
 
 
@@ -49,8 +50,13 @@ INVERT_OFF = GS + "\x42\x00"
 LINE_SPACING_TIGHT = ESC + "\x33\x10"
 LINE_SPACING_DEFAULT = ESC + "\x32"
 
-CUT_PARTIAL = GS + "\x56\x01"
-CUT_FULL = GS + "\x56\x00"
+# Comandos nativos Bematech (ESC/BEMA)
+CUT_PARTIAL = ESC + "\x6D"  # ESC m (Corte parcial)
+CUT_FULL = ESC + "\x77"     # ESC w (Corte total)
+
+#Comandos Epson
+#CUT_PARTIAL = GS + "\x56\x01"
+#CUT_FULL = GS + "\x56\x00"
 
 BEEP = ESC + "\x28\x41\x04\x00\x01\x64\x03\x0A"
 
@@ -66,7 +72,7 @@ def _encode(text: str) -> bytes:
 class ComandaPrinterBuffer:
     """Monta o buffer de bytes ESC/POS. Equivalente a BematechPrinter.php."""
 
-    def __init__(self, columns: int = 41):
+    def __init__(self, columns: int = 48):
         self.columns = columns
         self.buffer = bytearray()
         self._align = ALIGN_LEFT
@@ -101,7 +107,7 @@ class ComandaPrinterBuffer:
         return self.raw(NORMAL)
    
     def normal_larg(self):
-        return self.raw(NORMAL_lARG)
+        return self.raw(NORMAL_LARG)
     
     def duplo(self):
         return self.raw(DUPLO)
@@ -116,7 +122,8 @@ class ComandaPrinterBuffer:
         return self.raw(LINE_SPACING_DEFAULT)
 
     def cut(self, partial: bool = True):
-        self.feed(2)
+        self.feed(4)
+        # Comando nativo Bematech (ESC/BEMA)
         return self.raw(CUT_PARTIAL if partial else CUT_FULL)
 
     # -- conteúdo ---------------------------------------------------------
@@ -184,8 +191,6 @@ def formatar_quantidade(q: float) -> str:
 def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
     """
     Monta a comanda de PRODUÇÃO (sem valores, pro pessoal da cozinha/montagem)
-    a partir do payload devolvido por GET /impressao/pendentes
-    (ver backend/controllers/ImpressaoController.php::montarPedido()).
     """
     p = ComandaPrinterBuffer(columns=empresa.colunas)
     p.initialize()
@@ -227,8 +232,6 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
         p.align_left()
     if pedido.get("telefone"):
         p.line(f"Fone: {pedido['telefone']}")
-    #if tipo == "entrega" and pedido.get("endereco"):
-    #    p.line(f"Entrega: {pedido['endereco']}")
     p.align_left()
 
     # Tipo de pedido / endereço
@@ -252,32 +255,56 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
 
     # Itens
     itens = pedido.get("itens") or []
-    p.normal_larg
+    largura_qtd = 6
+    # Calcula quantos caracteres sobram para a descrição
+    largura_desc = max(10, empresa.colunas - largura_qtd)
+
+    p.normal_larg()  # <-- Corrigido: faltavam os parênteses () no seu código
     p.bold(True)
-    p.line("QTD     DESCRICAO")
+    p.line(f"{'QTDE':<{largura_qtd}}DESCRICAO")
+    p.normal()
     p.separator()
 
     total_itens = len(itens)
     for i, item in enumerate(itens):
         qtd = item.get("qtd", 1)
         descricao = str(item.get("descricao", "Item")).upper()
+        qtd_str = str(formatar_quantidade(qtd))
 
-        p.normal_larg
+        p.normal_larg()
         p.bold(True)
-        p.line(f"{formatar_quantidade(qtd)}   x   {descricao}")
+
+        # Quebra a descrição em várias linhas respeitando o espaço da coluna
+        linhas_desc = textwrap.wrap(descricao, width=largura_desc) or [""]
+        
+        # A primeira linha leva a quantidade na esquerda
+        p.line(f"{qtd_str:<{largura_qtd}}{linhas_desc[0]}")
+        
+        # As linhas seguintes ficam em branco na coluna da quantidade
+        for linha_extra in linhas_desc[1:]:
+            p.line(f"{'':<{largura_qtd}}{linha_extra}")
+
         p.bold(False)
         p.normal()
 
+        # Adicionais com quebra de linha alinhada
         for ad in item.get("adicionais") or []:
             desc_ad = str(ad.get("descricao", "")).upper()
             if not desc_ad:
                 continue
-            p.two_columns(f"        - {desc_ad}", "")
+            linhas_ad = textwrap.wrap(f"- {desc_ad}", width=largura_desc)
+            for idx_ad, l_ad in enumerate(linhas_ad):
+                # Se quebrar, indenta 2 espaços a mais para ficar embaixo do texto, não do traço
+                prefixo = "" if idx_ad == 0 else "  "
+                p.line(f"{'':<{largura_qtd}}{prefixo}{l_ad}")
 
+        # Observação com quebra de linha alinhada
         obs = item.get("observacao")
         if obs:
             p.tight_spacing()
-            p.line(f"      OBS: {obs}")
+            linhas_obs = textwrap.wrap(f"OBS: {obs}", width=largura_desc)
+            for l_obs in linhas_obs:
+                p.line(f"{'':<{largura_qtd}}{l_obs}")
             p.default_spacing()
 
         if i < total_itens - 1:
@@ -285,7 +312,7 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
 
     p.separator()
 
-    # Pagamento (sem valores — comanda de produção não mostra preço)
+    # Pagamento
     pagamento = pedido.get("pagamento")
     if pagamento:
         p.feed(1)
@@ -301,7 +328,7 @@ def montar_comanda(pedido: dict, empresa: EmpresaConfig) -> bytes:
     p.align_center()
     p.line("Obrigado pela preferencia!")
     p.line(empresa.nome)
-    p.feed(1)
+    p.feed(2)
     p.align_left()
     p.cut(partial=True)
 

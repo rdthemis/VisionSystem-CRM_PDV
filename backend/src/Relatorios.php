@@ -311,9 +311,39 @@ class Relatorios
     }
 
     // Relatório de vendas por período (dia/semana/mês/ano)
-    public function relatorioVendasPeriodo($dataInicio, $dataFim, $granularidade = 'dia')
+    public function relatorioVendasPeriodo($dataInicio, $dataFim, $granularidade = 'mes')
     {
         try {
+            $granularidadesValidas = ['dia', 'semana', 'mes', 'ano'];
+            if (!is_string($granularidade) || !in_array($granularidade, $granularidadesValidas, true)) {
+                return [
+                    'success' => false,
+                    'message' => 'Granularidade inválida',
+                ];
+            }
+
+            $parsearData = static function ($data) {
+                if (!is_string($data) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
+                    return null;
+                }
+
+                [$ano, $mes, $dia] = array_map('intval', explode('-', $data));
+                if (!checkdate($mes, $dia, $ano)) {
+                    return null;
+                }
+
+                return new DateTimeImmutable($data);
+            };
+
+            $inicio = $parsearData($dataInicio);
+            $fim = $parsearData($dataFim);
+            if (!$inicio || !$fim || $inicio > $fim) {
+                return [
+                    'success' => false,
+                    'message' => 'Período inválido. Informe datas válidas e uma data inicial anterior ou igual à data final.',
+                ];
+            }
+
             $expressao = $this->getAgrupamentoPeriodo($granularidade);
 
             $sql = "
@@ -325,24 +355,64 @@ class Relatorios
                     AVG(total) AS ticket_medio
                 FROM pedidos
                 WHERE status = 'finalizado'
-                AND DATE(created_at) BETWEEN ? AND ?
+                AND created_at >= ?
+                AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
                 GROUP BY periodo
                 ORDER BY periodo
             ";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$dataInicio, $dataFim]);
-            $serie = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $serie = $this->completarSerieVendas(
+                $stmt->fetchAll(PDO::FETCH_ASSOC),
+                $granularidade,
+                $inicio,
+                $fim
+            );
+
+            $sqlAnual = "
+                SELECT
+                    YEAR(created_at) AS periodo,
+                    MIN(DATE(created_at)) AS periodo_data,
+                    COUNT(*) AS total_pedidos,
+                    SUM(total) AS valor_total,
+                    AVG(total) AS ticket_medio
+                FROM pedidos
+                WHERE status = 'finalizado'
+                AND created_at >= ?
+                AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
+                GROUP BY YEAR(created_at)
+                ORDER BY periodo
+            ";
+            $stmtAnual = $this->db->prepare($sqlAnual);
+            $stmtAnual->execute([$dataInicio, $dataFim]);
+            $serieAnual = $this->completarSerieVendas(
+                $stmtAnual->fetchAll(PDO::FETCH_ASSOC),
+                'ano',
+                $inicio,
+                $fim
+            );
 
             $totalPedidos = 0;
             $valorTotal = 0;
 
             foreach ($serie as &$linha) {
                 $linha['periodo_label'] = $this->formatarPeriodoLabel($linha['periodo'], $linha['periodo_data'], $granularidade);
-                $totalPedidos += (int) $linha['total_pedidos'];
-                $valorTotal += (float) $linha['valor_total'];
+                $linha['total_pedidos'] = (int) $linha['total_pedidos'];
+                $linha['valor_total'] = (float) $linha['valor_total'];
+                $linha['ticket_medio'] = (float) $linha['ticket_medio'];
+                $totalPedidos += $linha['total_pedidos'];
+                $valorTotal += $linha['valor_total'];
             }
             unset($linha);
+
+            foreach ($serieAnual as &$linhaAnual) {
+                $linhaAnual['periodo_label'] = (string) $linhaAnual['periodo'];
+                $linhaAnual['total_pedidos'] = (int) $linhaAnual['total_pedidos'];
+                $linhaAnual['valor_total'] = (float) $linhaAnual['valor_total'];
+                $linhaAnual['ticket_medio'] = (float) $linhaAnual['ticket_medio'];
+            }
+            unset($linhaAnual);
 
             return [
                 'success' => true,
@@ -353,10 +423,11 @@ class Relatorios
                         'granularidade' => $granularidade,
                     ],
                     'serie' => $serie,
+                    'serie_anual' => $serieAnual,
                     'resumo' => [
                         'total_pedidos' => $totalPedidos,
-                        'valor_total' => $valorTotal,
-                        'ticket_medio' => $totalPedidos > 0 ? $valorTotal / $totalPedidos : 0,
+                        'valor_total' => round($valorTotal, 2),
+                        'ticket_medio' => $totalPedidos > 0 ? round($valorTotal / $totalPedidos, 2) : 0,
                     ],
                 ],
             ];
@@ -366,6 +437,121 @@ class Relatorios
             return [
                 'success' => false,
                 'message' => 'Erro ao gerar relatório de vendas por período',
+            ];
+        }
+    }
+
+    private function completarSerieVendas(array $serie, string $granularidade, DateTimeImmutable $inicio, DateTimeImmutable $fim): array
+    {
+        if (!in_array($granularidade, ['mes', 'ano'], true)) {
+            return $serie;
+        }
+
+        $porPeriodo = array_column($serie, null, 'periodo');
+        if ($granularidade === 'mes') {
+            $cursor = $inicio->modify('first day of this month');
+            $ultimoPeriodo = $fim->modify('first day of this month');
+            $formatoPeriodo = 'Y-m';
+            $incremento = '+1 month';
+        } else {
+            $cursor = $inicio->setDate((int) $inicio->format('Y'), 1, 1);
+            $ultimoPeriodo = $fim->setDate((int) $fim->format('Y'), 1, 1);
+            $formatoPeriodo = 'Y';
+            $incremento = '+1 year';
+        }
+
+        $completa = [];
+        while ($cursor <= $ultimoPeriodo) {
+            $chave = $cursor->format($formatoPeriodo);
+            $linha = $porPeriodo[$chave] ?? [
+                'periodo' => $chave,
+                'periodo_data' => $cursor->format('Y-m-d'),
+                'total_pedidos' => 0,
+                'valor_total' => 0,
+                'ticket_medio' => 0,
+            ];
+            $completa[] = $linha;
+            $cursor = $cursor->modify($incremento);
+        }
+
+        return $completa;
+    }
+
+    // Relatório de faturamento anual, detalhado mês a mês.
+    // Fonte: vendas_resumo_mensal (historico das planilhas + pedidos finalizados,
+    // mantida sincronizada por trigger na tabela pedidos). Diferente de
+    // relatorioVendasPeriodo(), este inclui o faturamento anterior à migração.
+    public function relatorioFaturamentoAnual($ano)
+    {
+        try {
+            $ano = (int) $ano;
+            if ($ano < 2000 || $ano > 2100) {
+                return [
+                    'success' => false,
+                    'message' => 'Ano inválido',
+                ];
+            }
+
+            $sql = '
+                SELECT mes, quantidade, valor_total, ticket_medio, origem
+                FROM vendas_resumo_mensal
+                WHERE ano = ?
+                ORDER BY mes
+            ';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ano]);
+            $porMes = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), null, 'mes');
+
+            $nomesMes = [
+                1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+                5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+                9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro',
+            ];
+
+            $serie = [];
+            $quantidadeTotal = 0;
+            $valorTotal = 0.0;
+
+            foreach ($nomesMes as $numeroMes => $nomeMes) {
+                $linha = $porMes[$numeroMes] ?? null;
+                $quantidade = $linha ? (int) $linha['quantidade'] : 0;
+                $valor = $linha ? (float) $linha['valor_total'] : 0.0;
+
+                $serie[] = [
+                    'mes' => $numeroMes,
+                    'mes_label' => $nomeMes,
+                    'quantidade' => $quantidade,
+                    'valor_total' => $valor,
+                    'ticket_medio' => $linha ? (float) $linha['ticket_medio'] : 0.0,
+                    'origem' => $linha['origem'] ?? null,
+                ];
+
+                $quantidadeTotal += $quantidade;
+                $valorTotal += $valor;
+            }
+
+            $stmtAnos = $this->db->query('SELECT DISTINCT ano FROM vendas_resumo_mensal ORDER BY ano');
+            $anosDisponiveis = array_map('intval', array_column($stmtAnos->fetchAll(PDO::FETCH_ASSOC), 'ano'));
+
+            return [
+                'success' => true,
+                'data' => [
+                    'ano' => $ano,
+                    'anos_disponiveis' => $anosDisponiveis,
+                    'serie' => $serie,
+                    'resumo' => [
+                        'quantidade_total' => $quantidadeTotal,
+                        'valor_total' => round($valorTotal, 2),
+                        'ticket_medio' => $quantidadeTotal > 0 ? round($valorTotal / $quantidadeTotal, 2) : 0,
+                    ],
+                ],
+            ];
+        } catch (Exception $e) {
+            error_log('❌ Erro no relatório de faturamento anual: '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar relatório de faturamento anual',
             ];
         }
     }
@@ -563,7 +749,13 @@ class Relatorios
             case 'semana':
                 return 'Semana de '.date('d/m', $data);
             case 'mes':
-                return date('m/Y', $data);
+                $meses = [
+                    1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+                    5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+                    9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro',
+                ];
+
+                return $meses[(int) date('n', $data)].'/'.date('Y', $data);
             case 'ano':
                 return (string) $periodo;
             case 'dia':

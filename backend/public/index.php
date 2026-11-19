@@ -143,6 +143,17 @@ try {
     $uri = '/' . ltrim($uri, '/');
 
     error_log("📡 {$method} {$uri}");
+    if (str_starts_with($uri, '/contas-receber')) {
+        $traceContasReceber = [
+            'metodo' => $method,
+            'uri' => $_SERVER['REQUEST_URI'] ?? $uri,
+            'arquivo' => __FILE__,
+            'script' => $_SERVER['SCRIPT_FILENAME'] ?? null,
+            'host' => $_SERVER['HTTP_HOST'] ?? null,
+        ];
+        error_log('[CONTAS_RECEBER_TRACE] entrada no roteador: ' . json_encode($traceContasReceber, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        logError('[CONTAS_RECEBER_TRACE] entrada no roteador', $traceContasReceber);
+    }
 
     // ==========================================
     // ROTAS DE TESTE E DIAGNÓSTICO
@@ -2164,6 +2175,18 @@ try {
         exit;
     }
 
+    if ($method === 'GET' && $uri === '/relatorios/faturamento-anual') {
+        $authResult = verificarAuth($database);
+
+        $relatorios = new Relatorios($database);
+
+        $ano = intval($_GET['ano'] ?? date('Y'));
+
+        $resultado = $relatorios->relatorioFaturamentoAnual($ano);
+        echo json_encode($resultado);
+        exit;
+    }
+
     if ($method === 'GET' && $uri === '/relatorios/financeiro') {
         $authResult = verificarAuth($database);
 
@@ -2222,7 +2245,7 @@ try {
 
         $dataInicio = $_GET['data_inicio'] ?? date('Y-m-01');
         $dataFim = $_GET['data_fim'] ?? date('Y-m-t');
-        $granularidade = $_GET['granularidade'] ?? 'dia';
+        $granularidade = $_GET['granularidade'] ?? 'mes';
 
         $resultado = $relatorios->relatorioVendasPeriodo($dataInicio, $dataFim, $granularidade);
         echo json_encode($resultado);

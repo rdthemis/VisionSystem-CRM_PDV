@@ -98,7 +98,7 @@ export const relatoriosService = {
     },
 
     // Relatório de vendas por período (dia/semana/mês/ano)
-    async relatorioVendasPeriodo(dataInicio, dataFim, granularidade = 'dia') {
+    async relatorioVendasPeriodo(dataInicio, dataFim, granularidade = 'mes') {
         const params = new URLSearchParams({
             data_inicio: dataInicio,
             data_fim: dataFim,
@@ -106,6 +106,14 @@ export const relatoriosService = {
         });
 
         const url = `/relatorios/vendas-periodo?${params.toString()}`;
+        return await fetchWithAuth(url);
+    },
+
+    // Relatório de faturamento anual, detalhado mês a mês (inclui histórico pré-migração)
+    async relatorioFaturamentoAnual(ano) {
+        const params = new URLSearchParams({ ano: ano.toString() });
+
+        const url = `/relatorios/faturamento-anual?${params.toString()}`;
         return await fetchWithAuth(url);
     },
 
@@ -160,6 +168,10 @@ export const relatoriosService = {
             case 'vendas_periodo':
                 csvContent = this.gerarCSVVendasPeriodo(dados);
                 filename = 'relatorio_vendas_periodo.csv';
+                break;
+            case 'faturamento_anual':
+                csvContent = this.gerarCSVFaturamentoAnual(dados);
+                filename = `relatorio_faturamento_${dados.ano || 'anual'}.csv`;
                 break;
             case 'vendas_cliente':
                 csvContent = this.gerarCSVVendasCliente(dados);
@@ -268,7 +280,23 @@ export const relatoriosService = {
 
     // Gerar CSV para vendas por período
     gerarCSVVendasPeriodo(dados) {
-        let csv = 'Período,Total Pedidos,Valor Total,Ticket Médio\n';
+        let csv = '';
+
+        if (dados.periodo?.granularidade !== 'ano') {
+            csv += 'Totais por ano no período\nAno,Total Pedidos,Valor Total,Ticket Médio\n';
+            dados.serie_anual?.forEach(linha => {
+                const csvLinha = [
+                    this.escaparCSV(linha.periodo_label || linha.periodo || ''),
+                    linha.total_pedidos || 0,
+                    linha.valor_total || 0,
+                    linha.ticket_medio || 0
+                ].join(',');
+                csv += csvLinha + '\n';
+            });
+            csv += '\n';
+        }
+
+        csv += 'Detalhamento por período\nPeríodo,Total Pedidos,Valor Total,Ticket Médio\n';
 
         dados.serie?.forEach(linha => {
             const csvLinha = [
@@ -279,6 +307,25 @@ export const relatoriosService = {
             ].join(',');
             csv += csvLinha + '\n';
         });
+
+        return csv;
+    },
+
+    // Gerar CSV para faturamento anual (mês a mês)
+    gerarCSVFaturamentoAnual(dados) {
+        let csv = `Faturamento ${dados.ano || ''}\nMês,Quantidade,Valor Total,Ticket Médio\n`;
+
+        dados.serie?.forEach(linha => {
+            const csvLinha = [
+                this.escaparCSV(linha.mes_label || ''),
+                linha.quantidade || 0,
+                linha.valor_total || 0,
+                linha.ticket_medio || 0
+            ].join(',');
+            csv += csvLinha + '\n';
+        });
+
+        csv += `\nTotal do ano,${dados.resumo?.quantidade_total || 0},${dados.resumo?.valor_total || 0},${dados.resumo?.ticket_medio || 0}\n`;
 
         return csv;
     },

@@ -52,7 +52,7 @@ class ContasReceberService {
         const queryString = params.toString();
         const url = `/contas-receber${queryString ? `?${queryString}` : ''}`;
 
-        return await fetchWithAuth(url);
+        return await fetchWithAuth(url);    
     }
 
     // Buscar conta por ID

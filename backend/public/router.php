@@ -6,7 +6,7 @@
 // permitida é SecurityHeaders::setCORS() (config/SecurityHeaders.php), que lê
 // CORS_ALLOWED_ORIGINS do .env/variáveis de ambiente.
 
-$publicDir = '/app/public';
+$publicDir = __DIR__;
 
 $requestedPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
